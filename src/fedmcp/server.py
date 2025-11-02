@@ -47,12 +47,23 @@ represent_client = RepresentClient()
 canlii_api_key = os.getenv("CANLII_API_KEY")
 canlii_client = CanLIIClient(api_key=canlii_api_key) if canlii_api_key else None
 
-# Create server instance
+# Create server instance with Canadian flag icon (SVG data URI)
+# Using SVG to ensure compatibility with Claude Desktop UI
+CANADIAN_FLAG_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#FF0000"/>
+  <rect x="16" y="0" width="32" height="64" fill="#FFFFFF"/>
+  <path d="M32 20 L28 28 L20 26 L26 32 L22 40 L32 36 L42 40 L38 32 L44 26 L36 28 Z" fill="#FF0000"/>
+</svg>"""
+
+import base64
+flag_b64 = base64.b64encode(CANADIAN_FLAG_SVG.encode()).decode()
+flag_data_uri = f"data:image/svg+xml;base64,{flag_b64}"
+
 app = Server(
     name="fedmcp",
     version="1.0.0",
     instructions="Canadian federal parliamentary and legal information server",
-    icons=[Icon(src="🇨🇦")]
+    icons=[Icon(src=flag_data_uri, mimeType="image/svg+xml")]
 )
 
 

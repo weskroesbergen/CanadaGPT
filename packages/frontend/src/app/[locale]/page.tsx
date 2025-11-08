@@ -47,7 +47,7 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/dashboard">
-                  <Button size={64} className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto">
                     {t('hero.cta.primary')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>

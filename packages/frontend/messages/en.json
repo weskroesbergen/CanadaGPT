@@ -646,6 +646,58 @@
         }
       }
     },
+    "deletion": {
+      "title": "Data Deletion Requests",
+      "intro": "You have the right to request deletion of your personal data at any time. We are committed to honoring your data deletion rights under PIPEDA, GDPR, and CCPA.",
+      "howToRequest": {
+        "title": "How to Request Deletion",
+        "content": "To request deletion of your account and personal data, email us at privacy@canadagpt.ca with the subject line \\\"Data Deletion Request\\\" and include:",
+        "items": {
+          "email": "The email address associated with your account",
+          "confirmation": "Confirmation that you want to permanently delete your account",
+          "reason": "Optional: Reason for deletion (helps us improve our service)"
+        }
+      },
+      "timeline": {
+        "title": "Deletion Timeline",
+        "acknowledgment": "We will acknowledge your request within 48 hours",
+        "completion": "Account deletion will be completed within 30 days of verification",
+        "confirmation": "You will receive email confirmation once deletion is complete"
+      },
+      "whatGetsDeleted": {
+        "title": "What Gets Deleted",
+        "items": {
+          "account": "Your account credentials and authentication tokens",
+          "profile": "Profile information (name, email, photo)",
+          "preferences": "Saved preferences and settings",
+          "analytics": "Your usage data and analytics records",
+          "cookies": "Session cookies and authentication data"
+        }
+      },
+      "whatGetsAnonymized": {
+        "title": "What Gets Anonymized (Not Deleted)",
+        "content": "To preserve the integrity of public discussions and historical context, the following content is anonymized rather than deleted:",
+        "items": {
+          "posts": "Forum posts and topics you created (username replaced with \\\"Deleted User\\\")",
+          "comments": "Comments and replies in forum discussions",
+          "votes": "Votes on forum content (disassociated from your identity)"
+        },
+        "note": "Anonymized content cannot be traced back to you and does not contain any personal identifiable information."
+      },
+      "exceptions": {
+        "title": "Legal Retention Exceptions",
+        "content": "We may retain certain data if required by law or for legitimate business purposes:",
+        "items": {
+          "legal": "Data subject to legal holds, investigations, or litigation",
+          "fraud": "Records necessary for fraud prevention and security",
+          "backups": "Data in encrypted backups (automatically deleted after 90 days)"
+        }
+      },
+      "noRecovery": {
+        "title": "Account Deletion is Permanent",
+        "content": "Once your account is deleted, it cannot be recovered. You will need to create a new account if you wish to use CanadaGPT again in the future."
+      }
+    },
     "children": {
       "title": "Children's Privacy",
       "content": "CanadaGPT is not directed to children under 13. We do not knowingly collect personal information from children. If you believe we have collected information from a child, please contact us immediately."

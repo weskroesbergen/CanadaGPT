@@ -176,6 +176,58 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
+        {/* Data Deletion Requests */}
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4">{t('deletion.title')}</h2>
+          <p className="mb-4">{t('deletion.intro')}</p>
+
+          <h3 className="text-xl font-semibold mb-3">{t('deletion.howToRequest.title')}</h3>
+          <p className="mb-2">{t('deletion.howToRequest.content')}</p>
+          <ul className="list-disc pl-6 mb-4 space-y-1">
+            <li>{t('deletion.howToRequest.items.email')}</li>
+            <li>{t('deletion.howToRequest.items.confirmation')}</li>
+            <li>{t('deletion.howToRequest.items.reason')}</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold mb-3">{t('deletion.timeline.title')}</h3>
+          <ul className="list-disc pl-6 mb-4 space-y-1">
+            <li>{t('deletion.timeline.acknowledgment')}</li>
+            <li>{t('deletion.timeline.completion')}</li>
+            <li>{t('deletion.timeline.confirmation')}</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold mb-3">{t('deletion.whatGetsDeleted.title')}</h3>
+          <ul className="list-disc pl-6 mb-4 space-y-1">
+            <li>{t('deletion.whatGetsDeleted.items.account')}</li>
+            <li>{t('deletion.whatGetsDeleted.items.profile')}</li>
+            <li>{t('deletion.whatGetsDeleted.items.preferences')}</li>
+            <li>{t('deletion.whatGetsDeleted.items.analytics')}</li>
+            <li>{t('deletion.whatGetsDeleted.items.cookies')}</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold mb-3">{t('deletion.whatGetsAnonymized.title')}</h3>
+          <p className="mb-2">{t('deletion.whatGetsAnonymized.content')}</p>
+          <ul className="list-disc pl-6 mb-2 space-y-1">
+            <li>{t('deletion.whatGetsAnonymized.items.posts')}</li>
+            <li>{t('deletion.whatGetsAnonymized.items.comments')}</li>
+            <li>{t('deletion.whatGetsAnonymized.items.votes')}</li>
+          </ul>
+          <p className="mb-4 italic text-sm">{t('deletion.whatGetsAnonymized.note')}</p>
+
+          <h3 className="text-xl font-semibold mb-3">{t('deletion.exceptions.title')}</h3>
+          <p className="mb-2">{t('deletion.exceptions.content')}</p>
+          <ul className="list-disc pl-6 mb-4 space-y-1">
+            <li>{t('deletion.exceptions.items.legal')}</li>
+            <li>{t('deletion.exceptions.items.fraud')}</li>
+            <li>{t('deletion.exceptions.items.backups')}</li>
+          </ul>
+
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-4 mb-4">
+            <h3 className="text-xl font-semibold mb-2">{t('deletion.noRecovery.title')}</h3>
+            <p>{t('deletion.noRecovery.content')}</p>
+          </div>
+        </section>
+
         {/* Children's Privacy */}
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">{t('children.title')}</h2>

@@ -162,7 +162,7 @@ export default function Home() {
               {t('cta.description')}
             </p>
             <Link href="/dashboard">
-              <Button size={64}>
+              <Button size="lg">
                 {t('cta.button')}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

@@ -45,6 +45,10 @@ COPY package.json pnpm-lock.yaml ./
 # Copy design-system package (workspace dependency)
 COPY packages/design-system ./packages/design-system
 
+# Build design-system first (required dependency for frontend)
+WORKDIR /app/packages/design-system
+RUN pnpm build
+
 # Copy frontend package
 COPY packages/frontend ./packages/frontend
 

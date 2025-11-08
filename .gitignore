@@ -120,7 +120,7 @@ temp/
 # ============================================
 # Docker
 # ============================================
-.dockerignore
+# .dockerignore - needed for Docker builds
 docker-compose.override.yml
 
 # ============================================

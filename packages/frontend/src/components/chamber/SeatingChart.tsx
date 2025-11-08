@@ -11,7 +11,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
 interface MP {
@@ -47,21 +47,58 @@ const PARTY_COLORS: Record<string, string> = {
   'Independent': '#666666',
 };
 
+// Normalize party name to handle accent variations (Québécois vs Quebecois)
+// Moved outside component for better performance
+const normalizePartyName = (name: string): string => {
+  return name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .trim();
+};
+
+// Get party color with fallback - moved outside component
+const getPartyColor = (party: string): string => {
+  // Try exact match first
+  if (PARTY_COLORS[party]) {
+    return PARTY_COLORS[party];
+  }
+
+  // Try normalized match
+  const normalizedParty = normalizePartyName(party);
+  for (const [key, color] of Object.entries(PARTY_COLORS)) {
+    if (normalizePartyName(key) === normalizedParty) {
+      return color;
+    }
+  }
+
+  return PARTY_COLORS['Independent'];
+};
+
 export function SeatingChart({ mps, onSeatClick, highlightedMpId }: SeatingChartProps) {
   const [hoveredMp, setHoveredMp] = React.useState<MP | null>(null);
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
   const svgRef = React.useRef<SVGSVGElement>(null);
 
-  // Filter MPs with seating data
-  const seatedMps = mps.filter(mp =>
+  // Filter MPs with seating data - memoized to avoid recalculating on every render
+  const seatedMps = useMemo(() => mps.filter(mp =>
     mp.seat_visual_x !== undefined &&
     mp.seat_visual_y !== undefined
+  ), [mps]);
+
+  // Separate by bench section - memoized
+  const oppositionMps = useMemo(() =>
+    seatedMps.filter(mp => mp.bench_section === 'opposition'),
+    [seatedMps]
   );
 
-  // Separate by bench section
-  const oppositionMps = seatedMps.filter(mp => mp.bench_section === 'opposition');
-  const governmentMps = seatedMps.filter(mp => mp.bench_section === 'government');
-  const speakerMp = seatedMps.find(mp => mp.bench_section === 'speaker');
+  const governmentMps = useMemo(() =>
+    seatedMps.filter(mp => mp.bench_section === 'government'),
+    [seatedMps]
+  );
+
+  const speakerMp = useMemo(() =>
+    seatedMps.find(mp => mp.bench_section === 'speaker'),
+    [seatedMps]
+  );
 
   // SVG dimensions - more compact
   const width = 1400;
@@ -80,31 +117,8 @@ export function SeatingChart({ mps, onSeatClick, highlightedMpId }: SeatingChart
     });
   };
 
-  // Normalize party name to handle accent variations (Québécois vs Quebecois)
-  const normalizePartyName = (name: string): string => {
-    return name.toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
-      .trim();
-  };
-
-  const getPartyColor = (party: string): string => {
-    // Try exact match first
-    if (PARTY_COLORS[party]) {
-      return PARTY_COLORS[party];
-    }
-
-    // Try normalized match
-    const normalizedParty = normalizePartyName(party);
-    for (const [key, color] of Object.entries(PARTY_COLORS)) {
-      if (normalizePartyName(key) === normalizedParty) {
-        return color;
-      }
-    }
-
-    return PARTY_COLORS['Independent'];
-  };
-
-  const renderSeat = (mp: MP, isSpeaker: boolean = false) => {
+  // Memoized render function to avoid recreating on every render
+  const renderSeat = useCallback((mp: MP, isSpeaker: boolean = false) => {
     const x = mp.seat_visual_x!;
     const y = mp.seat_visual_y!;
     const partyColor = isSpeaker ? '#8B4513' : getPartyColor(mp.party);
@@ -188,7 +202,7 @@ export function SeatingChart({ mps, onSeatClick, highlightedMpId }: SeatingChart
         )}
       </g>
     );
-  };
+  }, [highlightedMpId, hoveredMp, onSeatClick, seatRadius]);
 
   return (
     <div className="relative w-full">

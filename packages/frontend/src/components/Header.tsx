@@ -5,14 +5,17 @@
 
 'use client';
 
+import { useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { MapleLeafIcon } from '@canadagpt/design-system';
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { motion, AnimatePresence } from 'framer-motion';
 import { UserMenu } from './UserMenu';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 export function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const t = useTranslations('nav');
   const tCommon = useTranslations('common');
 
@@ -65,13 +68,79 @@ export function Header() {
             <UserMenu />
             <LanguageSwitcher />
             <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
               aria-label="Menu"
             >
-              <Menu className="h-5 w-5" />
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden border-t border-border-subtle"
+            >
+              <nav className="py-4 space-y-1">
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  {t('dashboard')}
+                </Link>
+                <Link
+                  href="/mps"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  {t('mps')}
+                </Link>
+                <Link
+                  href="/chamber"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  {t('chamber')}
+                </Link>
+                <Link
+                  href="/committees"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  {t('committees')}
+                </Link>
+                <Link
+                  href="/bills"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  {t('bills')}
+                </Link>
+                <Link
+                  href="/hansard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  {t('speeches')}
+                </Link>
+                <Link
+                  href="/about"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  {t('about')}
+                </Link>
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </header>
   );

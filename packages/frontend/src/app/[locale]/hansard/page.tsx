@@ -212,7 +212,7 @@ export default function HansardPage() {
                 {t('search.button')}
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <Filter className="h-4 w-4 mr-2" />
@@ -345,7 +345,7 @@ export default function HansardPage() {
                 {/* Clear Filters */}
                 <div className="flex justify-end">
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => {
                       setSelectedParty('');

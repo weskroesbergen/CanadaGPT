@@ -34,7 +34,7 @@ export default function Home() {
           <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto text-center">
               <div className="flex justify-center mb-6">
-                <MapleLeafIcon size="lg" className="h-16 w-16 text-accent-red" />
+                <MapleLeafIcon size={64} className="h-16 w-16 text-accent-red" />
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-text-primary mb-6">
@@ -47,13 +47,13 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/dashboard">
-                  <Button size="lg" className="w-full sm:w-auto">
+                  <Button size={64} className="w-full sm:w-auto">
                     {t('hero.cta.primary')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <Link href="/mps">
-                  <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                  <Button variant="secondary" size={64} className="w-full sm:w-auto">
                     {t('hero.cta.secondary')}
                   </Button>
                 </Link>
@@ -162,7 +162,7 @@ export default function Home() {
               {t('cta.description')}
             </p>
             <Link href="/dashboard">
-              <Button size="lg">
+              <Button size={64}>
                 {t('cta.button')}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

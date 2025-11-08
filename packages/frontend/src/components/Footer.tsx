@@ -21,7 +21,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
-              <MapleLeafIcon size="sm" className="h-6 w-6 text-accent-red" />
+              <MapleLeafIcon size={24} className="h-6 w-6 text-accent-red" />
               <span className="text-lg font-bold text-text-primary">{tNav('siteTitle')}</span>
             </div>
             <p className="text-sm text-text-secondary max-w-md">

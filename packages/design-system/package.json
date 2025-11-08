@@ -1,0 +1,50 @@
+{
+  "name": "@canadagpt/design-system",
+  "version": "1.0.0",
+  "description": "Canada dark theme design system for CanadaGPT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./tailwind.config": "./tailwind.config.js",
+    "./components": "./dist/components/index.js",
+    "./icons": "./dist/icons/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "lint": "eslint src/**/*.{ts,tsx}",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "dependencies": {
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "files": [
+    "dist",
+    "tailwind.config.js"
+  ],
+  "keywords": [
+    "design-system",
+    "canada",
+    "dark-theme",
+    "tailwind",
+    "react",
+    "components"
+  ],
+  "author": "Matthew Dufresne",
+  "license": "MIT"
+}

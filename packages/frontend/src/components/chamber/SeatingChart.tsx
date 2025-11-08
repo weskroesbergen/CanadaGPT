@@ -201,40 +201,6 @@ export function SeatingChart({ mps, onSeatClick, highlightedMpId }: SeatingChart
           onMouseMove={handleMouseMove}
           onMouseLeave={() => setHoveredMp(null)}
         >
-        {/* Section Labels */}
-        <text
-          x={width / 2}
-          y={40}
-          textAnchor="middle"
-          className="fill-text-primary font-semibold"
-          fontSize="20"
-        >
-          Opposition • Speaker's Left
-        </text>
-
-        {/* Speaker Position Label */}
-        {speakerMp && (
-          <text
-            x={width / 2}
-            y={height / 2 - 20}
-            textAnchor="middle"
-            className="fill-text-tertiary"
-            fontSize="14"
-          >
-            Speaker's Chair
-          </text>
-        )}
-
-        <text
-          x={width / 2}
-          y={height - 20}
-          textAnchor="middle"
-          className="fill-text-primary font-semibold"
-          fontSize="20"
-        >
-          Government • Speaker's Right
-        </text>
-
         {/* Center divider line */}
         <line
           x1={100}
@@ -253,8 +219,15 @@ export function SeatingChart({ mps, onSeatClick, highlightedMpId }: SeatingChart
         {/* Render Government Seats */}
         {governmentMps.map(mp => renderSeat(mp))}
 
-        {/* Render Speaker */}
-        {speakerMp && renderSeat(speakerMp, true)}
+        {/* Render Speaker - Positioned on left side, vertically centered */}
+        {speakerMp && renderSeat(
+          {
+            ...speakerMp,
+            seat_visual_x: 60,
+            seat_visual_y: height / 2 - 30
+          },
+          true
+        )}
         </svg>
 
         {/* Legend */}

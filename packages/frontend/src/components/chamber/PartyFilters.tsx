@@ -98,15 +98,15 @@ export function PartyFilters({
         </div>
       </div>
 
-      {/* Clear Filters Button */}
-      {hasActiveFilters && (
+      {/* Clear Search Button - Only for search query */}
+      {searchQuery && !selectedParty && (
         <Button
           variant="ghost"
-          onClick={handleClearFilters}
+          onClick={() => handleSearchChange('')}
           className="w-full"
         >
           <X className="h-4 w-4 mr-2" />
-          Clear Filters
+          Clear Search
         </Button>
       )}
     </div>

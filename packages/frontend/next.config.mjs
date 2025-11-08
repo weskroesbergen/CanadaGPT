@@ -1,11 +1,26 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+
+  // Output mode for production builds (standalone for Docker)
+  output: 'standalone',
 
   // Environment variables exposed to browser
   env: {
     NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
+  },
+
+  // Webpack configuration
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // Increase chunk load timeout in development
+      config.output.chunkLoadTimeout = 120000; // 2 minutes
+    }
+    return config;
   },
 
   // Image optimization
@@ -48,4 +63,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

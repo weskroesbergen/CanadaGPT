@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fedmcp-pipeline"
+version = "1.0.0"
+description = "Data ingestion pipeline for CanadaGPT - loads Canadian government data into Neo4j"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Matthew Dufresne"}
+]
+
+dependencies = [
+    "neo4j>=5.14.0",
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.66.0",  # Progress bars
+    "loguru>=0.7.0",  # Better logging
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+canadagpt-ingest = "fedmcp_pipeline.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

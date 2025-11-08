@@ -87,7 +87,7 @@ export function NewsArticles({ articles, loading }: NewsArticlesProps) {
               </div>
             ) : (
               <div className="flex-shrink-0 w-48 h-32 bg-bg-secondary flex items-center justify-center">
-                <MapleLeafIcon className="h-16 w-16 text-accent-red" />
+                <MapleLeafIcon className="h-16 w-16 text-accent-red" size={64} />
               </div>
             )}
 

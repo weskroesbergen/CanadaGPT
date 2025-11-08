@@ -1,0 +1,35 @@
+{
+  "name": "canadagpt-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CanadaGPT - AI-powered Canadian government accountability platform",
+  "workspaces": [
+    "packages/frontend",
+    "packages/graph-api",
+    "packages/design-system"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "dev:api": "npm run dev --workspace=packages/graph-api",
+    "build:frontend": "npm run build --workspace=packages/frontend",
+    "build:api": "npm run build --workspace=packages/graph-api",
+    "build:design-system": "npm run build --workspace=packages/design-system",
+    "build:all": "npm run build:design-system && npm run build:api && npm run build:frontend",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/FedMCP.git"
+  },
+  "author": "Matthew Dufresne",
+  "license": "MIT"
+}

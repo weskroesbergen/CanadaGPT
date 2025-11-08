@@ -78,7 +78,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                     />
                   ),
                   // Custom code block styling
-                  code: ({ node, inline, ...props }) =>
+                  code: ({ node, inline, ...props }: any) =>
                     inline ? (
                       <code
                         {...props}

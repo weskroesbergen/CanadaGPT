@@ -1,0 +1,37 @@
+# CanadaGPT Terraform Variables
+# Copy this file to terraform.tfvars and fill in your values
+# NEVER commit terraform.tfvars (it contains secrets!)
+
+# GCP Project Configuration
+project_id = "your-gcp-project-id"  # Example: canadagpt-production
+region     = "us-central1"           # Or northamerica-northeast1 (Montreal)
+
+# Environment
+environment = "beta" # Options: beta, staging, production
+
+# Neo4j Aura Configuration
+# Get this from Neo4j Aura console after creating your instance
+neo4j_uri = "neo4j+s://xxxxx.databases.neo4j.io"
+
+# Production Settings (optional, defaults shown)
+# enable_cdn = false
+
+# min_instances = {
+#   frontend = 0  # 0 = scale-to-zero (beta), 1 = always-on (production)
+#   api      = 0  # 0 = scale-to-zero (beta), 2 = redundancy (production)
+# }
+
+# max_instances = {
+#   frontend = 10
+#   api      = 20
+# }
+
+# Custom domain (optional)
+# custom_domain = "canadagpt.ca"
+
+# Labels (optional)
+# labels = {
+#   project     = "canadagpt"
+#   managed_by  = "terraform"
+#   environment = "beta"
+# }

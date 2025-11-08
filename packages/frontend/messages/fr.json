@@ -1,0 +1,473 @@
+{
+  "metadata": {
+    "title": "CanadaGPT - Transparence publique",
+    "description": "Suivez les députés canadiens, les projets de loi, le lobbying et les dépenses gouvernementales avec transparence et reddition de comptes.",
+    "keywords": "Canada, gouvernement, transparence publique, députés, projets de loi, lobbying, reddition de comptes"
+  },
+  "common": {
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "reset": "Réinitialiser",
+    "apply": "Appliquer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "view": "Voir",
+    "close": "Fermer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "noResults": "Aucun résultat trouvé",
+    "tryAgain": "Réessayer",
+    "learnMore": "En savoir plus",
+    "viewAll": "Voir tout",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "home": "Accueil",
+    "of": "de",
+    "and": "et",
+    "or": "ou",
+    "to": "à",
+    "from": "de",
+    "date": "Date",
+    "time": "Heure",
+    "language": "Langue",
+    "english": "Anglais",
+    "french": "Français"
+  },
+  "nav": {
+    "siteTitle": "CanadaGPT",
+    "tagline": "Transparence publique",
+    "dashboard": "Tableau de bord",
+    "mps": "Députés",
+    "chamber": "Chambre",
+    "committees": "Comités",
+    "bills": "Projets de loi",
+    "speeches": "Discours",
+    "lobbying": "Lobbying",
+    "spending": "Dépenses",
+    "about": "À propos",
+    "profile": "Profil",
+    "account": "Compte",
+    "signIn": "Connexion",
+    "signOut": "Déconnexion",
+    "signUp": "Inscription"
+  },
+  "footer": {
+    "description": "Rendre les données gouvernementales canadiennes accessibles et transparentes grâce à l'IA avancée et à l'analyse de données.",
+    "navigation": "Navigation",
+    "resources": "Ressources",
+    "legal": "Légal",
+    "about": "À propos",
+    "contact": "Contact",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "copyright": "© {year} CanadaGPT. Tous droits réservés.",
+    "openSource": "Projet open source dédié à la transparence gouvernementale"
+  },
+  "home": {
+    "hero": {
+      "title": "Transparence publique en action",
+      "subtitle": "Suivez les députés, les projets de loi, le lobbying et les dépenses avec des analyses puissantes propulsées par l'IA",
+      "cta": {
+        "primary": "Explorer le tableau de bord",
+        "secondary": "Parcourir les députés"
+      }
+    },
+    "features": {
+      "title": "Fonctionnalités puissantes",
+      "mp": {
+        "title": "Suivi des députés",
+        "description": "Surveillez les 338 députés, leurs votes et leurs indicateurs de reddition de comptes"
+      },
+      "bills": {
+        "title": "Surveillance des projets de loi",
+        "description": "Suivez la législation au Parlement avec des mises à jour en temps réel et des résumés générés par l'IA"
+      },
+      "lobbying": {
+        "title": "Transparence du lobbying",
+        "description": "Exposez l'influence corporative avec un suivi complet des activités de lobbying"
+      },
+      "spending": {
+        "title": "Analyse des dépenses",
+        "description": "Suivez les dépenses gouvernementales et les frais des députés avec des ventilations détaillées et des comparaisons"
+      }
+    },
+    "stats": {
+      "title": "En chiffres",
+      "mps": "{count} députés",
+      "bills": "{count} projets de loi",
+      "votes": "{count}K+ votes",
+      "lobbying": "{count}K+ dossiers de lobbying"
+    },
+    "cta": {
+      "title": "Prêt à plonger?",
+      "description": "Explorez les données parlementaires canadiennes comme jamais auparavant",
+      "button": "Commencer"
+    }
+  },
+  "mps": {
+    "title": "Députés",
+    "subtitle": "Parcourir les {count} députés actuels",
+    "search": {
+      "placeholder": "Rechercher par nom...",
+      "noResults": "Aucun député trouvé correspondant à vos critères.",
+      "error": "Échec du chargement des députés. Veuillez réessayer."
+    },
+    "filters": {
+      "party": "Parti",
+      "province": "Province",
+      "cabinet": "Cabinet seulement",
+      "all": "Tous les députés"
+    },
+    "card": {
+      "riding": "Circonscription",
+      "independent": "Indépendant",
+      "ridingTBD": "Circonscription à déterminer",
+      "viewProfile": "Voir le profil"
+    }
+  },
+  "bills": {
+    "title": "Projets de loi et législation",
+    "subtitle": "Suivre les projets de loi fédéraux au Parlement",
+    "search": {
+      "placeholder": "Rechercher des projets de loi par numéro ou mots-clés...",
+      "noResults": "Aucun projet de loi trouvé correspondant à vos critères.",
+      "error": "Échec du chargement des projets de loi. Veuillez réessayer."
+    },
+    "filters": {
+      "title": "Filtres",
+      "type": "Tous les types",
+      "status": "Tous les statuts",
+      "chamber": "Toutes les chambres",
+      "session": "Toutes les sessions",
+      "sessionLabel": "Session {session}",
+      "orderPaper": "Feuilleton",
+      "royalAssent": "Sanction royale",
+      "failedLegislation": "Lois rejetées",
+      "reset": "Réinitialiser tous les filtres"
+    },
+    "types": {
+      "government": "Projet de loi du gouvernement",
+      "private": "Projet de loi d'initiative parlementaire",
+      "senate": "Projet de loi du Sénat",
+      "all": "Tous les types"
+    },
+    "statuses": {
+      "introduced": "Déposé",
+      "firstReading": "Première lecture",
+      "secondReading": "Deuxième lecture",
+      "committee": "En comité",
+      "thirdReading": "Troisième lecture",
+      "passed": "Adopté",
+      "royalAssent": "Sanction royale",
+      "defeated": "Rejeté",
+      "all": "Tous les statuts"
+    },
+    "chambers": {
+      "commons": "Chambre des communes",
+      "senate": "Sénat",
+      "both": "Deux chambres",
+      "all": "Toutes les chambres"
+    },
+    "card": {
+      "billLabel": "Projet de loi",
+      "sponsor": "Parrainé par",
+      "updated": "Mis à jour",
+      "introduced": "Déposé",
+      "viewDetails": "Voir les détails"
+    }
+  },
+  "bill": {
+    "billNumber": "Projet de loi",
+    "session": "Session",
+    "notFound": "Projet de loi non trouvé",
+    "summary": "Résumé",
+    "details": "Détails",
+    "status": "Statut",
+    "sponsor": "Parrain",
+    "sponsoredBy": "Parrainé par :",
+    "introduced": "Déposé :",
+    "passed": "Adopté :",
+    "enactedAs": "Promulgué comme loi :",
+    "chapter": "Chapitre",
+    "votes": "Votes récents",
+    "debates": "Débats",
+    "lobbying": "Activité de lobbying",
+    "timeline": "Chronologie législative",
+    "committees": "Renvois en comité",
+    "discussion": "Discussion communautaire",
+    "noVotes": "Aucun vote enregistré pour le moment",
+    "noDebates": "Aucun débat enregistré pour le moment",
+    "noLobbying": "Aucune activité de lobbying enregistrée",
+    "awaitingSecondReading": "En attente de la deuxième lecture",
+    "awaitingDescription": "Aucun vote n'a encore eu lieu. Ce projet de loi est prévu pour le débat de deuxième lecture.",
+    "privateMemberNote": "En tant que projet de loi d'initiative parlementaire, il attend dans l'ordre de priorité pour être débattu et voté.",
+    "organizationsLobbying": "Organisations faisant du lobbying",
+    "events": "événements",
+    "moreOrganizations": "+ {count} autres organisations",
+    "voteResult": {
+      "passed": "Adopté",
+      "failed": "Rejeté",
+      "defeated": "Rejeté",
+      "tied": "Égalité",
+      "yea": "Pour",
+      "nay": "Contre",
+      "abstain": "Abstention"
+    },
+    "stages": {
+      "introduced": "Déposé",
+      "firstReading": "Première lecture",
+      "secondReading": "Deuxième lecture",
+      "thirdReading": "Troisième lecture",
+      "committee": "Étude en comité",
+      "reportStage": "Étape du rapport",
+      "senateReading": "Lecture au Sénat",
+      "royalAssent": "Sanction royale",
+      "inForce": "En vigueur",
+      "houseFirst": "Chambre - Première lecture",
+      "houseSecond": "Chambre - Deuxième lecture",
+      "houseThird": "Chambre - Troisième lecture",
+      "senateFirst": "Sénat - Première lecture",
+      "senateSecond": "Sénat - Deuxième lecture",
+      "senateThird": "Sénat - Troisième lecture",
+      "passedFirstHouse": "Adoption de la première lecture à la Chambre des communes",
+      "passedSecondHouse": "Adoption de la deuxième lecture à la Chambre des communes",
+      "passedThirdHouse": "Adoption de la troisième lecture à la Chambre des communes",
+      "passedFirstSenate": "Adoption de la première lecture au Sénat",
+      "passedSecondSenate": "Adoption de la deuxième lecture au Sénat",
+      "passedThirdSenate": "Adoption de la troisième lecture au Sénat",
+      "billIntroduced": "Le projet de loi {number} a été déposé",
+      "billBecameLaw": "Le projet de loi est devenu loi",
+      "billPassed": "Le projet de loi a été adopté par les deux chambres",
+      "latestStatus": "Dernier statut",
+      "current": "Actuel"
+    }
+  },
+  "hansard": {
+    "title": "Recherche Hansard",
+    "subtitle": "Rechercher dans les débats et discours parlementaires",
+    "search": {
+      "placeholder": "Rechercher des débats, sujets ou mots-clés...",
+      "button": "Rechercher",
+      "filters": "Filtres"
+    },
+    "popularTopics": {
+      "title": "Sujets populaires"
+    },
+    "filters": {
+      "party": "Parti politique",
+      "allParties": "Tous les partis",
+      "member": "Député",
+      "allMPs": "Tous les députés",
+      "documentType": "Type de document",
+      "allTypes": "Tous les types",
+      "dateFrom": "Date de début",
+      "dateTo": "Date de fin",
+      "minWords": "Nombre minimum de mots (discours substantiels)",
+      "onlySubstantive": "Seulement les discours substantiels (exclure les remarques procédurales)",
+      "clearAll": "Effacer tous les filtres"
+    },
+    "results": {
+      "title": "Résultats de recherche",
+      "showingFor": "Affichage des résultats pour :",
+      "stats": {
+        "speeches": "Discours trouvés",
+        "speakers": "Intervenants uniques",
+        "words": "Mots au total",
+        "days": "Jours couverts"
+      },
+      "noResults": "Aucun discours trouvé",
+      "tryDifferent": "Essayez d'ajuster votre requête de recherche ou vos filtres",
+      "viewRecent": "Voir les débats récents",
+      "copyQuote": "Copier la citation",
+      "showLess": "Afficher moins",
+      "readMore": "Lire la suite",
+      "procedural": "Procédural",
+      "viewFullDebate": "Voir le débat complet"
+    },
+    "tips": {
+      "title": "Conseils de recherche",
+      "items": [
+        "Utilisez des mots-clés spécifiques pour de meilleurs résultats (ex : « tarification du carbone » vs « environnement »)",
+        "Essayez plusieurs termes connexes si vous ne trouvez pas ce que vous cherchez",
+        "Utilisez les filtres pour affiner par parti, député ou plage de dates",
+        "Définissez un nombre minimum de mots pour trouver des discours substantiels plutôt que de courtes remarques",
+        "Filtrez les remarques procédurales pour vous concentrer sur les discussions politiques",
+        "Cliquez sur les noms des intervenants pour voir leur profil parlementaire complet"
+      ]
+    }
+  },
+  "chamber": {
+    "title": "Disposition de la Chambre",
+    "subtitle": "Disposition des sièges de la Chambre des communes",
+    "legend": "Légende des partis",
+    "seats": "Sièges",
+    "seat": "siège",
+    "total": "Total",
+    "vacant": "Vacant",
+    "filters": {
+      "showAll": "Afficher tout",
+      "showByParty": "Afficher par parti"
+    },
+    "video": {
+      "questionPeriod": "Chambre des communes - Période des questions",
+      "loading": "Chargement des données de la Chambre..."
+    },
+    "seating": {
+      "title": "Disposition des sièges de la Chambre des communes",
+      "instruction": "Cliquez sur n'importe quel siège pour voir les détails du député. Survolez pour voir les noms. Les ministres du Cabinet ont des anneaux dorés."
+    },
+    "errors": {
+      "loadingData": "Erreur lors du chargement des données de la Chambre :"
+    }
+  },
+  "committees": {
+    "title": "Comités parlementaires",
+    "subtitle": "Suivre le travail des comités et les audiences",
+    "types": {
+      "standing": "Comités permanents",
+      "special": "Comités spéciaux",
+      "joint": "Comités mixtes",
+      "legislative": "Comités législatifs"
+    },
+    "card": {
+      "members": "Membres",
+      "meetings": "Réunions",
+      "reports": "Rapports",
+      "viewDetails": "Voir les détails"
+    }
+  },
+  "lobbying": {
+    "title": "Activité de lobbying",
+    "subtitle": "Suivre l'influence corporative sur la législation",
+    "search": {
+      "placeholder": "Rechercher des organisations, lobbyistes ou sujets...",
+      "noResults": "Aucun dossier de lobbying trouvé."
+    },
+    "filters": {
+      "organization": "Organisation",
+      "lobbyist": "Lobbyiste",
+      "subject": "Sujet",
+      "dateRange": "Plage de dates"
+    },
+    "card": {
+      "organization": "Organisation",
+      "lobbyist": "Lobbyiste",
+      "subject": "Sujet",
+      "meetings": "Réunions",
+      "officials": "Fonctionnaires gouvernementaux",
+      "viewDetails": "Voir les détails"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "subtitle": "Indicateurs et perspectives de reddition de comptes gouvernementale",
+    "metrics": {
+      "currentMPs": "Députés actuels",
+      "membersOfParliament": "Députés",
+      "totalBills": "Total des projets de loi",
+      "activeBills": "{count} actifs",
+      "topSpender": "Plus gros dépensier",
+      "expenses": "Dépenses {year}",
+      "recentSpeeches": "Discours récents",
+      "hansardRecords": "Archives Hansard"
+    },
+    "quickActions": {
+      "browseMPs": "Parcourir les députés",
+      "viewAllMembers": "Voir tous les membres",
+      "trackBills": "Suivre les projets de loi",
+      "followLegislation": "Suivre la législation",
+      "lobbying": "Lobbying",
+      "corporateInfluence": "Influence corporative",
+      "spending": "Dépenses",
+      "mpExpenses": "Dépenses des députés"
+    },
+    "featuredMPs": {
+      "title": "Députés en vedette",
+      "viewAll": "Voir tous les députés →"
+    },
+    "topSpenders": {
+      "title": "Plus gros dépensiers {year}",
+      "viewAll": "Voir toutes les données de dépenses →"
+    },
+    "recentDebates": {
+      "title": "Débats récents",
+      "searchHansard": "Rechercher dans les archives Hansard →"
+    },
+    "about": {
+      "title": "À propos de ce tableau de bord",
+      "description": "Ce tableau de bord fournit des informations en temps réel sur les opérations du gouvernement fédéral canadien. Les données proviennent de bases de données gouvernementales officielles, notamment le Parlement, LEGISinfo et le Commissariat au lobbying. Les données sur les dépenses reflètent généralement les informations 2 à 3 mois après la fin du trimestre."
+    }
+  },
+  "spending": {
+    "title": "Dépenses gouvernementales",
+    "subtitle": "Suivre les dépenses des députés et les dépenses gouvernementales",
+    "types": {
+      "travel": "Voyages",
+      "hospitality": "Hospitalité",
+      "contracts": "Contrats",
+      "office": "Frais de bureau",
+      "salaries": "Salaires",
+      "total": "Total"
+    },
+    "filters": {
+      "fiscalYear": "Année fiscale",
+      "quarter": "Trimestre",
+      "category": "Catégorie",
+      "mp": "Député"
+    },
+    "card": {
+      "amount": "Montant",
+      "period": "Période",
+      "category": "Catégorie",
+      "viewBreakdown": "Voir la ventilation"
+    }
+  },
+  "chat": {
+    "title": "Assistant IA",
+    "placeholder": "Posez des questions sur les députés, les projets de loi ou les données parlementaires...",
+    "send": "Envoyer",
+    "clear": "Effacer la conversation",
+    "thinking": "Réflexion...",
+    "error": "Échec de la réponse. Veuillez réessayer.",
+    "tooltip": "Ouvrir la conversation (⌘K)",
+    "tooltipAlt": "Appuyez sur ⌘K pour ouvrir"
+  },
+  "parties": {
+    "liberal": "Libéral",
+    "conservative": "Conservateur",
+    "ndp": "NPD",
+    "blocQuebecois": "Bloc Québécois",
+    "green": "Vert",
+    "independent": "Indépendant",
+    "peoplesParty": "Parti populaire"
+  },
+  "provinces": {
+    "AB": "Alberta",
+    "BC": "Colombie-Britannique",
+    "MB": "Manitoba",
+    "NB": "Nouveau-Brunswick",
+    "NL": "Terre-Neuve-et-Labrador",
+    "NS": "Nouvelle-Écosse",
+    "NT": "Territoires du Nord-Ouest",
+    "NU": "Nunavut",
+    "ON": "Ontario",
+    "PE": "Île-du-Prince-Édouard",
+    "QC": "Québec",
+    "SK": "Saskatchewan",
+    "YT": "Yukon"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite. Veuillez réessayer.",
+    "network": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "notFound": "Page non trouvée",
+    "unauthorized": "Vous devez être connecté pour accéder à cette page.",
+    "forbidden": "Vous n'avez pas la permission d'accéder à cette ressource.",
+    "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
+    "validation": "Veuillez vérifier votre saisie et réessayer."
+  }
+}

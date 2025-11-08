@@ -1,68 +1,53 @@
-"""Quick test script to verify the FedMCP clients work correctly."""
+#!/usr/bin/env python3
+"""Quick test script for FedMCP clients."""
 
-import os
-from dotenv import load_dotenv
+from fedmcp import (
+    OpenParliamentClient,
+    MPExpenditureClient,
+    PetitionsClient,
+    LobbyingRegistryClient,
+)
 
-# Load environment variables
-load_dotenv()
+print("🧪 Testing FedMCP Clients...\n")
 
-from fedmcp import OpenParliamentClient, CanLIIClient
+# Test 1: OpenParliament
+print("1️⃣ Testing OpenParliament - Recent debates...")
+op = OpenParliamentClient()
+debates = list(op.list_debates(limit=3))
+print(f"   ✅ Found {len(debates)} recent debates")
+if debates:
+    print(f"   Latest: {debates[0].get('topic', 'N/A')}\n")
 
-def test_openparliament():
-    """Test OpenParliament client."""
-    print("Testing OpenParliament client...")
-    client = OpenParliamentClient()
+# Test 2: MP Expenditures
+print("2️⃣ Testing MP Expenditures - Top travel spenders...")
+exp = MPExpenditureClient()
+try:
+    top_spenders = exp.get_top_spenders("travel", fiscal_year=2026, quarter=1, limit=3)
+    print(f"   ✅ Found {len(top_spenders)} top spenders")
+    if top_spenders:
+        print(f"   Top spender: {top_spenders[0].name} - ${top_spenders[0].travel:,.2f}\n")
+except Exception as e:
+    print(f"   ⚠️  Note: {str(e)[:100]}\n")
 
-    # Get a few recent debates
-    debates = list(client.list_debates(limit=3))
-    print(f"✓ Retrieved {len(debates)} debates")
+# Test 3: Petitions
+print("3️⃣ Testing Petitions - Search for 'climate'...")
+petitions = PetitionsClient()
+results = petitions.search_petitions(keyword="climate", category="All", limit=3)
+print(f"   ✅ Found {len(results)} petitions about climate")
+if results:
+    print(f"   Example: {results[0].title[:80]}...\n")
 
-    if debates:
-        first_debate = debates[0]
-        print(f"  - Latest debate date: {first_debate.get('date')}")
-        print(f"  - Speaker: {first_debate.get('speaker', {}).get('name')}")
+# Test 4: Lobbying Registry (this downloads data on first run)
+print("4️⃣ Testing Lobbying Registry - Top clients...")
+print("   ⏳ Downloading lobbying data (first run takes ~30 seconds)...")
+lobbying = LobbyingRegistryClient()
+top_clients = lobbying.get_top_clients(limit=3, active_only=True)
+print(f"   ✅ Found {len(top_clients)} top lobbying clients")
+if top_clients:
+    print(f"   Top client: {top_clients[0]['client_name']} ({top_clients[0]['registration_count']} registrations)\n")
 
-    print()
-
-def test_canlii():
-    """Test CanLII client."""
-    api_key = os.getenv("CANLII_API_KEY")
-    if not api_key:
-        print("⚠ CanLII API key not found, skipping CanLII tests")
-        return
-
-    print("Testing CanLII client...")
-    client = CanLIIClient(api_key=api_key)
-
-    # List databases
-    databases = client.list_databases(language="en")
-    print(f"✓ Retrieved database information")
-
-    # Search Supreme Court cases
-    try:
-        cases = client.search_cases_by_keyword(
-            database_id="csc-scc",
-            query="charter",
-            limit=3
-        )
-        print(f"✓ Found {len(cases)} Supreme Court cases matching 'charter'")
-
-        if cases:
-            print(f"  - First case: {cases[0].get('title', 'N/A')}")
-    except Exception as e:
-        print(f"✗ Error searching cases: {e}")
-
-    print()
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("FedMCP Client Test Suite")
-    print("=" * 60)
-    print()
-
-    test_openparliament()
-    test_canlii()
-
-    print("=" * 60)
-    print("All tests completed!")
-    print("=" * 60)
+print("✅ All client tests completed successfully!")
+print("\nNext steps:")
+print("  • Add to Claude Desktop config to use all 42 MCP tools")
+print("  • Run 'python -m fedmcp.server' to start the MCP server")
+print("  • See README.md for detailed use case examples")

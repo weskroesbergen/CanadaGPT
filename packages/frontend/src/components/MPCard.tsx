@@ -7,12 +7,17 @@
  * - Cabinet position badge
  * - Party logo in top-right corner
  * - Clickable to MP profile
+ * - Fully bilingual with party name translation
  */
 
-import Link from 'next/link';
+'use client';
+
+import { Link } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { Card } from '@canadagpt/design-system';
 import { Crown } from 'lucide-react';
 import { PartyLogo } from './PartyLogo';
+import { usePartyName } from '@/hooks/useBilingual';
 
 export interface MPCardData {
   id: string;
@@ -30,8 +35,18 @@ export interface MPCardProps {
 }
 
 export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) {
+  const t = useTranslations('mps.card');
+  const partyName = usePartyName(mp.party);
+
+  // Fix photo URL: convert polpics/ to /mp-photos/ and remove _suffix before extension
+  const photoUrl = mp.photo_url
+    ? mp.photo_url
+        .replace('polpics/', '/mp-photos/')
+        .replace(/_[a-zA-Z0-9]+(\.\w+)$/, '$1') // Remove _suffix before extension
+    : null;
+
   return (
-    <Link href={`/mps/${mp.id}`}>
+    <Link href={`/mps/${mp.id}` as any}>
       <Card className={`hover:border-accent-red transition-colors cursor-pointer h-full relative ${className}`}>
         {/* Party Logo - Top Right Corner */}
         <div className="absolute top-3 right-3 z-10">
@@ -44,9 +59,9 @@ export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) 
 
         <div className="flex items-start space-x-4">
           {/* MP Photo */}
-          {mp.photo_url && (
+          {photoUrl && (
             <img
-              src={mp.photo_url}
+              src={photoUrl}
               alt={mp.name}
               className="w-[60px] h-24 rounded-lg object-contain flex-shrink-0 bg-bg-elevated"
             />
@@ -58,10 +73,10 @@ export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) 
             <h3 className="font-semibold text-text-primary truncate">{mp.name}</h3>
 
             {/* Party */}
-            <p className="text-sm text-text-secondary">{mp.party || 'Independent'}</p>
+            <p className="text-sm text-text-secondary">{partyName || t('independent')}</p>
 
             {/* Riding */}
-            <p className="text-sm text-text-tertiary truncate">{mp.riding || 'Riding TBD'}</p>
+            <p className="text-sm text-text-tertiary truncate">{mp.riding || t('ridingTBD')}</p>
 
             {/* Cabinet Position Badge */}
             {mp.cabinet_position && (
@@ -91,8 +106,17 @@ export interface CompactMPCardProps {
 }
 
 export function CompactMPCard({ mp, linkToParty = true, className = '' }: CompactMPCardProps) {
+  const t = useTranslations('mps.card');
+
+  // Fix photo URL: convert polpics/ to /mp-photos/ and remove _suffix before extension
+  const photoUrl = mp.photo_url
+    ? mp.photo_url
+        .replace('polpics/', '/mp-photos/')
+        .replace(/_[a-zA-Z0-9]+(\.\w+)$/, '$1') // Remove _suffix before extension
+    : null;
+
   return (
-    <Link href={`/mps/${mp.id}`}>
+    <Link href={`/mps/${mp.id}` as any}>
       <Card className={`hover:border-accent-red transition-colors cursor-pointer p-2 relative ${className}`}>
         {/* Party Logo Badge - Top Corner */}
         <div className="absolute top-2 right-2 z-10">
@@ -104,9 +128,9 @@ export function CompactMPCard({ mp, linkToParty = true, className = '' }: Compac
         </div>
 
         {/* MP Photo */}
-        {mp.photo_url && (
+        {photoUrl && (
           <img
-            src={mp.photo_url}
+            src={photoUrl}
             alt={mp.name}
             className="w-full h-96 object-cover object-[50%_25%] rounded-md mb-2"
           />
@@ -115,7 +139,7 @@ export function CompactMPCard({ mp, linkToParty = true, className = '' }: Compac
         {/* MP Info */}
         <div>
           <h4 className="text-xs font-semibold text-text-primary truncate pr-6">{mp.name}</h4>
-          <p className="text-xs text-text-tertiary truncate mt-0.5">{mp.riding || 'Riding TBD'}</p>
+          <p className="text-xs text-text-tertiary truncate mt-0.5">{mp.riding || t('ridingTBD')}</p>
 
           {/* Cabinet Badge */}
           {mp.cabinet_position && (

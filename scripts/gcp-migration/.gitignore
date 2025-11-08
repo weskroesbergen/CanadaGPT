@@ -1,0 +1,9 @@
+# GCP Migration Configuration
+.env
+
+# Test scripts (generated)
+test-connection.sh
+
+# Backup files
+*.dump
+*.dump.gz

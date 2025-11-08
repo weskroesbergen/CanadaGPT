@@ -1,0 +1,46 @@
+services:
+  neo4j:
+    image: neo4j:5.14-community
+    container_name: canadagpt-neo4j
+    ports:
+      - "7474:7474"  # HTTP (Neo4j Browser)
+      - "7687:7687"  # Bolt protocol
+    environment:
+      - NEO4J_AUTH=neo4j/canadagpt2024
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_pagecache_size=2G
+      - NEO4J_dbms_memory_heap_initial__size=2G
+      - NEO4J_dbms_memory_heap_max__size=4G
+      - NEO4J_dbms_security_auth__minimum__password__length=6
+      # Performance tuning for data loading
+      - NEO4J_dbms_transaction_timeout=120s
+      - NEO4J_dbms_lock_acquisition_timeout=60s
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - canadagpt
+
+networks:
+  canadagpt:
+    driver: bridge
+
+volumes:
+  neo4j_data:
+    name: canadagpt_neo4j_data
+  neo4j_logs:
+    name: canadagpt_neo4j_logs
+  neo4j_import:
+    name: canadagpt_neo4j_import
+  neo4j_plugins:
+    name: canadagpt_neo4j_plugins

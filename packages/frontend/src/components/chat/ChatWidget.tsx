@@ -64,7 +64,7 @@ export function ChatWidget() {
             className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-accent-red text-white rounded-full shadow-lg hover:bg-red-700 active:scale-95 transition-colors flex items-center justify-center group"
             title="Open chat (⌘K)"
           >
-            <MapleLeafIcon className="w-[52px] h-[52px]" />
+            <MapleLeafIcon className="w-[52px] h-[52px]" size={52} />
 
             {/* Keyboard hint tooltip */}
             <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">

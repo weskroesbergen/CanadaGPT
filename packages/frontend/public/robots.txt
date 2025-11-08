@@ -1,0 +1,17 @@
+# robots.txt for CanadaGPT
+# Allow all search engines to crawl the entire site
+
+User-agent: *
+Allow: /
+
+# Sitemap locations
+Sitemap: https://canadagpt.ca/sitemap.xml
+Sitemap: https://canadagpt.ca/en/sitemap.xml
+Sitemap: https://canadagpt.ca/fr/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+
+# Disallow admin and API routes if they exist
+Disallow: /api/
+Disallow: /admin/

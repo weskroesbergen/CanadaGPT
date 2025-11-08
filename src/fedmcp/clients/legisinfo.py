@@ -1,8 +1,9 @@
 """Client for interacting with the Parliament of Canada's LEGISinfo data feeds."""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from urllib.parse import urlencode, urljoin
+import json
 
 from fedmcp.http import RateLimitedSession
 
@@ -20,10 +21,28 @@ class LegisInfoClient:
     ) -> None:
         self.session = session or RateLimitedSession()
 
-    def _get(self, url: str, *, accept: str = "application/json") -> Dict[str, Any]:
+    def _get(self, url: str, *, accept: str = "application/json") -> Union[Dict[str, Any], list]:
+        """
+        Fetch data from LEGISinfo API.
+
+        Returns:
+            Either a dict or list depending on API response
+
+        Raises:
+            ValueError: If JSON cannot be decoded (e.g., no data available)
+            HTTPError: If the request fails
+        """
         response = self.session.get(url, headers={"Accept": accept})
         response.raise_for_status()
-        return response.json()
+
+        # Handle empty or invalid responses
+        if not response.text or response.text.strip() == "":
+            raise ValueError("Empty response from API")
+
+        try:
+            return response.json()
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON response: {e}") from e
 
     # ------------------------------------------------------------------
     # Bill detail endpoints

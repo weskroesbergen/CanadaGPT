@@ -1,0 +1,473 @@
+{
+  "metadata": {
+    "title": "CanadaGPT - Government Accountability",
+    "description": "Track Canadian MPs, bills, lobbying, and government spending with transparency and accountability.",
+    "keywords": "Canada, government, accountability, MPs, bills, lobbying, transparency"
+  },
+  "common": {
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "noResults": "No results found",
+    "tryAgain": "Try again",
+    "learnMore": "Learn more",
+    "viewAll": "View all",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "home": "Home",
+    "of": "of",
+    "and": "and",
+    "or": "or",
+    "to": "to",
+    "from": "from",
+    "date": "Date",
+    "time": "Time",
+    "language": "Language",
+    "english": "English",
+    "french": "French"
+  },
+  "nav": {
+    "siteTitle": "CanadaGPT",
+    "tagline": "Government Accountability",
+    "dashboard": "Dashboard",
+    "mps": "MPs",
+    "chamber": "Chamber",
+    "committees": "Committees",
+    "bills": "Bills",
+    "speeches": "Speeches",
+    "lobbying": "Lobbying",
+    "spending": "Spending",
+    "about": "About",
+    "profile": "Profile",
+    "account": "Account",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "signUp": "Sign Up"
+  },
+  "footer": {
+    "description": "Making Canadian government data accessible and transparent through advanced AI and data analysis.",
+    "navigation": "Navigation",
+    "resources": "Resources",
+    "legal": "Legal",
+    "about": "About",
+    "contact": "Contact",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "copyright": "© {year} CanadaGPT. All rights reserved.",
+    "openSource": "Open source project dedicated to government transparency"
+  },
+  "home": {
+    "hero": {
+      "title": "Government Accountability Made Transparent",
+      "subtitle": "Track MPs, bills, lobbying, and spending with powerful AI-driven insights",
+      "cta": {
+        "primary": "Explore Dashboard",
+        "secondary": "Browse MPs"
+      }
+    },
+    "features": {
+      "title": "Powerful Features",
+      "mp": {
+        "title": "MP Tracking",
+        "description": "Monitor all 338 Members of Parliament, their voting records, and accountability metrics"
+      },
+      "bills": {
+        "title": "Bill Monitoring",
+        "description": "Follow legislation through Parliament with real-time status updates and AI-powered summaries"
+      },
+      "lobbying": {
+        "title": "Lobbying Transparency",
+        "description": "Expose corporate influence with comprehensive lobbying activity tracking"
+      },
+      "spending": {
+        "title": "Expense Analysis",
+        "description": "Track government spending and MP expenses with detailed breakdowns and comparisons"
+      }
+    },
+    "stats": {
+      "title": "By the Numbers",
+      "mps": "{count} MPs",
+      "bills": "{count} Bills",
+      "votes": "{count}K+ Votes",
+      "lobbying": "{count}K+ Lobbying Records"
+    },
+    "cta": {
+      "title": "Ready to dive in?",
+      "description": "Explore Canadian parliamentary data like never before",
+      "button": "Get Started"
+    }
+  },
+  "mps": {
+    "title": "Members of Parliament",
+    "subtitle": "Browse all {count} current MPs",
+    "search": {
+      "placeholder": "Search by name...",
+      "noResults": "No MPs found matching your criteria.",
+      "error": "Failed to load MPs. Please try again."
+    },
+    "filters": {
+      "party": "Party",
+      "province": "Province",
+      "cabinet": "Cabinet Only",
+      "all": "All MPs"
+    },
+    "card": {
+      "riding": "Riding",
+      "independent": "Independent",
+      "ridingTBD": "Riding TBD",
+      "viewProfile": "View Profile"
+    }
+  },
+  "bills": {
+    "title": "Bills & Legislation",
+    "subtitle": "Track federal bills through Parliament",
+    "search": {
+      "placeholder": "Search bills by number or keywords...",
+      "noResults": "No bills found matching your criteria.",
+      "error": "Failed to load bills. Please try again."
+    },
+    "filters": {
+      "title": "Filters",
+      "type": "All Bill Types",
+      "status": "All Statuses",
+      "chamber": "All Chambers",
+      "session": "All Sessions",
+      "sessionLabel": "Session {session}",
+      "orderPaper": "Order Paper",
+      "royalAssent": "Royal Assent",
+      "failedLegislation": "Failed Legislation",
+      "reset": "Reset All Filters"
+    },
+    "types": {
+      "government": "Government Bill",
+      "private": "Private Member's Bill",
+      "senate": "Senate Bill",
+      "all": "All Types"
+    },
+    "statuses": {
+      "introduced": "Introduced",
+      "firstReading": "First Reading",
+      "secondReading": "Second Reading",
+      "committee": "In Committee",
+      "thirdReading": "Third Reading",
+      "passed": "Passed",
+      "royalAssent": "Royal Assent",
+      "defeated": "Defeated",
+      "all": "All Statuses"
+    },
+    "chambers": {
+      "commons": "House of Commons",
+      "senate": "Senate",
+      "both": "Both Chambers",
+      "all": "All Chambers"
+    },
+    "card": {
+      "billLabel": "Bill",
+      "sponsor": "Sponsored by",
+      "updated": "Updated",
+      "introduced": "Introduced",
+      "viewDetails": "View Details"
+    }
+  },
+  "bill": {
+    "billNumber": "Bill",
+    "session": "Session",
+    "notFound": "Bill not found",
+    "summary": "Summary",
+    "details": "Details",
+    "status": "Status",
+    "sponsor": "Sponsor",
+    "sponsoredBy": "Sponsored by:",
+    "introduced": "Introduced:",
+    "passed": "Passed:",
+    "enactedAs": "Enacted as law:",
+    "chapter": "Chapter",
+    "votes": "Recent Votes",
+    "debates": "Debates",
+    "lobbying": "Lobbying Activity",
+    "timeline": "Legislative Timeline",
+    "committees": "Committee Referrals",
+    "discussion": "Community Discussion",
+    "noVotes": "No votes recorded yet",
+    "noDebates": "No debates recorded yet",
+    "noLobbying": "No lobbying activity recorded",
+    "awaitingSecondReading": "Awaiting Second Reading",
+    "awaitingDescription": "No votes have occurred yet. This bill is scheduled for second reading debate.",
+    "privateMemberNote": "As a Private Member's Bill, it is waiting in the Order of Precedence queue for its turn to be debated and voted on.",
+    "organizationsLobbying": "Organizations lobbying",
+    "events": "events",
+    "moreOrganizations": "+ {count} more organizations",
+    "voteResult": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "defeated": "Defeated",
+      "tied": "Tied",
+      "yea": "Yea",
+      "nay": "Nay",
+      "abstain": "Abstain"
+    },
+    "stages": {
+      "introduced": "Introduced",
+      "firstReading": "First Reading",
+      "secondReading": "Second Reading",
+      "thirdReading": "Third Reading",
+      "committee": "Committee Review",
+      "reportStage": "Report Stage",
+      "senateReading": "Senate Reading",
+      "royalAssent": "Royal Assent",
+      "inForce": "In Force",
+      "houseFirst": "House - First Reading",
+      "houseSecond": "House - Second Reading",
+      "houseThird": "House - Third Reading",
+      "senateFirst": "Senate - First Reading",
+      "senateSecond": "Senate - Second Reading",
+      "senateThird": "Senate - Third Reading",
+      "passedFirstHouse": "Passed first reading in the House of Commons",
+      "passedSecondHouse": "Passed second reading in the House of Commons",
+      "passedThirdHouse": "Passed third reading in the House of Commons",
+      "passedFirstSenate": "Passed first reading in the Senate",
+      "passedSecondSenate": "Passed second reading in the Senate",
+      "passedThirdSenate": "Passed third reading in the Senate",
+      "billIntroduced": "Bill {number} was introduced",
+      "billBecameLaw": "Bill became law",
+      "billPassed": "Bill passed both chambers",
+      "latestStatus": "Latest status",
+      "current": "Current"
+    }
+  },
+  "hansard": {
+    "title": "Hansard Search",
+    "subtitle": "Search parliamentary debates and speeches",
+    "search": {
+      "placeholder": "Search debates, topics, or keywords...",
+      "button": "Search",
+      "filters": "Filters"
+    },
+    "popularTopics": {
+      "title": "Popular Topics"
+    },
+    "filters": {
+      "party": "Political Party",
+      "allParties": "All Parties",
+      "member": "Member of Parliament",
+      "allMPs": "All MPs",
+      "documentType": "Document Type",
+      "allTypes": "All Types",
+      "dateFrom": "From Date",
+      "dateTo": "To Date",
+      "minWords": "Min Words (substantive speeches)",
+      "onlySubstantive": "Only substantive speeches (exclude procedural remarks)",
+      "clearAll": "Clear All Filters"
+    },
+    "results": {
+      "title": "Search Results",
+      "showingFor": "Showing results for:",
+      "stats": {
+        "speeches": "Speeches Found",
+        "speakers": "Unique Speakers",
+        "words": "Total Words",
+        "days": "Days Covered"
+      },
+      "noResults": "No speeches found",
+      "tryDifferent": "Try adjusting your search query or filters",
+      "viewRecent": "View Recent Debates",
+      "copyQuote": "Copy quote",
+      "showLess": "Show less",
+      "readMore": "Read more",
+      "procedural": "Procedural",
+      "viewFullDebate": "View Full Debate"
+    },
+    "tips": {
+      "title": "Search Tips",
+      "items": [
+        "Use specific keywords for better results (e.g., \"carbon pricing\" vs \"environment\")",
+        "Try multiple related terms if you don't find what you're looking for",
+        "Use filters to narrow down by party, MP, or date range",
+        "Set minimum word count to find substantial speeches vs short remarks",
+        "Filter out procedural remarks to focus on policy discussions",
+        "Click on speaker names to see their full parliamentary profile"
+      ]
+    }
+  },
+  "chamber": {
+    "title": "Chamber Seating",
+    "subtitle": "House of Commons seating arrangement",
+    "legend": "Party Legend",
+    "seats": "Seats",
+    "seat": "seat",
+    "total": "Total",
+    "vacant": "Vacant",
+    "filters": {
+      "showAll": "Show All",
+      "showByParty": "Show by Party"
+    },
+    "video": {
+      "questionPeriod": "House of Commons - Question Period",
+      "loading": "Loading chamber data..."
+    },
+    "seating": {
+      "title": "House of Commons Seating",
+      "instruction": "Click any seat to view MP details. Hover to see names. Cabinet ministers have gold rings."
+    },
+    "errors": {
+      "loadingData": "Error loading chamber data:"
+    }
+  },
+  "committees": {
+    "title": "Parliamentary Committees",
+    "subtitle": "Track committee work and hearings",
+    "types": {
+      "standing": "Standing Committees",
+      "special": "Special Committees",
+      "joint": "Joint Committees",
+      "legislative": "Legislative Committees"
+    },
+    "card": {
+      "members": "Members",
+      "meetings": "Meetings",
+      "reports": "Reports",
+      "viewDetails": "View Details"
+    }
+  },
+  "lobbying": {
+    "title": "Lobbying Activity",
+    "subtitle": "Track corporate influence on legislation",
+    "search": {
+      "placeholder": "Search organizations, lobbyists, or topics...",
+      "noResults": "No lobbying records found."
+    },
+    "filters": {
+      "organization": "Organization",
+      "lobbyist": "Lobbyist",
+      "subject": "Subject Matter",
+      "dateRange": "Date Range"
+    },
+    "card": {
+      "organization": "Organization",
+      "lobbyist": "Lobbyist",
+      "subject": "Subject",
+      "meetings": "Meetings",
+      "officials": "Government Officials",
+      "viewDetails": "View Details"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Government accountability metrics and insights",
+    "metrics": {
+      "currentMPs": "Current MPs",
+      "membersOfParliament": "Members of Parliament",
+      "totalBills": "Total Bills",
+      "activeBills": "{count} active",
+      "topSpender": "Top Spender",
+      "expenses": "{year} expenses",
+      "recentSpeeches": "Recent Speeches",
+      "hansardRecords": "Hansard records"
+    },
+    "quickActions": {
+      "browseMPs": "Browse MPs",
+      "viewAllMembers": "View all members",
+      "trackBills": "Track Bills",
+      "followLegislation": "Follow legislation",
+      "lobbying": "Lobbying",
+      "corporateInfluence": "Corporate influence",
+      "spending": "Spending",
+      "mpExpenses": "MP expenses"
+    },
+    "featuredMPs": {
+      "title": "Featured MPs",
+      "viewAll": "View All MPs →"
+    },
+    "topSpenders": {
+      "title": "Top Spenders {year}",
+      "viewAll": "View All Spending Data →"
+    },
+    "recentDebates": {
+      "title": "Recent Debates",
+      "searchHansard": "Search Hansard Records →"
+    },
+    "about": {
+      "title": "About This Dashboard",
+      "description": "This dashboard provides real-time insights into Canadian federal government operations. Data is sourced from official government databases including Parliament, LEGISinfo, and the Office of the Commissioner of Lobbying. Expense data typically reflects information 2-3 months after quarter end."
+    }
+  },
+  "spending": {
+    "title": "Government Spending",
+    "subtitle": "Track MP expenses and government expenditures",
+    "types": {
+      "travel": "Travel",
+      "hospitality": "Hospitality",
+      "contracts": "Contracts",
+      "office": "Office Expenses",
+      "salaries": "Salaries",
+      "total": "Total"
+    },
+    "filters": {
+      "fiscalYear": "Fiscal Year",
+      "quarter": "Quarter",
+      "category": "Category",
+      "mp": "Member of Parliament"
+    },
+    "card": {
+      "amount": "Amount",
+      "period": "Period",
+      "category": "Category",
+      "viewBreakdown": "View Breakdown"
+    }
+  },
+  "chat": {
+    "title": "AI Assistant",
+    "placeholder": "Ask about MPs, bills, or parliamentary data...",
+    "send": "Send",
+    "clear": "Clear chat",
+    "thinking": "Thinking...",
+    "error": "Failed to get response. Please try again.",
+    "tooltip": "Open chat (⌘K)",
+    "tooltipAlt": "Press ⌘K to open"
+  },
+  "parties": {
+    "liberal": "Liberal",
+    "conservative": "Conservative",
+    "ndp": "NDP",
+    "blocQuebecois": "Bloc Québécois",
+    "green": "Green",
+    "independent": "Independent",
+    "peoplesParty": "People's Party"
+  },
+  "provinces": {
+    "AB": "Alberta",
+    "BC": "British Columbia",
+    "MB": "Manitoba",
+    "NB": "New Brunswick",
+    "NL": "Newfoundland and Labrador",
+    "NS": "Nova Scotia",
+    "NT": "Northwest Territories",
+    "NU": "Nunavut",
+    "ON": "Ontario",
+    "PE": "Prince Edward Island",
+    "QC": "Quebec",
+    "SK": "Saskatchewan",
+    "YT": "Yukon"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "notFound": "Page not found",
+    "unauthorized": "You must be logged in to access this page.",
+    "forbidden": "You don't have permission to access this resource.",
+    "serverError": "Server error. Please try again later.",
+    "validation": "Please check your input and try again."
+  }
+}

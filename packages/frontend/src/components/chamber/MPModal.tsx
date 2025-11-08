@@ -11,7 +11,7 @@
 'use client';
 
 import React from 'react';
-import { X, ExternalLink, MapPin, Users, FileText, DollarSign, Phone, Mail } from 'lucide-react';
+import { X, ExternalLink, MapPin, Users, FileText, DollarSign, Phone, Mail, Play, Clock, Eye } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,6 +52,13 @@ export function MPModal({ mp, isOpen, onClose }: MPModalProps) {
 
   const partyColor = PARTY_COLORS[mp.party] || PARTY_COLORS['Independent'];
 
+  // Fix photo URL: convert polpics/ to /mp-photos/ and remove _suffix before extension
+  const photoUrl = mp.photo_url
+    ? mp.photo_url
+        .replace('polpics/', '/mp-photos/')
+        .replace(/_[a-zA-Z0-9]+(\.\w+)$/, '$1')
+    : null;
+
   const handleViewProfile = () => {
     onClose();
     router.push(`/mp/${mp.id}`);
@@ -82,7 +89,7 @@ export function MPModal({ mp, isOpen, onClose }: MPModalProps) {
               onClick={(e) => e.stopPropagation()}
               className="bg-bg-elevated rounded-xl shadow-2xl border border-border-subtle max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             >
-              {/* Header with Photo */}
+              {/* Compact Header */}
               <div className="relative">
                 {/* Close Button */}
                 <button
@@ -99,141 +106,123 @@ export function MPModal({ mp, isOpen, onClose }: MPModalProps) {
                   style={{ backgroundColor: partyColor }}
                 />
 
-                {/* Photo Section */}
-                <div className="px-6 py-8 text-center">
-                  {mp.photo_url ? (
-                    <div className="inline-block">
+                {/* Compact Header with Photo and Info */}
+                <div className="px-6 py-4 flex items-center gap-4">
+                  {/* Small Photo */}
+                  {photoUrl ? (
+                    <div className="flex-shrink-0">
                       <Image
-                        src={mp.photo_url}
+                        src={photoUrl}
                         alt={mp.name}
-                        width={200}
-                        height={200}
-                        className="rounded-full border-4 shadow-lg"
+                        width={80}
+                        height={80}
+                        className="rounded-full border-3 shadow-md"
                         style={{ borderColor: partyColor }}
                       />
                     </div>
                   ) : (
                     <div
-                      className="w-48 h-48 mx-auto rounded-full border-4 shadow-lg flex items-center justify-center"
+                      className="flex-shrink-0 w-20 h-20 rounded-full border-3 shadow-md flex items-center justify-center"
                       style={{ borderColor: partyColor, backgroundColor: `${partyColor}20` }}
                     >
-                      <Users className="h-24 w-24 opacity-50" style={{ color: partyColor }} />
+                      <Users className="h-10 w-10 opacity-50" style={{ color: partyColor }} />
                     </div>
                   )}
 
-                  {/* Name and Title */}
-                  <h2 className="text-3xl font-bold text-text-primary mt-4">
-                    {mp.name}
-                  </h2>
-
-                  {mp.cabinet_position && (
-                    <p className="text-lg text-accent-blue font-semibold mt-2">
-                      ⭐ {mp.cabinet_position}
+                  {/* Name and Info */}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-2xl font-bold text-text-primary">
+                      {mp.name}
+                    </h2>
+                    <p className="text-sm text-text-secondary mt-1">
+                      {mp.party} • {mp.riding}
                     </p>
-                  )}
-
-                  {mp.bench_section === 'speaker' && (
-                    <p className="text-lg text-accent-blue font-semibold mt-2">
-                      🔨 Speaker of the House
-                    </p>
-                  )}
+                    {mp.cabinet_position && (
+                      <p className="text-sm text-accent-blue font-semibold mt-1">
+                        ⭐ {mp.cabinet_position}
+                      </p>
+                    )}
+                    {mp.bench_section === 'speaker' && (
+                      <p className="text-sm text-accent-blue font-semibold mt-1">
+                        🔨 Speaker of the House
+                      </p>
+                    )}
+                    <button
+                      onClick={handleViewProfile}
+                      className="mt-2 text-sm text-accent-blue hover:text-accent-blue/80 transition-colors font-medium flex items-center gap-1"
+                    >
+                      View Full Profile
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="px-6 pb-6 space-y-6">
-                {/* Party and Riding */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle">
-                    <div className="flex items-center gap-2 text-text-tertiary text-sm mb-1">
-                      <Users className="h-4 w-4" />
-                      <span>Party</span>
-                    </div>
-                    <p className="font-semibold text-text-primary">{mp.party}</p>
-                  </div>
+              <div className="px-6 pb-6 space-y-4">
+                {/* Recent & Popular Videos */}
+                <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle">
+                  <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+                    <Play className="h-5 w-5" />
+                    Recent & Popular Videos
+                  </h3>
 
-                  <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle">
-                    <div className="flex items-center gap-2 text-text-tertiary text-sm mb-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>Riding</span>
-                    </div>
-                    <p className="font-semibold text-text-primary">{mp.riding}</p>
-                  </div>
-                </div>
-
-                {/* Contact Information */}
-                {(mp.email || mp.phone) && (
-                  <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle">
-                    <h3 className="font-semibold text-text-primary mb-3">Contact</h3>
-                    <div className="space-y-2 text-sm">
-                      {mp.email && (
-                        <div className="flex items-center gap-2 text-text-secondary">
-                          <Mail className="h-4 w-4 flex-shrink-0" />
-                          <a
-                            href={`mailto:${mp.email}`}
-                            className="hover:text-accent-blue transition-colors"
-                          >
-                            {mp.email}
-                          </a>
+                  <div className="space-y-3">
+                    {/* Mock video items - replace with real data */}
+                    {[
+                      {
+                        title: 'Question Period - Response on Healthcare',
+                        date: '2024-01-15',
+                        duration: '4:32',
+                        views: '12.5K',
+                      },
+                      {
+                        title: 'Committee Testimony - Climate Policy',
+                        date: '2024-01-10',
+                        duration: '12:45',
+                        views: '8.2K',
+                      },
+                      {
+                        title: 'Debate on Bill C-249',
+                        date: '2024-01-08',
+                        duration: '8:15',
+                        views: '15.3K',
+                      },
+                    ].map((video, index) => (
+                      <button
+                        key={index}
+                        className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-bg-hover transition-colors border border-border-subtle group"
+                      >
+                        {/* Thumbnail placeholder */}
+                        <div className="flex-shrink-0 w-24 h-16 bg-black rounded flex items-center justify-center">
+                          <Play className="h-6 w-6 text-white/70 group-hover:text-white transition-colors" />
                         </div>
-                      )}
-                      {mp.phone && (
-                        <div className="flex items-center gap-2 text-text-secondary">
-                          <Phone className="h-4 w-4 flex-shrink-0" />
-                          <a
-                            href={`tel:${mp.phone}`}
-                            className="hover:text-accent-blue transition-colors"
-                          >
-                            {mp.phone}
-                          </a>
+
+                        {/* Video info */}
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-sm font-medium text-text-primary group-hover:text-accent-blue transition-colors line-clamp-2">
+                            {video.title}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-text-tertiary">
+                            <span>{new Date(video.date).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {video.duration}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3 w-3" />
+                              {video.views}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Quick Stats - Placeholder */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle text-center">
-                    <FileText className="h-6 w-6 mx-auto text-text-tertiary mb-2" />
-                    <p className="text-xs text-text-tertiary">Bills Sponsored</p>
-                    <p className="text-xl font-bold text-text-primary mt-1">--</p>
+                      </button>
+                    ))}
                   </div>
 
-                  <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle text-center">
-                    <Users className="h-6 w-6 mx-auto text-text-tertiary mb-2" />
-                    <p className="text-xs text-text-tertiary">Votes Cast</p>
-                    <p className="text-xl font-bold text-text-primary mt-1">--</p>
-                  </div>
-
-                  <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle text-center">
-                    <DollarSign className="h-6 w-6 mx-auto text-text-tertiary mb-2" />
-                    <p className="text-xs text-text-tertiary">Expenses (YTD)</p>
-                    <p className="text-xl font-bold text-text-primary mt-1">--</p>
-                  </div>
+                  <p className="text-xs text-text-tertiary text-center mt-3">
+                    Click any video to watch • View full profile for voting records, expenses, bills, and contact info
+                  </p>
                 </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleViewProfile}
-                    className="flex-1 px-6 py-3 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/90 transition-colors font-semibold flex items-center justify-center gap-2"
-                  >
-                    View Full Profile
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="px-6 py-3 bg-bg-secondary text-text-primary rounded-lg hover:bg-bg-hover transition-colors font-semibold border border-border-subtle"
-                  >
-                    Close
-                  </button>
-                </div>
-
-                {/* Note */}
-                <p className="text-xs text-text-tertiary text-center">
-                  Click "View Full Profile" to see complete voting records, expenses, and legislative history
-                </p>
               </div>
             </div>
           </motion.div>

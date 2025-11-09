@@ -8,18 +8,22 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 
-type SettingsSection = 'profile' | 'account' | 'usage' | 'subscription' | 'connected';
+type SettingsSection = 'profile' | 'account' | 'preferences' | 'usage' | 'subscription' | 'connected';
 
 export default function SettingsPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
+  const { preferences, updatePreferences, loading: preferencesLoading } = useUserPreferences();
   const router = useRouter();
+  const params = useParams();
+  const currentLocale = params.locale as string;
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   const [imageError, setImageError] = useState(false);
 
@@ -115,6 +119,16 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLanguageChange = async (newLanguage: 'en' | 'fr') => {
+    // Update preference in database
+    await updatePreferences({ language: newLanguage });
+
+    // Redirect to new locale
+    const currentPath = window.location.pathname;
+    const pathWithoutLocale = currentPath.replace(`/${currentLocale}`, '');
+    router.push(`/${newLanguage}${pathWithoutLocale || '/'}`);
+  };
+
   const tierColors = {
     FREE: 'bg-gray-100 text-gray-800 border-gray-300',
     BASIC: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -149,6 +163,7 @@ export default function SettingsPage() {
   const navItems = [
     { id: 'profile' as const, label: 'Profile' },
     { id: 'account' as const, label: 'Account' },
+    { id: 'preferences' as const, label: 'Preferences' },
     { id: 'usage' as const, label: 'Usage & Limits' },
     { id: 'subscription' as const, label: 'Subscription' },
     { id: 'connected' as const, label: 'Connected Accounts' },
@@ -355,6 +370,45 @@ export default function SettingsPage() {
                     {passwordLoading ? 'Updating...' : 'Update Password'}
                   </button>
                 </form>
+              </div>
+            )}
+
+            {/* Preferences Section */}
+            {activeSection === 'preferences' && (
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Preferences</h2>
+
+                {/* Language Preference */}
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-2">
+                      Language / Langue
+                    </label>
+                    <select
+                      id="language"
+                      value={preferences.language}
+                      onChange={(e) => handleLanguageChange(e.target.value as 'en' | 'fr')}
+                      disabled={preferencesLoading}
+                      className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      <option value="en">English</option>
+                      <option value="fr">Français</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Select your preferred language. The page will reload in the selected language.
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Sélectionnez votre langue préférée. La page se rechargera dans la langue sélectionnée.
+                    </p>
+                  </div>
+
+                  {/* Current Locale Display */}
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      <strong>Current locale:</strong> {currentLocale === 'en' ? 'English' : 'Français'}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

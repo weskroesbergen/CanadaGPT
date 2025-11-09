@@ -128,12 +128,59 @@
       "independent": "Independent",
       "ridingTBD": "Riding TBD",
       "viewProfile": "View Profile"
+    },
+    "myMP": {
+      "title": "Your Member of Parliament",
+      "findYourMP": "Find Your MP",
+      "enterPostalCode": "Enter your postal code to find your MP",
+      "useMyLocation": "Use My Location",
+      "searchByCity": "Search by City",
+      "postalCodePlaceholder": "K1A 0A9",
+      "cityPlaceholder": "Ottawa, ON",
+      "setAsMyMP": "Set as my MP",
+      "clearPreferredMP": "Clear Preferred MP",
+      "yourMPBadge": "Your MP",
+      "signUpPrompt": "Sign up for free to find your MP",
+      "signUpFree": "Sign Up Free",
+      "alreadyHaveAccount": "Already have an account?",
+      "logIn": "Log In",
+      "loading": "Finding your MP...",
+      "errors": {
+        "invalidPostalCode": "Invalid postal code format",
+        "notFound": "No MP found for this location",
+        "geolocationDenied": "Location permission denied. Please enter your postal code manually.",
+        "geolocationUnavailable": "Location services unavailable. Please enter your postal code.",
+        "genericError": "Unable to find your MP. Please try again."
+      }
+    }
+  },
+  "auth": {
+    "signup": {
+      "title": "Sign Up",
+      "postalCode": "Postal Code (Optional)",
+      "postalCodePlaceholder": "K1A 0A9",
+      "postalCodeHelper": "We'll show you your local MP and riding information"
+    },
+    "login": {
+      "title": "Log In"
+    }
+  },
+  "settings": {
+    "account": {
+      "postalCode": "Postal Code",
+      "postalCodeLabel": "Your Postal Code",
+      "postalCodePlaceholder": "K1A 0A9",
+      "updatePostalCode": "Update postal code",
+      "yourRiding": "Your Riding",
+      "yourMP": "Your MP",
+      "noPostalCode": "No postal code set"
     }
   },
   "bills": {
     "title": "Bills & Legislation",
     "subtitle": "Track federal bills through Parliament",
     "search": {
+      "title": "Search All Legislation",
       "placeholder": "Search bills by number or keywords...",
       "noResults": "No bills found matching your criteria.",
       "error": "Failed to load bills. Please try again."
@@ -180,6 +227,35 @@
       "updated": "Updated",
       "introduced": "Introduced",
       "viewDetails": "View Details"
+    },
+    "gantt": {
+      "title": "Active Legislation on the Order Paper",
+      "activeBills": "active bills",
+      "showTop": "Show top",
+      "collapse": "Collapse widget",
+      "noBills": "No active bills in the Order Paper",
+      "house": "House of Commons",
+      "senate": "Senate",
+      "committee": "Committee / Procedure",
+      "houseProcedure": "House Procedure",
+      "legend": {
+        "government": "Government Bill",
+        "privateMember": "Private Member's Bill",
+        "senateGov": "Senate Government",
+        "senatePublic": "Senate Public"
+      },
+      "stages": {
+        "introduced": "Intro",
+        "houseFirst": "1st",
+        "houseSecond": "2nd",
+        "houseThird": "3rd",
+        "committeeReview": "Committee",
+        "reportStage": "Report",
+        "senateFirst": "1st",
+        "senateSecond": "2nd",
+        "senateThird": "3rd",
+        "royalAssent": "Royal Assent"
+      }
     }
   },
   "bill": {

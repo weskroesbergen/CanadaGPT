@@ -16,6 +16,7 @@ import { SEARCH_MPS } from '@/lib/queries';
 import { Search, Crown } from 'lucide-react';
 import { MPCard } from '@/components/MPCard';
 import { PartyFilterButtons } from '@/components/PartyFilterButtons';
+import { MyMPSection } from '@/components/mps/MyMPSection';
 
 export default function MPsPage() {
   const t = useTranslations('mps');
@@ -61,6 +62,11 @@ export default function MPsPage() {
       <main className="flex-1 page-container">
         <h1 className="text-4xl font-bold text-text-primary mb-2">{t('title')}</h1>
         <p className="text-text-secondary mb-8">{t('subtitle', { count: filteredMPs.length || 343 })}</p>
+
+        {/* My MP Section */}
+        <div className="mb-8">
+          <MyMPSection />
+        </div>
 
         {/* Filters */}
         <div className="mb-6 space-y-4">

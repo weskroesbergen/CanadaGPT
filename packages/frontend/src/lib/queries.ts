@@ -83,6 +83,29 @@ export const BILL_BASIC_FRAGMENT = gql`
   }
 `;
 
+export const STATEMENT_FRAGMENT = gql`
+  fragment StatementBasic on Statement {
+    id
+    time
+    who_en
+    who_fr
+    content_en
+    content_fr
+    h1_en
+    h1_fr
+    h2_en
+    h2_fr
+    h3_en
+    h3_fr
+    statement_type
+    wordcount
+    procedural
+    thread_id
+    parent_statement_id
+    sequence_in_thread
+  }
+`;
+
 // ============================================
 // MP Queries
 // ============================================
@@ -444,6 +467,67 @@ export const GET_COMMITTEE = gql`
         status
         session
       }
+      meetings(options: { limit: 5, sort: [{ date: DESC }] }) {
+        date
+        number
+        has_evidence
+      }
+    }
+  }
+`;
+
+export const GET_COMMITTEE_MEETINGS = gql`
+  query GetCommitteeMeetings($code: ID!) {
+    committees(where: { code: $code }) {
+      meetings(options: { limit: 50, sort: [{ date: DESC }] }) {
+        id
+        date
+        number
+        in_camera
+        has_evidence
+        meeting_url
+        session
+        parliament
+      }
+    }
+  }
+`;
+
+export const GET_COMMITTEE_TESTIMONY = gql`
+  query GetCommitteeTestimony($committeeCode: String!, $limit: Int = 20) {
+    committeeTestimony(committeeCode: $committeeCode, limit: $limit) {
+      ...StatementBasic
+      madeBy {
+        id
+        name
+        party
+        photo_url
+      }
+      partOf {
+        id
+        date
+        document_type
+        session_id
+      }
+    }
+  }
+  ${STATEMENT_FRAGMENT}
+`;
+
+export const GET_COMMITTEE_ACTIVITY_METRICS = gql`
+  query GetCommitteeActivityMetrics($committeeCode: String!) {
+    committeeActivityMetrics(committeeCode: $committeeCode) {
+      committee {
+        code
+        name
+      }
+      total_meetings
+      meetings_last_30_days
+      meetings_last_90_days
+      total_evidence_documents
+      active_bills_count
+      member_count
+      avg_statements_per_meeting
     }
   }
 `;
@@ -451,29 +535,6 @@ export const GET_COMMITTEE = gql`
 // ============================================
 // Hansard Queries
 // ============================================
-
-export const STATEMENT_FRAGMENT = gql`
-  fragment StatementBasic on Statement {
-    id
-    time
-    who_en
-    who_fr
-    content_en
-    content_fr
-    h1_en
-    h1_fr
-    h2_en
-    h2_fr
-    h3_en
-    h3_fr
-    statement_type
-    wordcount
-    procedural
-    thread_id
-    parent_statement_id
-    sequence_in_thread
-  }
-`;
 
 export const GET_MP_SPEECHES = gql`
   query GetMPSpeeches($mpId: ID!, $limit: Int = 20, $documentType: String) {

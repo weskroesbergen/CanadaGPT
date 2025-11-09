@@ -2,14 +2,15 @@
  * Next.js Middleware - Internationalization & Route Protection
  *
  * Handles locale detection/routing and protects authenticated routes
+ * Uses NextAuth for authentication
  * Runs on Edge Runtime for fast response times
  */
 
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { locales, defaultLocale, localePrefix, pathnames } from './i18n/config';
+import { auth } from '@/auth';
 
 // Routes that require authentication (without locale prefix)
 const protectedRoutes = [
@@ -45,14 +46,8 @@ export async function middleware(request: NextRequest) {
     ? pathname.slice(`/${pathnameLocale}`.length) || '/'
     : pathname;
 
-  // Now handle authentication with Supabase
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req: request, res });
-
-  // Refresh session if expired
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Get NextAuth session
+  const session = await auth();
 
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some((route) =>
@@ -81,7 +76,6 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Return the intl response if everything is okay
   return intlResponse;
 }
 

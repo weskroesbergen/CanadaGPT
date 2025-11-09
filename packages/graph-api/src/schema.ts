@@ -260,6 +260,7 @@ export const typeDefs = `#graphql
 
     # Relationships
     statements: [Statement!]! @relationship(type: "PART_OF", direction: IN)
+    presentedTo: Committee @relationship(type: "PRESENTED_TO", direction: OUT)
   }
 
   type Statement @node {
@@ -313,6 +314,24 @@ export const typeDefs = `#graphql
     # Relationships
     members: [MP!]! @relationship(type: "SERVES_ON", direction: IN, properties: "ServedOnProperties")
     bills: [Bill!]! @relationship(type: "REFERRED_TO", direction: IN)
+    meetings: [Meeting!]! @relationship(type: "HELD_MEETING", direction: OUT)
+    evidence: [Document!]! @relationship(type: "PRESENTED_TO", direction: IN)
+  }
+
+  type Meeting @node {
+    id: ID! @unique
+    committee_code: String!
+    date: Date!
+    number: Int!
+    in_camera: Boolean
+    has_evidence: Boolean
+    meeting_url: String
+    session: String
+    parliament: Int
+    updated_at: DateTime
+
+    # Relationships
+    heldBy: Committee @relationship(type: "HELD_MEETING", direction: IN)
   }
 
   type Petition @node {
@@ -550,6 +569,17 @@ export const typeDefs = `#graphql
     average_per_mp: Float!
   }
 
+  type CommitteeActivityMetrics {
+    committee: Committee!
+    total_meetings: Int!
+    meetings_last_30_days: Int!
+    meetings_last_90_days: Int!
+    total_evidence_documents: Int!
+    active_bills_count: Int!
+    member_count: Int!
+    avg_statements_per_meeting: Float!
+  }
+
   type NewsArticle {
     title: String!
     url: String!
@@ -558,6 +588,7 @@ export const typeDefs = `#graphql
     description: String
     image_url: String
   }
+
 
   # ============================================
   # Custom Queries (Accountability Analytics)
@@ -941,6 +972,70 @@ export const typeDefs = `#graphql
         RETURN d
         """
         columnName: "d"
+      )
+
+    # ============================================
+    # Committee Queries
+    # ============================================
+
+    # Get recent testimony/evidence for a committee
+    committeeTestimony(committeeCode: String!, limit: Int = 20): [Statement!]!
+      @cypher(
+        statement: """
+        MATCH (c:Committee {code: $committeeCode})<-[:SERVES_ON]-(mp:MP)<-[:MADE_BY]-(s:Statement)-[:PART_OF]->(d:Document {document_type: 'E'})
+        WITH s, d
+        ORDER BY s.time DESC
+        LIMIT $limit
+        RETURN s
+        """
+        columnName: "s"
+      )
+
+    # Committee activity metrics
+    committeeActivityMetrics(committeeCode: String!): CommitteeActivityMetrics
+      @cypher(
+        statement: """
+        MATCH (c:Committee {code: $committeeCode})
+
+        // Total meetings
+        OPTIONAL MATCH (c)-[:HELD_MEETING]->(m:Meeting)
+        WITH c, count(DISTINCT m) as total_meetings, collect(m) as all_meetings
+
+        // Recent meetings
+        WITH c, total_meetings,
+          size([m IN all_meetings WHERE duration.between(date(m.date), date()).days <= 30]) as meetings_30,
+          size([m IN all_meetings WHERE duration.between(date(m.date), date()).days <= 90]) as meetings_90
+
+        // Evidence documents
+        OPTIONAL MATCH (c)<-[:PRESENTED_TO]-(e:Document {document_type: 'E'})
+        WITH c, total_meetings, meetings_30, meetings_90, count(DISTINCT e) as evidence_docs
+
+        // Active bills
+        OPTIONAL MATCH (c)<-[:REFERRED_TO]-(b:Bill)
+        WHERE b.status IS NOT NULL AND b.status <> 'Passed'
+        WITH c, total_meetings, meetings_30, meetings_90, evidence_docs, count(DISTINCT b) as active_bills
+
+        // Member count
+        OPTIONAL MATCH (c)<-[:SERVES_ON]-(mp:MP)
+        WITH c, total_meetings, meetings_30, meetings_90, evidence_docs, active_bills, count(DISTINCT mp) as members
+
+        // Average statements per meeting
+        OPTIONAL MATCH (c)<-[:PRESENTED_TO]-(d:Document)<-[:PART_OF]-(s:Statement)
+        WITH c, total_meetings, meetings_30, meetings_90, evidence_docs, active_bills, members,
+             CASE WHEN evidence_docs > 0 THEN toFloat(count(s)) / evidence_docs ELSE 0.0 END as avg_statements
+
+        RETURN {
+          committee: c,
+          total_meetings: total_meetings,
+          meetings_last_30_days: meetings_30,
+          meetings_last_90_days: meetings_90,
+          total_evidence_documents: evidence_docs,
+          active_bills_count: active_bills,
+          member_count: members,
+          avg_statements_per_meeting: avg_statements
+        }
+        """
+        columnName: "committee"
       )
   }
 `;

@@ -1,0 +1,11 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '-f'
+  - 'packages/data-pipeline/Dockerfile.updater'
+  - '-t'
+  - 'gcr.io/$PROJECT_ID/canadagpt-updater:latest'
+  - '.'
+images:
+- 'gcr.io/$PROJECT_ID/canadagpt-updater:latest'

@@ -56,9 +56,17 @@ echo ""
 
 read -p "Supabase Project URL (NEXT_PUBLIC_SUPABASE_URL): " SUPABASE_URL
 read -p "Supabase Anon Key (NEXT_PUBLIC_SUPABASE_ANON_KEY): " SUPABASE_ANON_KEY
+read -sp "Supabase Service Role Key (SUPABASE_SERVICE_ROLE_KEY): " SUPABASE_SERVICE_ROLE_KEY
+echo ""  # New line after password input
 
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-    echo -e "${RED}✗ Supabase credentials are required${NC}"
+echo ""
+echo -e "${YELLOW}NextAuth Configuration:${NC}"
+echo -e "${YELLOW}If you don't have an AUTH_SECRET, generate one with: openssl rand -base64 32${NC}"
+read -sp "NextAuth Secret (AUTH_SECRET): " AUTH_SECRET
+echo ""  # New line after password input
+
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$AUTH_SECRET" ]; then
+    echo -e "${RED}✗ All credentials are required (Supabase + AUTH_SECRET)${NC}"
     exit 1
 fi
 
@@ -126,7 +134,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --memory=512Mi \
   --cpu=1 \
   --timeout=60 \
-  --set-env-vars="NEXT_PUBLIC_GRAPHQL_URL=${GRAPHQL_URL},NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL},NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},NEXT_PUBLIC_BASE_URL=${BASE_URL},NODE_ENV=production" \
+  --set-env-vars="NEXT_PUBLIC_GRAPHQL_URL=${GRAPHQL_URL},NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL},NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},NEXT_PUBLIC_BASE_URL=${BASE_URL},SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY},NODE_ENV=production" \
   --port=3000
 
 echo ""

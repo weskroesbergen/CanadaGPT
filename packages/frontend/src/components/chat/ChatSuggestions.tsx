@@ -17,6 +17,9 @@ import type { SuggestedPrompt, ContextType } from '@/lib/types/chat';
 // Context-aware suggested prompts
 const CONTEXT_PROMPTS: Record<ContextType, SuggestedPrompt[]> = {
   general: [
+    { label: 'Daily Summary', prompt: 'What happened in Parliament today? Give me a summary of the key activities and debates.' },
+    { label: 'How Parliament Works', prompt: 'Explain the legislative process in Canada - how does a bill become a law?' },
+    { label: 'Question Period', prompt: 'What is Question Period and how does it work in the House of Commons?' },
     { label: 'Recent bills', prompt: 'What are the most recent bills introduced in Parliament?' },
     { label: 'Top spenders', prompt: 'Which MPs have the highest expenses this quarter?' },
     { label: 'Active lobbying', prompt: 'What are the top lobbying issues right now?' },

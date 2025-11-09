@@ -16,6 +16,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minimize2, Maximize2 } from 'lucide-react';
 import { MapleLeafIcon } from '@canadagpt/design-system';
 import { useChatOpen, useChatQuota } from '@/lib/stores/chatStore';
+import { useChatStore } from '@/lib/stores/chatStore';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ChatHistory } from './ChatHistory';
 import { ChatInput } from './ChatInput';
 import { ChatSuggestions } from './ChatSuggestions';
@@ -25,12 +28,57 @@ export function ChatWidget() {
   const [isOpen, toggleOpen] = useChatOpen();
   const [isMinimized, setIsMinimized] = React.useState(false);
   const { checkQuota, refreshUsageStats } = useChatQuota();
+  const { preferences, updatePreferences } = useUserPreferences();
+  const { user } = useAuth();
+  const { sendMessage, messages, conversation, createConversation } = useChatStore();
+  const [hasShownWelcome, setHasShownWelcome] = React.useState(false);
 
   // Initialize quota check on mount
   React.useEffect(() => {
     checkQuota();
     refreshUsageStats();
   }, [checkQuota, refreshUsageStats]);
+
+  // Welcome flow for first-time users
+  React.useEffect(() => {
+    const showWelcome = async () => {
+      // Only show welcome if user is logged in, hasn't seen it, and we haven't shown it this session
+      if (user && preferences && !preferences.has_seen_welcome && !hasShownWelcome) {
+        // Wait a moment for the page to settle
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Open the chat
+        if (!isOpen) {
+          toggleOpen();
+        }
+
+        // Create conversation if it doesn't exist
+        if (!conversation) {
+          await createConversation();
+        }
+
+        // Wait another moment for the chat to open
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Send welcome message
+        const welcomeMessage = `Hey there. I'm Gordie, your guide through the corridors of Canadian democracy.
+
+I'm here to help you understand what's happening in Parliament—who's saying what, who's voting how, and where your tax dollars are flowing. Think of me as a thoughtful companion for navigating the sometimes complex world of federal politics.
+
+You can ask me about MPs, bills making their way through the House, committee work, lobbying activity, or pretty much anything related to how our democracy operates. I'll draw on parliamentary records, the lobbying registry, and The Canadian Encyclopedia to give you context and connections, not just raw data.
+
+What would you like to know about Canadian politics today?`;
+
+        await sendMessage(welcomeMessage);
+
+        // Mark as seen
+        await updatePreferences({ has_seen_welcome: true });
+        setHasShownWelcome(true);
+      }
+    };
+
+    showWelcome();
+  }, [user, preferences, hasShownWelcome, isOpen, toggleOpen, conversation, createConversation, sendMessage, updatePreferences]);
 
   // Keyboard shortcut: Cmd/Ctrl + K
   React.useEffect(() => {

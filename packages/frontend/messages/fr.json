@@ -128,12 +128,59 @@
       "independent": "Indépendant",
       "ridingTBD": "Circonscription à déterminer",
       "viewProfile": "Voir le profil"
+    },
+    "myMP": {
+      "title": "Votre député",
+      "findYourMP": "Trouvez votre député",
+      "enterPostalCode": "Entrez votre code postal pour trouver votre député",
+      "useMyLocation": "Utiliser ma position",
+      "searchByCity": "Rechercher par ville",
+      "postalCodePlaceholder": "K1A 0A9",
+      "cityPlaceholder": "Ottawa, ON",
+      "setAsMyMP": "Définir comme mon député",
+      "clearPreferredMP": "Effacer le député préféré",
+      "yourMPBadge": "Votre député",
+      "signUpPrompt": "Inscrivez-vous gratuitement pour trouver votre député",
+      "signUpFree": "Inscription gratuite",
+      "alreadyHaveAccount": "Vous avez déjà un compte?",
+      "logIn": "Se connecter",
+      "loading": "Recherche de votre député...",
+      "errors": {
+        "invalidPostalCode": "Format de code postal invalide",
+        "notFound": "Aucun député trouvé pour cet emplacement",
+        "geolocationDenied": "Permission de localisation refusée. Veuillez entrer votre code postal manuellement.",
+        "geolocationUnavailable": "Services de localisation non disponibles. Veuillez entrer votre code postal.",
+        "genericError": "Impossible de trouver votre député. Veuillez réessayer."
+      }
+    }
+  },
+  "auth": {
+    "signup": {
+      "title": "S'inscrire",
+      "postalCode": "Code postal (optionnel)",
+      "postalCodePlaceholder": "K1A 0A9",
+      "postalCodeHelper": "Nous vous montrerons votre député local et les informations de votre circonscription"
+    },
+    "login": {
+      "title": "Se connecter"
+    }
+  },
+  "settings": {
+    "account": {
+      "postalCode": "Code postal",
+      "postalCodeLabel": "Votre code postal",
+      "postalCodePlaceholder": "K1A 0A9",
+      "updatePostalCode": "Mettre à jour le code postal",
+      "yourRiding": "Votre circonscription",
+      "yourMP": "Votre député",
+      "noPostalCode": "Aucun code postal défini"
     }
   },
   "bills": {
     "title": "Projets de loi et législation",
     "subtitle": "Suivre les projets de loi fédéraux au Parlement",
     "search": {
+      "title": "Rechercher toute la législation",
       "placeholder": "Rechercher des projets de loi par numéro ou mots-clés...",
       "noResults": "Aucun projet de loi trouvé correspondant à vos critères.",
       "error": "Échec du chargement des projets de loi. Veuillez réessayer."
@@ -179,6 +226,35 @@
       "updated": "Mis à jour",
       "introduced": "Déposé",
       "viewDetails": "Voir les détails"
+    },
+    "gantt": {
+      "title": "Législation active au Feuilleton",
+      "activeBills": "projets de loi actifs",
+      "showTop": "Afficher les",
+      "collapse": "Réduire le widget",
+      "noBills": "Aucun projet de loi actif dans le Feuilleton",
+      "house": "Chambre des communes",
+      "senate": "Sénat",
+      "committee": "Comité / Procédure",
+      "houseProcedure": "Procédure de la Chambre",
+      "legend": {
+        "government": "Projet de loi du gouvernement",
+        "privateMember": "Projet de loi d'initiative parlementaire",
+        "senateGov": "Sénat - Gouvernement",
+        "senatePublic": "Sénat - Public"
+      },
+      "stages": {
+        "introduced": "Intro",
+        "houseFirst": "1re",
+        "houseSecond": "2e",
+        "houseThird": "3e",
+        "committeeReview": "Comité",
+        "reportStage": "Rapport",
+        "senateFirst": "1re",
+        "senateSecond": "2e",
+        "senateThird": "3e",
+        "royalAssent": "Sanction royale"
+      }
     }
   },
   "bill": {

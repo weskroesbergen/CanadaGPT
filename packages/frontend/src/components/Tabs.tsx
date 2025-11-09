@@ -4,7 +4,7 @@
 
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 
 export interface Tab {
   id: string;
@@ -20,7 +20,30 @@ interface TabsProps {
 export function Tabs({ tabs, defaultTab }: TabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
 
+  // Handle URL hash on mount and hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove the '#'
+      if (hash && tabs.some(tab => tab.id === hash)) {
+        setActiveTab(hash);
+      }
+    };
+
+    // Check hash on mount
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [tabs]);
+
   const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content;
+
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId);
+    // Update URL hash without triggering a page reload
+    window.history.pushState(null, '', `#${tabId}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -30,7 +53,8 @@ export function Tabs({ tabs, defaultTab }: TabsProps) {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
+              data-tab-id={tab.id}
               className={`pb-4 px-1 text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
                   ? 'text-accent-red'

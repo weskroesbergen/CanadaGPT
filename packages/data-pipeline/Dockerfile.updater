@@ -1,0 +1,25 @@
+# Lightweight Docker image for hourly parliamentary data updates
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy data-pipeline requirements
+COPY packages/data-pipeline/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy fedmcp package (for OpenParliament client)
+COPY src/fedmcp /app/fedmcp/src/fedmcp
+
+# Copy data-pipeline package
+COPY packages/data-pipeline /app/data-pipeline
+
+# Set Python path
+ENV PYTHONPATH=/app/fedmcp/src:/app/data-pipeline:$PYTHONPATH
+
+# Run the lightweight update script
+CMD ["python", "/app/data-pipeline/scripts/lightweight_update.py"]

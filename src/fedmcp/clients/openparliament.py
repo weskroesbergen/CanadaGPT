@@ -97,7 +97,11 @@ class OpenParliamentClient:
     # Members of Parliament
     # ------------------------------------------------------------------
     def list_mps(self, **params: Any) -> Iterator[Dict[str, Any]]:
-        return self._paginate("/mps/", params=params)
+        """List current MPs (politicians).
+
+        Note: OpenParliament changed this endpoint from /mps/ to /politicians/
+        """
+        return self._paginate("/politicians/", params=params)
 
     def get_mp(self, mp_path: str) -> Dict[str, Any]:
         return self._request(mp_path)

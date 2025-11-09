@@ -1,125 +1,141 @@
 /**
- * Token Encryption/Decryption Utilities
- * Uses AES-256-GCM for secure token storage
+ * Encryption Utilities for API Key Management
  *
- * Based on working frontend implementation
+ * Provides AES-256-GCM encryption/decryption for securely storing user API keys
+ * in the database. Uses the ENCRYPTION_KEY environment variable.
  */
 
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
+const IV_LENGTH = 16; // AES block size
+const TAG_LENGTH = 16; // GCM authentication tag length
 
 /**
- * Get encryption key from environment
- * Should be a 32-byte hex string (64 characters)
+ * Get the encryption key from environment variables
+ * The key should be a 32-byte (64 character) hex string
  */
 function getEncryptionKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY;
 
   if (!key) {
-    throw new Error('ENCRYPTION_KEY environment variable is required');
+    throw new Error('ENCRYPTION_KEY environment variable is not set');
   }
 
-  // Convert hex string to buffer
   if (key.length !== 64) {
-    throw new Error('ENCRYPTION_KEY must be a 64-character hex string (32 bytes)');
+    throw new Error('ENCRYPTION_KEY must be a 32-byte (64 character) hex string');
   }
 
   return Buffer.from(key, 'hex');
 }
 
 /**
- * Encrypt a token using AES-256-GCM
- * @param token - Plain text token to encrypt
- * @returns Encrypted token as base64 string (format: iv:authTag:encryptedData)
+ * Encrypt an API key for secure storage
+ *
+ * @param plaintext - The API key to encrypt
+ * @returns Object containing encrypted key, IV, and authentication tag (all as hex strings)
  */
-export function encryptToken(token: string): string {
+export function encryptApiKey(plaintext: string): {
+  encrypted: string;
+  iv: string;
+  tag: string;
+} {
   try {
-    const key = getEncryptionKey();
+    // Generate a random initialization vector
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-    let encrypted = cipher.update(token, 'utf8', 'hex');
+    // Create cipher
+    const cipher = crypto.createCipheriv(ALGORITHM, getEncryptionKey(), iv);
+
+    // Encrypt the plaintext
+    let encrypted = cipher.update(plaintext, 'utf8', 'hex');
     encrypted += cipher.final('hex');
 
-    const authTag = cipher.getAuthTag();
+    // Get the authentication tag
+    const tag = cipher.getAuthTag();
 
-    // Combine IV, auth tag, and encrypted data
-    const combined = `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
-
-    // Return as base64 for storage
-    return Buffer.from(combined).toString('base64');
+    return {
+      encrypted,
+      iv: iv.toString('hex'),
+      tag: tag.toString('hex'),
+    };
   } catch (error) {
-    console.error('Token encryption failed:', error);
-    throw new Error('Failed to encrypt token');
+    throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * Decrypt a token using AES-256-GCM
- * @param encryptedToken - Encrypted token as base64 string
- * @returns Decrypted plain text token
+ * Decrypt an encrypted API key
+ *
+ * @param encrypted - The encrypted key (hex string)
+ * @param iv - The initialization vector (hex string)
+ * @param tag - The authentication tag (hex string)
+ * @returns The decrypted API key
  */
-export function decryptToken(encryptedToken: string): string {
+export function decryptApiKey(encrypted: string, iv: string, tag: string): string {
   try {
-    const key = getEncryptionKey();
-
-    // Decode from base64
-    const combined = Buffer.from(encryptedToken, 'base64').toString('utf8');
-
-    // Split into components
-    const parts = combined.split(':');
-    if (parts.length !== 3) {
-      throw new Error('Invalid encrypted token format');
-    }
-
-    const [ivHex, authTagHex, encryptedHex] = parts;
-
-    const iv = Buffer.from(ivHex, 'hex');
-    const authTag = Buffer.from(authTagHex, 'hex');
-    const encrypted = encryptedHex;
-
     // Create decipher
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
+    const decipher = crypto.createDecipheriv(
+      ALGORITHM,
+      getEncryptionKey(),
+      Buffer.from(iv, 'hex')
+    );
 
+    // Set the authentication tag
+    decipher.setAuthTag(Buffer.from(tag, 'hex'));
+
+    // Decrypt
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
     return decrypted;
   } catch (error) {
-    console.error('Token decryption failed:', error);
-    throw new Error('Failed to decrypt token');
+    throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * Generate a new encryption key
- * Use this to generate the ENCRYPTION_KEY environment variable
- * @returns 32-byte hex string
+ * Mask an API key for display purposes
+ * Shows only the first 8 and last 4 characters
+ *
+ * @param apiKey - The API key to mask
+ * @returns Masked version of the key (e.g., "sk-ant-...xyz123")
+ */
+export function maskApiKey(apiKey: string): string {
+  if (apiKey.length < 12) {
+    return '***';
+  }
+
+  const prefix = apiKey.substring(0, 8);
+  const suffix = apiKey.substring(apiKey.length - 4);
+
+  return `${prefix}...${suffix}`;
+}
+
+/**
+ * Validate API key format for different providers
+ *
+ * @param provider - The API provider ('anthropic', 'openai', or 'canlii')
+ * @param apiKey - The API key to validate
+ * @returns True if the format is valid
+ */
+export function validateApiKeyFormat(provider: 'anthropic' | 'openai' | 'canlii', apiKey: string): boolean {
+  const patterns = {
+    anthropic: /^sk-ant-[a-zA-Z0-9_-]{95,}$/,
+    openai: /^sk-[a-zA-Z0-9]{32,}$/,
+    canlii: /^[a-zA-Z0-9_-]{20,}$/, // CanLII API keys are typically alphanumeric
+  };
+
+  const pattern = patterns[provider];
+  return pattern.test(apiKey);
+}
+
+/**
+ * Generate a secure encryption key (for setup purposes)
+ * Run this once and save the output to your .env file
+ *
+ * Usage: node -e "console.log(require('./lib/encryption').generateEncryptionKey())"
  */
 export function generateEncryptionKey(): string {
   return crypto.randomBytes(32).toString('hex');
-}
-
-/**
- * Hash a sensitive value for comparison (one-way)
- * Useful for storing hashed values
- * @param value - Value to hash
- * @returns SHA-256 hash as hex string
- */
-export function hashValue(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-/**
- * Verify if a value matches a hash
- * @param value - Plain text value
- * @param hash - Hash to compare against
- */
-export function verifyHash(value: string, hash: string): boolean {
-  const valueHash = hashValue(value);
-  return crypto.timingSafeEqual(Buffer.from(valueHash), Buffer.from(hash));
 }

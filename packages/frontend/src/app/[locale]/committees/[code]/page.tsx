@@ -11,11 +11,12 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Loading } from '@/components/Loading';
 import { Card } from '@canadagpt/design-system';
-import { GET_COMMITTEE } from '@/lib/queries';
+import { GET_COMMITTEE, GET_COMMITTEE_MEETINGS, GET_COMMITTEE_TESTIMONY, GET_COMMITTEE_ACTIVITY_METRICS } from '@/lib/queries';
 import Link from 'next/link';
-import { Users, FileText, Building2 } from 'lucide-react';
+import { Users, FileText, Building2, Calendar, MessageSquare, ExternalLink, TrendingUp, BarChart3 } from 'lucide-react';
 import { PartyLogo } from '@/components/PartyLogo';
 import { ShareButton } from '@/components/ShareButton';
+import { Tabs } from '@/components/Tabs';
 
 export default function CommitteeDetailPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -25,7 +26,22 @@ export default function CommitteeDetailPage({ params }: { params: Promise<{ code
     variables: { code },
   });
 
+  const { data: meetingsData, loading: meetingsLoading } = useQuery(GET_COMMITTEE_MEETINGS, {
+    variables: { code },
+  });
+
+  const { data: testimonyData, loading: testimonyLoading } = useQuery(GET_COMMITTEE_TESTIMONY, {
+    variables: { committeeCode: code, limit: 20 },
+  });
+
+  const { data: metricsData, loading: metricsLoading } = useQuery(GET_COMMITTEE_ACTIVITY_METRICS, {
+    variables: { committeeCode: code },
+  });
+
   const committee = data?.committees?.[0];
+  const meetings = meetingsData?.committees?.[0]?.meetings || [];
+  const testimony = testimonyData?.committeeTestimony || [];
+  const metrics = metricsData?.committeeActivityMetrics;
 
   if (loading) {
     return (
@@ -90,8 +106,93 @@ export default function CommitteeDetailPage({ params }: { params: Promise<{ code
           </div>
         </div>
 
-        {/* Committee Members - Org Chart Style */}
-        {committee.members && committee.members.length > 0 && (() => {
+        {/* Tabs for organized content */}
+        <Tabs
+          defaultTab="overview"
+          tabs={[
+            {
+              id: 'overview',
+              label: 'Overview',
+              content: (
+                <>
+                  {/* Activity Metrics Dashboard */}
+                  {metrics && !metricsLoading && (
+                    <Card className="mb-6">
+                      <h2 className="text-2xl font-bold text-text-primary mb-4 flex items-center">
+                        <TrendingUp className="h-6 w-6 mr-2 text-accent-red" />
+                        Committee Activity
+                      </h2>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Total Meetings */}
+                        <div className="p-4 rounded-lg bg-bg-elevated border border-border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="h-5 w-5 text-blue-400" />
+                            <span className="text-sm text-text-secondary">Total Meetings</span>
+                          </div>
+                          <p className="text-3xl font-bold text-text-primary">{metrics.total_meetings}</p>
+                        </div>
+
+                        {/* Recent Meetings (30 days) */}
+                        <div className="p-4 rounded-lg bg-bg-elevated border border-border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="h-5 w-5 text-green-400" />
+                            <span className="text-sm text-text-secondary">Last 30 Days</span>
+                          </div>
+                          <p className="text-3xl font-bold text-text-primary">{metrics.meetings_last_30_days}</p>
+                          <p className="text-xs text-text-secondary mt-1">meetings</p>
+                        </div>
+
+                        {/* Active Bills */}
+                        <div className="p-4 rounded-lg bg-bg-elevated border border-border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-5 w-5 text-yellow-400" />
+                            <span className="text-sm text-text-secondary">Active Bills</span>
+                          </div>
+                          <p className="text-3xl font-bold text-text-primary">{metrics.active_bills_count}</p>
+                        </div>
+
+                        {/* Members */}
+                        <div className="p-4 rounded-lg bg-bg-elevated border border-border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Users className="h-5 w-5 text-purple-400" />
+                            <span className="text-sm text-text-secondary">Members</span>
+                          </div>
+                          <p className="text-3xl font-bold text-text-primary">{metrics.member_count}</p>
+                        </div>
+
+                        {/* Evidence Documents */}
+                        <div className="p-4 rounded-lg bg-bg-elevated border border-border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MessageSquare className="h-5 w-5 text-orange-400" />
+                            <span className="text-sm text-text-secondary">Evidence Docs</span>
+                          </div>
+                          <p className="text-3xl font-bold text-text-primary">{metrics.total_evidence_documents}</p>
+                        </div>
+
+                        {/* 90-day Activity */}
+                        <div className="p-4 rounded-lg bg-bg-elevated border border-border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <BarChart3 className="h-5 w-5 text-cyan-400" />
+                            <span className="text-sm text-text-secondary">Last 90 Days</span>
+                          </div>
+                          <p className="text-3xl font-bold text-text-primary">{metrics.meetings_last_90_days}</p>
+                          <p className="text-xs text-text-secondary mt-1">meetings</p>
+                        </div>
+
+                        {/* Avg Statements */}
+                        <div className="p-4 rounded-lg bg-bg-elevated border border-border col-span-2">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MessageSquare className="h-5 w-5 text-pink-400" />
+                            <span className="text-sm text-text-secondary">Avg Statements Per Meeting</span>
+                          </div>
+                          <p className="text-3xl font-bold text-text-primary">{metrics.avg_statements_per_meeting.toFixed(1)}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Committee Members - Org Chart Style */}
+                  {committee.members && committee.members.length > 0 && (() => {
           // Deduplicate members - show each MP only once with their highest-priority role
           const uniqueMembers = new Map();
           const rolePriority: Record<string, number> = {
@@ -254,6 +355,31 @@ export default function CommitteeDetailPage({ params }: { params: Promise<{ code
               Bills Under Review ({committee.bills.length})
             </h2>
 
+            {/* Recent Committee Activity */}
+            {committee.meetings && committee.meetings.length > 0 && (
+              <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <p className="text-sm text-text-secondary mb-2">
+                  <strong className="text-text-primary">Recent Committee Activity:</strong>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {committee.meetings.slice(0, 3).map((meeting: any) => {
+                    const meetingDate = new Date(meeting.date);
+                    const formattedDate = meetingDate.toLocaleDateString('en-CA', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    });
+                    return (
+                      <div key={`${meeting.date}-${meeting.number}`} className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-300">
+                        Meeting #{meeting.number} - {formattedDate}
+                        {meeting.has_evidence && ' (Evidence available)'}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               {committee.bills.map((bill: any) => (
                 <Link
@@ -287,16 +413,187 @@ export default function CommitteeDetailPage({ params }: { params: Promise<{ code
           </Card>
         )}
 
-        {/* Empty State for Bills */}
-        {(!committee.bills || committee.bills.length === 0) && (
-          <Card>
-            <h2 className="text-2xl font-bold text-text-primary mb-4 flex items-center">
-              <FileText className="h-6 w-6 mr-2 text-accent-red" />
-              Bills Under Review
-            </h2>
-            <p className="text-text-secondary">No bills currently under review by this committee.</p>
-          </Card>
-        )}
+                  {/* Empty State for Bills */}
+                  {(!committee.bills || committee.bills.length === 0) && (
+                    <Card>
+                      <h2 className="text-2xl font-bold text-text-primary mb-4 flex items-center">
+                        <FileText className="h-6 w-6 mr-2 text-accent-red" />
+                        Bills Under Review
+                      </h2>
+                      <p className="text-text-secondary">No bills currently under review by this committee.</p>
+                    </Card>
+                  )}
+                </>
+              ),
+            },
+            {
+              id: 'meetings',
+              label: 'Meetings',
+              content: (
+                <Card>
+                  <h2 className="text-2xl font-bold text-text-primary mb-4 flex items-center">
+                    <Calendar className="h-6 w-6 mr-2 text-accent-red" />
+                    Recent Committee Meetings
+                  </h2>
+
+                  {meetingsLoading ? (
+                    <Loading />
+                  ) : meetings.length > 0 ? (
+                    <div className="space-y-3">
+                      {meetings.map((meeting: any) => (
+                        <div
+                          key={`${meeting.date}-${meeting.number}`}
+                          className="p-4 rounded-lg bg-bg-elevated hover:bg-bg-elevated/80 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <Calendar className="h-5 w-5 text-accent-red" />
+                              <div>
+                                <div className="font-semibold text-text-primary">
+                                  Meeting #{meeting.number}
+                                </div>
+                                <div className="text-sm text-text-secondary">
+                                  {new Date(meeting.date).toLocaleDateString('en-CA', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {meeting.in_camera && (
+                                <span className="text-xs px-2 py-1 rounded bg-gray-500/20 text-gray-400">
+                                  In Camera
+                                </span>
+                              )}
+                              {meeting.has_evidence && (
+                                <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">
+                                  Evidence Available
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {meeting.meeting_url && (
+                            <a
+                              href={`https://openparliament.ca${meeting.meeting_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-accent-red hover:text-accent-red-hover font-medium flex items-center gap-1 mt-2"
+                            >
+                              View on OpenParliament
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-text-secondary">No recent meetings found.</p>
+                  )}
+                </Card>
+              ),
+            },
+            {
+              id: 'testimony',
+              label: 'Testimony',
+              content: (
+                <Card>
+                  <h2 className="text-2xl font-bold text-text-primary mb-4 flex items-center">
+                    <MessageSquare className="h-6 w-6 mr-2 text-accent-red" />
+                    Recent Committee Testimony
+                  </h2>
+
+                  {testimonyLoading ? (
+                    <Loading />
+                  ) : testimony.length > 0 ? (
+                    <div className="space-y-4">
+                      {testimony.map((statement: any) => (
+                        <div
+                          key={statement.id}
+                          className="p-4 rounded-lg bg-bg-elevated hover:bg-bg-elevated/80 transition-colors"
+                        >
+                          {/* Speaker Info */}
+                          {statement.madeBy && (
+                            <div className="flex items-center gap-3 mb-3">
+                              {statement.madeBy.photo_url && (
+                                <img
+                                  src={statement.madeBy.photo_url
+                                    .replace('polpics/', '/mp-photos/')
+                                    .replace(/_[a-zA-Z0-9]+(\.\w+)$/, '$1')}
+                                  alt={statement.madeBy.name}
+                                  className="w-12 h-12 rounded-full object-cover bg-bg-elevated"
+                                />
+                              )}
+                              <div>
+                                <Link
+                                  href={`/mps/${statement.madeBy.id}`}
+                                  className="font-semibold text-text-primary hover:text-accent-red"
+                                >
+                                  {statement.madeBy.name}
+                                </Link>
+                                <div className="text-sm text-text-secondary">
+                                  {statement.madeBy.party}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Topic Headers */}
+                          {(statement.h1_en || statement.h2_en || statement.h3_en) && (
+                            <div className="mb-3 pb-3 border-b border-border-subtle">
+                              {statement.h1_en && (
+                                <div className="text-xs font-semibold text-accent-red uppercase mb-1">
+                                  {statement.h1_en}
+                                </div>
+                              )}
+                              {statement.h2_en && (
+                                <div className="font-bold text-lg text-text-primary">
+                                  {statement.h2_en}
+                                </div>
+                              )}
+                              {statement.h3_en && (
+                                <div className="text-sm text-text-secondary mt-1">
+                                  {statement.h3_en}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Content */}
+                          <p className="text-text-primary mb-3 whitespace-pre-line line-clamp-4">
+                            {statement.content_en}
+                          </p>
+
+                          {/* Metadata */}
+                          <div className="flex items-center justify-between pt-3 border-t border-border-subtle">
+                            <div className="flex items-center gap-4 text-xs text-text-secondary">
+                              {statement.partOf?.date && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {new Date(statement.partOf.date).toLocaleDateString('en-CA', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              )}
+                              {statement.wordcount && (
+                                <span>{statement.wordcount} words</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-text-secondary">No recent testimony found.</p>
+                  )}
+                </Card>
+              ),
+            },
+          ]}
+        />
       </main>
 
       <Footer />

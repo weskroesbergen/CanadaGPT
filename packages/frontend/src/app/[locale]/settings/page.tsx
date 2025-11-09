@@ -6,17 +6,19 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Key, CheckCircle, XCircle, Loader2, User, Search } from 'lucide-react';
 import { signIn } from 'next-auth/react';
+import { useQuery } from '@apollo/client';
+import { SEARCH_MPS } from '@/lib/queries';
 
-type SettingsSection = 'profile' | 'account' | 'preferences' | 'usage' | 'subscription' | 'connected';
+type SettingsSection = 'profile' | 'account' | 'preferences' | 'usage' | 'subscription' | 'connected' | 'api-keys' | 'gordie' | 'my-mp';
 
 // Helper function to safely format dates
 function formatDate(dateString: string | undefined, options?: Intl.DateTimeFormatOptions): string {
@@ -47,6 +49,7 @@ export default function SettingsPage() {
 
   // Profile form state
   const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [postalCode, setPostalCode] = useState(profile?.postal_code || '');
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState('');
   const [profileError, setProfileError] = useState('');
@@ -57,6 +60,39 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState<{
+    provider: 'anthropic' | 'openai' | 'canlii';
+    is_active: boolean;
+    last_validated_at: string | null;
+  }[]>([]);
+  const [apiKeyInputs, setApiKeyInputs] = useState<Record<string, string>>({});
+  const [apiKeyLoading, setApiKeyLoading] = useState<Record<string, boolean>>({});
+  const [apiKeyErrors, setApiKeyErrors] = useState<Record<string, string>>({});
+  const [apiKeySuccess, setApiKeySuccess] = useState<Record<string, string>>({});
+
+  // Gordie custom prompt state
+  const [gordiePrompt, setGordiePrompt] = useState(preferences?.custom_gordie_prompt || '');
+  const [gordieLoading, setGordieLoading] = useState(false);
+  const [gordieSuccess, setGordieSuccess] = useState('');
+  const [gordieError, setGordieError] = useState('');
+
+  // MP selection state
+  const [mpSearchTerm, setMpSearchTerm] = useState('');
+  const [mpLoading, setMpLoading] = useState(false);
+  const [mpSuccess, setMpSuccess] = useState('');
+  const [mpError, setMpError] = useState('');
+
+  // Query to search for MPs
+  const { data: mpSearchData, loading: mpSearchLoading } = useQuery(SEARCH_MPS, {
+    variables: {
+      searchTerm: mpSearchTerm,
+      current: true,
+      limit: 20
+    },
+    skip: !mpSearchTerm || mpSearchTerm.length < 2
+  });
 
   if (loading) {
     return (
@@ -88,7 +124,10 @@ export default function SettingsPage() {
     try {
       const { error } = await supabase
         .from('user_profiles')
-        .update({ full_name: fullName })
+        .update({
+          full_name: fullName,
+          postal_code: postalCode || null
+        })
         .eq('id', user.id);
 
       if (error) throw error;
@@ -147,6 +186,154 @@ export default function SettingsPage() {
     router.push(`/${newLanguage}${pathWithoutLocale || '/'}`);
   };
 
+  // Fetch API keys on mount
+  useEffect(() => {
+    const fetchApiKeys = async () => {
+      try {
+        const response = await fetch('/api/user/api-keys');
+        if (response.ok) {
+          const data = await response.json();
+          setApiKeys(data.keys || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch API keys:', error);
+      }
+    };
+
+    if (user) {
+      fetchApiKeys();
+    }
+  }, [user]);
+
+  // Save API key
+  const handleSaveApiKey = async (provider: 'anthropic' | 'openai' | 'canlii') => {
+    const apiKey = apiKeyInputs[provider];
+    if (!apiKey || apiKey.trim().length === 0) {
+      setApiKeyErrors({ ...apiKeyErrors, [provider]: 'API key is required' });
+      return;
+    }
+
+    setApiKeyLoading({ ...apiKeyLoading, [provider]: true });
+    setApiKeyErrors({ ...apiKeyErrors, [provider]: '' });
+    setApiKeySuccess({ ...apiKeySuccess, [provider]: '' });
+
+    try {
+      // Validate first
+      const validateResponse = await fetch('/api/user/api-keys/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey }),
+      });
+
+      if (!validateResponse.ok) {
+        const validateData = await validateResponse.json();
+        throw new Error(validateData.error || 'Invalid API key');
+      }
+
+      // Save after validation
+      const saveResponse = await fetch('/api/user/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey }),
+      });
+
+      if (!saveResponse.ok) {
+        const saveData = await saveResponse.json();
+        throw new Error(saveData.error || 'Failed to save API key');
+      }
+
+      // Refresh API keys list
+      const fetchResponse = await fetch('/api/user/api-keys');
+      if (fetchResponse.ok) {
+        const data = await fetchResponse.json();
+        setApiKeys(data.keys || []);
+      }
+
+      setApiKeySuccess({ ...apiKeySuccess, [provider]: 'API key saved successfully!' });
+      setApiKeyInputs({ ...apiKeyInputs, [provider]: '' }); // Clear input
+    } catch (error: any) {
+      setApiKeyErrors({ ...apiKeyErrors, [provider]: error.message });
+    } finally {
+      setApiKeyLoading({ ...apiKeyLoading, [provider]: false });
+    }
+  };
+
+  // Delete API key
+  const handleDeleteApiKey = async (provider: 'anthropic' | 'openai' | 'canlii') => {
+    if (!confirm(`Are you sure you want to remove your ${provider} API key?`)) {
+      return;
+    }
+
+    setApiKeyLoading({ ...apiKeyLoading, [provider]: true });
+
+    try {
+      const response = await fetch(`/api/user/api-keys?provider=${provider}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete API key');
+      }
+
+      // Refresh API keys list
+      const fetchResponse = await fetch('/api/user/api-keys');
+      if (fetchResponse.ok) {
+        const data = await fetchResponse.json();
+        setApiKeys(data.keys || []);
+      }
+
+      setApiKeySuccess({ ...apiKeySuccess, [provider]: 'API key removed successfully!' });
+    } catch (error: any) {
+      setApiKeyErrors({ ...apiKeyErrors, [provider]: error.message });
+    } finally {
+      setApiKeyLoading({ ...apiKeyLoading, [provider]: false });
+    }
+  };
+
+  // Save Gordie custom prompt
+  const handleSaveGordiePrompt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGordieLoading(true);
+    setGordieError('');
+    setGordieSuccess('');
+
+    try {
+      await updatePreferences({ custom_gordie_prompt: gordiePrompt });
+      setGordieSuccess('Custom prompt saved successfully!');
+    } catch (error: any) {
+      setGordieError(error.message || 'Failed to save custom prompt');
+    } finally {
+      setGordieLoading(false);
+    }
+  };
+
+  const handleSelectMP = async (mpId: string, mpName: string) => {
+    setMpLoading(true);
+    setMpError('');
+    setMpSuccess('');
+
+    try {
+      const response = await fetch('/api/user/update-postal-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferred_mp_id: mpId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update preferred MP');
+      }
+
+      await refreshProfile();
+      setMpSuccess(`Successfully set ${mpName} as your preferred MP!`);
+      setMpSearchTerm('');
+    } catch (error: any) {
+      setMpError(error.message || 'Failed to update preferred MP');
+    } finally {
+      setMpLoading(false);
+    }
+  };
+
   const tierColors = {
     FREE: 'bg-gray-100 text-gray-800 border-gray-300',
     BASIC: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -181,10 +368,13 @@ export default function SettingsPage() {
   const navItems = [
     { id: 'profile' as const, label: 'Profile' },
     { id: 'account' as const, label: 'Account' },
+    { id: 'my-mp' as const, label: 'My MP' },
     { id: 'preferences' as const, label: 'Preferences' },
     { id: 'usage' as const, label: 'Usage & Limits' },
     { id: 'subscription' as const, label: 'Subscription' },
     { id: 'connected' as const, label: 'Connected Accounts' },
+    { id: 'api-keys' as const, label: 'API Keys' },
+    { id: 'gordie' as const, label: 'Gordie Settings' },
   ];
 
   return (
@@ -323,6 +513,24 @@ export default function SettingsPage() {
                     />
                   </div>
 
+                  <div>
+                    <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
+                      Postal Code (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      id="postalCode"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
+                      placeholder="K1A 0A9"
+                      maxLength={7}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Used to show your local MP on the MPs page
+                    </p>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={profileLoading}
@@ -384,6 +592,114 @@ export default function SettingsPage() {
                     {passwordLoading ? 'Updating...' : 'Update Password'}
                   </button>
                 </form>
+              </div>
+            )}
+
+            {/* My MP Section */}
+            {activeSection === 'my-mp' && (
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">My MP</h2>
+                <p className="text-gray-600 mb-6">
+                  Select your Member of Parliament. This will be displayed on the MPs page and used for personalized content.
+                </p>
+
+                {/* Currently Selected MP */}
+                {profile.preferred_mp_id && (
+                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <User className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">Current MP</p>
+                          <p className="text-sm text-gray-600">ID: {profile.preferred_mp_id}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setMpSuccess('');
+                          setMpError('');
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Search for MP */}
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="mpSearch" className="block text-sm font-medium text-gray-700 mb-2">
+                      Search for an MP
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <input
+                        type="text"
+                        id="mpSearch"
+                        value={mpSearchTerm}
+                        onChange={(e) => setMpSearchTerm(e.target.value)}
+                        placeholder="Search by name, party, or riding..."
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Type at least 2 characters to search
+                    </p>
+                  </div>
+
+                  {/* Success/Error Messages */}
+                  {mpSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                      <p className="text-green-800 text-sm">{mpSuccess}</p>
+                    </div>
+                  )}
+                  {mpError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-red-800 text-sm">{mpError}</p>
+                    </div>
+                  )}
+
+                  {/* Search Results */}
+                  {mpSearchTerm.length >= 2 && (
+                    <div className="border border-gray-200 rounded-md max-h-96 overflow-y-auto">
+                      {mpSearchLoading ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                          Searching MPs...
+                        </div>
+                      ) : mpSearchData?.searchMPs && mpSearchData.searchMPs.length > 0 ? (
+                        <div className="divide-y divide-gray-200">
+                          {mpSearchData.searchMPs.map((mp: any) => (
+                            <button
+                              key={mp.id}
+                              onClick={() => handleSelectMP(mp.id, mp.name)}
+                              disabled={mpLoading}
+                              className="w-full p-4 text-left hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">{mp.name}</p>
+                                  <p className="text-sm text-gray-600">
+                                    {mp.party} • {mp.riding}
+                                  </p>
+                                </div>
+                                {profile.preferred_mp_id === mp.id && (
+                                  <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-gray-500">
+                          No MPs found matching "{mpSearchTerm}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -579,6 +895,272 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* API Keys Section */}
+            {activeSection === 'api-keys' && (
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">API Keys</h2>
+                <p className="text-gray-600 mb-6">
+                  Connect your own API keys to enable unlimited queries on your subscription plan.
+                  Your keys are encrypted and stored securely.
+                </p>
+
+                {/* Anthropic Claude */}
+                <div className="mb-8 pb-8 border-b border-gray-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Key className="w-6 h-6 text-gray-700" />
+                    <h3 className="text-lg font-medium text-gray-900">Anthropic Claude</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Get your API key from{' '}
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      Anthropic Console
+                    </a>
+                  </p>
+
+                  {apiKeys.find((k) => k.provider === 'anthropic' && k.is_active) ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-sm text-green-800">Connected</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteApiKey('anthropic')}
+                        disabled={apiKeyLoading.anthropic}
+                        className="px-4 py-2 text-sm text-red-600 border border-red-300 rounded-md hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {apiKeyLoading.anthropic ? 'Removing...' : 'Remove Key'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <input
+                        type="password"
+                        value={apiKeyInputs.anthropic || ''}
+                        onChange={(e) =>
+                          setApiKeyInputs({ ...apiKeyInputs, anthropic: e.target.value })
+                        }
+                        placeholder="sk-ant-..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        onClick={() => handleSaveApiKey('anthropic')}
+                        disabled={apiKeyLoading.anthropic}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {apiKeyLoading.anthropic && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {apiKeyLoading.anthropic ? 'Validating...' : 'Save & Test'}
+                      </button>
+                      {apiKeyErrors.anthropic && (
+                        <p className="text-sm text-red-600">{apiKeyErrors.anthropic}</p>
+                      )}
+                      {apiKeySuccess.anthropic && (
+                        <p className="text-sm text-green-600">{apiKeySuccess.anthropic}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* OpenAI */}
+                <div className="mb-8 pb-8 border-b border-gray-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Key className="w-6 h-6 text-gray-700" />
+                    <h3 className="text-lg font-medium text-gray-900">OpenAI</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Get your API key from{' '}
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      OpenAI Platform
+                    </a>
+                  </p>
+
+                  {apiKeys.find((k) => k.provider === 'openai' && k.is_active) ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-sm text-green-800">Connected</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteApiKey('openai')}
+                        disabled={apiKeyLoading.openai}
+                        className="px-4 py-2 text-sm text-red-600 border border-red-300 rounded-md hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {apiKeyLoading.openai ? 'Removing...' : 'Remove Key'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <input
+                        type="password"
+                        value={apiKeyInputs.openai || ''}
+                        onChange={(e) =>
+                          setApiKeyInputs({ ...apiKeyInputs, openai: e.target.value })
+                        }
+                        placeholder="sk-..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        onClick={() => handleSaveApiKey('openai')}
+                        disabled={apiKeyLoading.openai}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {apiKeyLoading.openai && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {apiKeyLoading.openai ? 'Validating...' : 'Save & Test'}
+                      </button>
+                      {apiKeyErrors.openai && (
+                        <p className="text-sm text-red-600">{apiKeyErrors.openai}</p>
+                      )}
+                      {apiKeySuccess.openai && (
+                        <p className="text-sm text-green-600">{apiKeySuccess.openai}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* CanLII */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Key className="w-6 h-6 text-gray-700" />
+                    <h3 className="text-lg font-medium text-gray-900">CanLII</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Request your API key from{' '}
+                    <a
+                      href="https://www.canlii.org/en/feedback/feedback.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      CanLII Feedback Form
+                    </a>
+                  </p>
+
+                  {apiKeys.find((k) => k.provider === 'canlii' && k.is_active) ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-sm text-green-800">Connected</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteApiKey('canlii')}
+                        disabled={apiKeyLoading.canlii}
+                        className="px-4 py-2 text-sm text-red-600 border border-red-300 rounded-md hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {apiKeyLoading.canlii ? 'Removing...' : 'Remove Key'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <input
+                        type="password"
+                        value={apiKeyInputs.canlii || ''}
+                        onChange={(e) =>
+                          setApiKeyInputs({ ...apiKeyInputs, canlii: e.target.value })
+                        }
+                        placeholder="Your CanLII API key"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        onClick={() => handleSaveApiKey('canlii')}
+                        disabled={apiKeyLoading.canlii}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {apiKeyLoading.canlii && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {apiKeyLoading.canlii ? 'Validating...' : 'Save & Test'}
+                      </button>
+                      {apiKeyErrors.canlii && (
+                        <p className="text-sm text-red-600">{apiKeyErrors.canlii}</p>
+                      )}
+                      {apiKeySuccess.canlii && (
+                        <p className="text-sm text-green-600">{apiKeySuccess.canlii}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Gordie Settings Section */}
+            {activeSection === 'gordie' && (
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Gordie Settings</h2>
+                <p className="text-gray-600 mb-6">
+                  Customize how Gordie interacts with you. You can provide a custom prompt that will be included when Gordie responds to your questions.
+                </p>
+
+                <form onSubmit={handleSaveGordiePrompt} className="space-y-4">
+                  <div>
+                    <label htmlFor="gordiePrompt" className="block text-sm font-medium text-gray-700 mb-2">
+                      Custom Prompt for Gordie
+                    </label>
+                    <textarea
+                      id="gordiePrompt"
+                      value={gordiePrompt}
+                      onChange={(e) => setGordiePrompt(e.target.value)}
+                      rows={6}
+                      placeholder="Example: Focus on environmental policy when discussing bills. Provide historical context for major legislation. Always mention relevant statistics when available."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      This prompt will be added to Gordie's instructions. Use it to guide the tone, focus areas, or type of information you'd like emphasized.
+                    </p>
+                  </div>
+
+                  {gordieSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                      <p className="text-green-800 text-sm">{gordieSuccess}</p>
+                    </div>
+                  )}
+                  {gordieError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-red-800 text-sm">{gordieError}</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={gordieLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {gordieLoading ? 'Saving...' : 'Save Custom Prompt'}
+                    </button>
+                    {gordiePrompt && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGordiePrompt('');
+                          handleSaveGordiePrompt(new Event('submit') as any);
+                        }}
+                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Clear Prompt
+                      </button>
+                    )}
+                  </div>
+                </form>
+
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <h3 className="text-sm font-medium text-blue-900 mb-2">Tips for Custom Prompts:</h3>
+                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Be specific about topics you're interested in (e.g., "climate policy", "indigenous rights")</li>
+                    <li>Request particular types of context (e.g., "historical background", "economic impact")</li>
+                    <li>Specify the tone you prefer (e.g., "casual and conversational", "formal and academic")</li>
+                    <li>Mention if you want comparisons (e.g., "compare to similar bills", "show party differences")</li>
+                  </ul>
+                </div>
               </div>
             )}
           </main>

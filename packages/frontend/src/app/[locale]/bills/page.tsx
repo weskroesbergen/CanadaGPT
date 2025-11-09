@@ -20,6 +20,7 @@ import { fr, enUS } from 'date-fns/locale';
 import { getBilingualContent } from '@/hooks/useBilingual';
 import { ShareButton } from '@/components/ShareButton';
 import { PrintableCard } from '@/components/PrintableCard';
+import { BillGanttWidget } from '@/components/bills/BillGanttWidget';
 
 export default function BillsPage() {
   const t = useTranslations('bills');
@@ -126,13 +127,17 @@ export default function BillsPage() {
       <Header />
 
       <main className="flex-1 page-container">
-        <h1 className="text-4xl font-bold text-text-primary mb-2">{t('title')}</h1>
-        <p className="text-text-secondary mb-8">{t('subtitle')}</p>
+        {/* GANTT Widget - Order Paper Legislative Progress */}
+        <BillGanttWidget currentSession={CURRENT_SESSION} />
 
-        {/* Filters */}
-        <div className="mb-6 space-y-4">
-          {/* Search */}
-          <div className="relative">
+        {/* Search All Legislation Section */}
+        <div id="search-legislation" className="scroll-mt-20">
+          <h2 className="text-2xl font-bold text-text-primary mb-4 mt-16">{t('search.title')}</h2>
+
+          {/* Filters */}
+          <div className="mb-6 space-y-4">
+            {/* Search */}
+            <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-text-tertiary" />
             <input
               type="text"
@@ -255,6 +260,7 @@ export default function BillsPage() {
               <Users className="h-4 w-4" />
               {t('filters.privateMembersBills')}
             </button>
+          </div>
           </div>
         </div>
 

@@ -12,6 +12,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { ApolloWrapper } from '@/components/ApolloWrapper';
+import { SessionProvider } from '@/components/providers/SessionProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserPreferencesProvider } from '@/contexts/UserPreferencesContext';
 import { ChatWidget } from '@/components/chat';
@@ -97,14 +98,16 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body className={`${inter.className} h-full`}>
         <ErrorBoundary>
           <NextIntlClientProvider messages={messages}>
-            <AuthProvider>
-              <UserPreferencesProvider>
-                <ApolloWrapper>
-                  {children}
-                  <ChatWidget />
-                </ApolloWrapper>
-              </UserPreferencesProvider>
-            </AuthProvider>
+            <SessionProvider>
+              <AuthProvider>
+                <UserPreferencesProvider>
+                  <ApolloWrapper>
+                    {children}
+                    <ChatWidget />
+                  </ApolloWrapper>
+                </UserPreferencesProvider>
+              </AuthProvider>
+            </SessionProvider>
           </NextIntlClientProvider>
         </ErrorBoundary>
       </body>

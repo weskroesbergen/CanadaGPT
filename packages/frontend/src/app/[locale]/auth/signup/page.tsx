@@ -7,8 +7,9 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { AuthButton } from '@/components/auth/AuthButton';
@@ -17,14 +18,25 @@ import { OAuthProviders } from '@/components/auth/OAuthProviders';
 
 export default function SignupPage() {
   const router = useRouter();
+  const t = useTranslations('auth.signup');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Check if user came from MPs page with postal code intent
+  useEffect(() => {
+    const savedPostalCode = sessionStorage.getItem('pending_postal_code');
+    if (savedPostalCode) {
+      setPostalCode(savedPostalCode);
+      sessionStorage.removeItem('pending_postal_code');
+    }
+  }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +67,7 @@ export default function SignupPage() {
         options: {
           data: {
             full_name: fullName,
+            postal_code: postalCode || null,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -180,6 +193,15 @@ export default function SignupPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+              />
+
+              <AuthInput
+                label={t('postalCode')}
+                type="text"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
+                placeholder={t('postalCodePlaceholder')}
+                helperText={t('postalCodeHelper')}
               />
 
               <div className="flex items-start">

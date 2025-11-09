@@ -85,6 +85,8 @@ export interface UserProfile {
   api_key?: string;
   stripe_customer_id?: string;
   stripe_subscription_id?: string;
+  postal_code?: string;
+  preferred_mp_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -118,10 +120,10 @@ export async function incrementUsage(userId: string): Promise<void> {
  * });
  * ```
  */
-export function getAuthCallbackURL(): string {
+export function getAuthCallbackURL(locale: string = 'en'): string {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
                   'http://localhost:3000';
 
-  return `${baseUrl}/auth/callback`;
+  return `${baseUrl}/${locale}/auth/callback`;
 }

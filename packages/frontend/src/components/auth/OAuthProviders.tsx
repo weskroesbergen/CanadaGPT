@@ -1,14 +1,14 @@
 /**
  * OAuthProviders Component
  *
- * OAuth provider buttons for Google and GitHub authentication
- * Handles OAuth flow initiation with proper redirect URLs
+ * OAuth provider buttons for Google, GitHub, and Facebook authentication
+ * Uses NextAuth for authentication flow
  */
 
 'use client';
 
 import { useState } from 'react';
-import { supabase, getAuthCallbackURL } from '@/lib/supabase';
+import { signIn } from 'next-auth/react';
 import { AuthButton } from './AuthButton';
 
 export interface OAuthProvidersProps {
@@ -18,27 +18,20 @@ export interface OAuthProvidersProps {
 export function OAuthProviders({ onError }: OAuthProvidersProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
-  const handleOAuth = async (provider: 'google' | 'github' | 'facebook' | 'linkedin_oidc') => {
+  const handleOAuth = async (provider: 'google' | 'github' | 'facebook' | 'linkedin') => {
     try {
       setLoadingProvider(provider);
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: getAuthCallbackURL(),
-        },
+      // Use NextAuth signIn
+      await signIn(provider, {
+        callbackUrl: '/',
       });
 
-      if (error) {
-        console.error(`${provider} OAuth error:`, error);
-        onError?.(error.message);
-      }
+      // Don't catch errors here - NextAuth handles redirects
     } catch (err) {
       console.error(`${provider} OAuth error:`, err);
       onError?.('An unexpected error occurred');
-    } finally {
-      // Don't reset loading state - we're redirecting
-      // setLoadingProvider(null);
+      setLoadingProvider(null);
     }
   };
 
@@ -107,8 +100,8 @@ export function OAuthProviders({ onError }: OAuthProvidersProps) {
 
       <AuthButton
         variant="outline"
-        onClick={() => handleOAuth('linkedin_oidc')}
-        loading={loadingProvider === 'linkedin_oidc'}
+        onClick={() => handleOAuth('linkedin')}
+        loading={loadingProvider === 'linkedin'}
         disabled={loadingProvider !== null}
         icon={
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -118,6 +111,7 @@ export function OAuthProviders({ onError }: OAuthProvidersProps) {
       >
         Continue with LinkedIn
       </AuthButton>
+
     </div>
   );
 }

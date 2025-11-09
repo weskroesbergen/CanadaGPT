@@ -2,20 +2,28 @@
  * AuthContext - Global Authentication State Management
  *
  * Provides authentication state and methods throughout the app
- * Handles user session, profile data, and authentication actions
+ * Uses NextAuth for session management
  */
 
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
-import { UserProfile } from '@/lib/supabase';
+import { createContext, useContext } from 'react';
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  subscription_tier?: string;
+  monthly_usage?: number;
+}
 
 interface AuthContextType {
-  user: User | null;
-  profile: UserProfile | null;
-  session: Session | null;
+  user: UserProfile | null;
+  profile: UserProfile | null; // Kept for backward compatibility
+  session: any | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -24,89 +32,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
+  const loading = status === 'loading';
 
-  // Fetch user profile from database
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return null;
+  // Map NextAuth session to user profile format
+  const user: UserProfile | null = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email!,
+        full_name: session.user.name,
+        display_name: session.user.name,
+        avatar_url: session.user.image,
+        subscription_tier: session.user.subscriptionTier,
+        monthly_usage: session.user.monthlyUsage,
       }
+    : null;
 
-      return data as UserProfile;
-    } catch (err) {
-      console.error('Error fetching profile:', err);
-      return null;
-    }
-  };
-
-  // Refresh profile data
-  const refreshProfile = async () => {
-    if (user) {
-      const profileData = await fetchProfile(user.id);
-      setProfile(profileData);
-    }
-  };
-
-  // Sign out
+  // Sign out using NextAuth
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setSession(null);
+    await nextAuthSignOut({ redirect: true, callbackUrl: '/' });
   };
 
-  // Initialize auth state and set up listener
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
-      }
-
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event);
-
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
-      } else {
-        setProfile(null);
-      }
-
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  // Refresh profile data (re-fetch session)
+  const refreshProfile = async () => {
+    // NextAuth v5 automatically refreshes session
+    // Can trigger manual refresh if needed
+    window.location.reload();
+  };
 
   const value = {
     user,
-    profile,
+    profile: user, // Alias for backward compatibility
     session,
     loading,
     signOut,

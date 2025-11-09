@@ -9,11 +9,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function UserMenu() {
   const { user, profile, loading, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   if (loading) {
     return (
@@ -59,9 +61,23 @@ export function UserMenu() {
         className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-accent-red rounded-md p-2 hover:bg-bg-elevated transition-colors"
       >
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-accent-red rounded-full flex items-center justify-center text-white font-medium">
-            {profile?.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
-          </div>
+          {profile?.avatar_url && !imageError ? (
+            <div className="relative w-8 h-8">
+              <Image
+                src={profile.avatar_url}
+                alt={profile.full_name || 'User avatar'}
+                width={32}
+                height={32}
+                className="rounded-full object-cover"
+                onError={() => setImageError(true)}
+                unoptimized
+              />
+            </div>
+          ) : (
+            <div className="w-8 h-8 bg-accent-red rounded-full flex items-center justify-center text-white font-medium">
+              {profile?.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
+            </div>
+          )}
           <div className="hidden md:block text-left">
             <p className="text-sm font-medium text-text-primary">
               {profile?.full_name || 'User'}
@@ -118,19 +134,11 @@ export function UserMenu() {
             </div>
 
             <Link
-              href="/profile"
+              href="/settings"
               className="block px-4 py-2 text-sm text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors"
               onClick={() => setMenuOpen(false)}
             >
-              Your Profile
-            </Link>
-
-            <Link
-              href="/account"
-              className="block px-4 py-2 text-sm text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              Account Settings
+              Settings
             </Link>
 
             {profile?.subscription_tier === 'FREE' && (

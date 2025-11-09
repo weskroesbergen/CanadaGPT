@@ -14,6 +14,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
     "@apollo/client": "^3.9.0",
+    "@auth/core": "^0.34.3",
     "@canadagpt/design-system": "workspace:*",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.7.0",
@@ -26,6 +27,7 @@
     "graphql": "^16.8.1",
     "lucide-react": "^0.300.0",
     "next": "^15.0.0",
+    "next-auth": "5.0.0-beta.30",
     "next-intl": "^4.4.0",
     "openai": "^6.8.0",
     "react": "^18.3.0",

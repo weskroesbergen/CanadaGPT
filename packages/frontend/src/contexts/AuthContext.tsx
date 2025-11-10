@@ -20,6 +20,7 @@ interface UserProfile {
   monthly_usage?: number;
   created_at?: string;
   usage_reset_date?: string;
+  postal_code?: string | null;
 }
 
 interface AuthContextType {

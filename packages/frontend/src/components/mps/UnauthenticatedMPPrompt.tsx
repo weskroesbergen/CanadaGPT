@@ -39,7 +39,7 @@ export function UnauthenticatedMPPrompt() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4">
           <Link
-            href="/auth/signup"
+            href={"/auth/signup" as any}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors shadow-md hover:shadow-lg"
           >
             <UserPlus className="w-5 h-5" />
@@ -47,7 +47,7 @@ export function UnauthenticatedMPPrompt() {
           </Link>
 
           <Link
-            href="/auth/login"
+            href={"/auth/login" as any}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
           >
             {t('alreadyHaveAccount')} {t('logIn')}

@@ -50,8 +50,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
         }
 
         // Check if user exists in database
-        const { data: profile, error } = await supabaseAdmin
-          .from('user_profiles')
+        const { data: profile, error } = await (supabaseAdmin
+          .from('user_profiles') as any)
           .select('*')
           .eq('email', credentials.email as string)
           .single();
@@ -88,8 +88,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
       // Initial sign in
       if (user) {
         // Create or update profile
-        const { data: existingProfile } = await supabaseAdmin
-          .from('user_profiles')
+        const { data: existingProfile } = await (supabaseAdmin
+          .from('user_profiles') as any)
           .select('*')
           .eq('email', user.email!)
           .maybeSingle();
@@ -129,8 +129,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
           }
 
           // Create record in users table
-          const { error: usersError } = await supabaseAdmin
-            .from('users')
+          const { error: usersError } = await (supabaseAdmin
+            .from('users') as any)
             .insert({
               id: authUserId,
               email: user.email,
@@ -144,8 +144,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
           }
 
           // Create new profile with auth user ID
-          const { data: newProfile, error } = await supabaseAdmin
-            .from('user_profiles')
+          const { data: newProfile, error } = await (supabaseAdmin
+            .from('user_profiles') as any)
             .insert({
               id: authUserId,
               email: user.email,
@@ -176,15 +176,15 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
           }
 
           // Ensure users table record exists
-          const { data: existingUser } = await supabaseAdmin
-            .from('users')
+          const { data: existingUser } = await (supabaseAdmin
+            .from('users') as any)
             .select('id')
             .eq('id', userId)
             .maybeSingle();
 
           if (!existingUser) {
-            const { error: usersError } = await supabaseAdmin
-              .from('users')
+            const { error: usersError } = await (supabaseAdmin
+              .from('users') as any)
               .insert({
                 id: userId,
                 email: user.email,
@@ -196,8 +196,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
           }
 
           // Update existing profile with latest OAuth info
-          await supabaseAdmin
-            .from('user_profiles')
+          await (supabaseAdmin
+            .from('user_profiles') as any)
             .update({
               full_name: user.name || existingProfile.full_name,
               display_name: user.name || existingProfile.display_name,
@@ -210,8 +210,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
         token.id = userId;
 
         // Store subscription info and dates in token
-        const { data: profile } = await supabaseAdmin
-          .from('user_profiles')
+        const { data: profile } = await (supabaseAdmin
+          .from('user_profiles') as any)
           .select('subscription_tier, monthly_usage, created_at, usage_reset_date')
           .eq('id', userId)
           .single();
@@ -225,8 +225,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
 
         // If this is an OAuth sign in, store the account
         if (account && account.provider !== 'credentials') {
-          const { data: existingAccount } = await supabaseAdmin
-            .from('accounts')
+          const { data: existingAccount } = await (supabaseAdmin
+            .from('accounts') as any)
             .select('id')
             .eq('provider', account.provider)
             .eq('provider_account_id', account.providerAccountId!)
@@ -234,7 +234,7 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
 
           if (!existingAccount) {
             // Encrypt tokens before storing
-            await supabaseAdmin.from('accounts').insert({
+            await (supabaseAdmin.from('accounts') as any).insert({
               user_id: userId,
               type: account.type,
               provider: account.provider,
@@ -248,8 +248,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
             });
           } else {
             // Update existing account tokens
-            await supabaseAdmin
-              .from('accounts')
+            await (supabaseAdmin
+              .from('accounts') as any)
               .update({
                 access_token: account.access_token ? encryptToken(account.access_token) : null,
                 refresh_token: account.refresh_token ? encryptToken(account.refresh_token) : null,
@@ -261,8 +261,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
         }
 
         // Fetch linked providers
-        const { data: accounts } = await supabaseAdmin
-          .from('accounts')
+        const { data: accounts } = await (supabaseAdmin
+          .from('accounts') as any)
           .select('provider')
           .eq('user_id', userId);
 
@@ -271,8 +271,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
         }
       } else if (token.id) {
         // Token refresh - update subscription data
-        const { data: profile } = await supabaseAdmin
-          .from('user_profiles')
+        const { data: profile } = await (supabaseAdmin
+          .from('user_profiles') as any)
           .select('subscription_tier, monthly_usage, usage_reset_date')
           .eq('id', token.id as string)
           .single();

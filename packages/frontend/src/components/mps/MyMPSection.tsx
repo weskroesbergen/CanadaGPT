@@ -24,6 +24,7 @@ interface MPData {
   riding: string;
   party: string;
   email?: string;
+  photo_url?: string;
   phone?: string;
   url?: string;
   offices?: Array<{

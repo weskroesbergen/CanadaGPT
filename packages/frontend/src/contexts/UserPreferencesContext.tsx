@@ -29,6 +29,7 @@ export interface UserPreferences {
 
   // Chat preferences
   has_seen_welcome?: boolean;
+  custom_gordie_prompt?: string;
 }
 
 // Default preferences for new users or when not authenticated

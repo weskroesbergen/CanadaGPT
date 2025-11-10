@@ -143,7 +143,7 @@ export interface RepresentativeData {
   representative_set_name?: string;
 }
 
-export function extractMPFromRepresentResponse(representatives: any[]): RepresentativeData | null {
+function extractMPFromRepresentResponse(representatives: any[]): RepresentativeData | null {
   // Find the House of Commons MP (representative_set_name: 'House of Commons')
   const mp = representatives.find(
     (rep) => rep.representative_set_name === 'House of Commons'

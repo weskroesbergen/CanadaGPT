@@ -37,8 +37,8 @@ export async function POST(request: Request) {
       }
 
       // Create user record
-      const { error: insertError } = await supabase
-        .from('users')
+      const { error: insertError } = await (supabase
+        .from('users') as any)
         .insert({
           id: authUser.id,
           email: authUser.email,

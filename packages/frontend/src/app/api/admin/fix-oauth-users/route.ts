@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     // Get all user_profiles that don't have corresponding auth.users records
     const { data: profiles, error: profilesError } = await supabase
       .from('user_profiles')
-      .select('id, email, full_name, avatar_url');
+      .select('id, email, full_name, avatar_url') as any;
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
@@ -50,8 +50,8 @@ export async function POST(request: Request) {
 
       if (existingAuthUser) {
         // Auth user exists with different ID - update user_profiles to use auth user ID
-        const { error: updateError } = await supabase
-          .from('user_profiles')
+        const { error: updateError } = await (supabase
+          .from('user_profiles') as any)
           .update({ id: existingAuthUser.id })
           .eq('id', profile.id);
 

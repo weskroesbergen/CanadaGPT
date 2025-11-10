@@ -21,6 +21,7 @@ interface UserProfile {
   created_at?: string;
   usage_reset_date?: string;
   postal_code?: string | null;
+  preferred_mp_id?: string | null;
 }
 
 interface AuthContextType {

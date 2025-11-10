@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   try {
     // Create users table with minimal schema
     // This is a simple mapping table that links to auth.users
-    const { error } = await supabase.rpc('exec_sql', {
+    const { error } = await (supabase.rpc as any)('exec_sql', {
       sql: `
         CREATE TABLE IF NOT EXISTS public.users (
           id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

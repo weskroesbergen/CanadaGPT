@@ -36,8 +36,8 @@ export async function POST(request: Request) {
     }
 
     // Create conversation
-    const { data, error } = await supabase
-      .from('conversations')
+    const { data, error } = await (supabase
+      .from('conversations') as any)
       .insert({
         user_id: session.user.id,
         title: title || 'New conversation',

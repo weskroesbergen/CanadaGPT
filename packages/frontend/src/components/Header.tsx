@@ -40,9 +40,6 @@ export function Header() {
             <Link href="/mps" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
               {t('mps')}
             </Link>
-            <Link href="/chamber" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
-              {t('chamber')}
-            </Link>
             <Link href="/committees" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
               {t('committees')}
             </Link>
@@ -101,13 +98,6 @@ export function Header() {
                   className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
                 >
                   {t('mps')}
-                </Link>
-                <Link
-                  href="/chamber"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
-                >
-                  {t('chamber')}
                 </Link>
                 <Link
                   href="/committees"

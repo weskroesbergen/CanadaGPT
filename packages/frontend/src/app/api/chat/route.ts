@@ -282,10 +282,61 @@ export async function POST(request: Request) {
 
           if (provider === 'anthropic') {
             // Anthropic Claude streaming
-            const messageHistory = messages?.map((m) => ({
-              role: m.role as 'user' | 'assistant',
-              content: m.content,
-            })) || [];
+            // Filter out any messages with tool_use blocks (incomplete/malformed messages)
+            // Only include completed text messages
+            const messageHistory = messages
+              ?.filter((m) => {
+                // Skip messages that contain tool_use or tool_result in their content
+                // These are intermediate messages that shouldn't be in conversation history
+                let content = m.content;
+
+                // Log the content for debugging
+                console.log(`[Chat] Checking message ${m.id} (${m.role}):`, typeof content, content);
+
+                // Try to parse if it's a JSON string
+                if (typeof content === 'string') {
+                  try {
+                    const parsed = JSON.parse(content);
+                    if (Array.isArray(parsed)) {
+                      // If it's an array, check if any item has type tool_use or tool_result
+                      const hasToolContent = parsed.some(
+                        (item) => item.type === 'tool_use' || item.type === 'tool_result'
+                      );
+                      if (hasToolContent) {
+                        console.log('[Chat] Filtering out message with tool content:', m.id);
+                        return false;
+                      }
+                    }
+                  } catch {
+                    // Not JSON, check if string contains tool references
+                    if (content.includes('tool_use') || content.includes('tool_result')) {
+                      console.log('[Chat] Filtering out message with tool reference in string:', m.id);
+                      return false;
+                    }
+                  }
+                } else if (typeof content === 'object') {
+                  // If it's already an object/array
+                  if (Array.isArray(content)) {
+                    const hasToolContent = content.some(
+                      (item) => item.type === 'tool_use' || item.type === 'tool_result'
+                    );
+                    if (hasToolContent) {
+                      console.log('[Chat] Filtering out message with tool content object:', m.id);
+                      return false;
+                    }
+                  }
+                  console.log('[Chat] Filtering out message with structured content:', m.id);
+                  return false; // Skip any other structured content
+                }
+
+                return true;
+              })
+              .map((m) => ({
+                role: m.role as 'user' | 'assistant',
+                content: m.content,
+              })) || [];
+
+            console.log(`[Chat] Loaded ${messages?.length || 0} messages, filtered to ${messageHistory.length} messages`);
 
             messageHistory.push({
               role: 'user',
@@ -309,39 +360,48 @@ export async function POST(request: Request) {
 
             // Handle tool calls (may need multiple rounds)
             while (response.stop_reason === 'tool_use') {
-              const toolUse = response.content.find((block) => block.type === 'tool_use');
+              // Get ALL tool_use blocks from the response
+              const toolUses = response.content.filter((block) => block.type === 'tool_use');
 
-              if (!toolUse || toolUse.type !== 'tool_use') break;
+              if (toolUses.length === 0) break;
 
-              console.log(`[Chat] Tool called: ${toolUse.name}`, toolUse.input);
+              console.log(`[Chat] ${toolUses.length} tool(s) called`);
 
-              // Execute the tool
-              const toolResult = await executeToolCall(toolUse.name, toolUse.input as Record<string, any>);
-
-              // Check if tool returned navigation data
-              const nav = extractNavigation(toolResult);
-              if (nav) {
-                navigationData = nav;
-              }
-
-              const formattedResult = formatToolResult(toolResult);
-
-              // Add assistant's tool use to history
+              // Add assistant's tool use to history (entire response with all tool calls)
               messageHistory.push({
                 role: 'assistant',
                 content: response.content,
               });
 
-              // Add tool result
+              // Execute ALL tools and collect results
+              const toolResults: any[] = [];
+              for (const toolUse of toolUses) {
+                if (toolUse.type !== 'tool_use') continue;
+
+                console.log(`[Chat] Executing tool: ${toolUse.name}`, toolUse.input);
+
+                // Execute the tool
+                const toolResult = await executeToolCall(toolUse.name, toolUse.input as Record<string, any>);
+
+                // Check if tool returned navigation data
+                const nav = extractNavigation(toolResult);
+                if (nav) {
+                  navigationData = nav;
+                }
+
+                const formattedResult = formatToolResult(toolResult);
+
+                toolResults.push({
+                  type: 'tool_result',
+                  tool_use_id: toolUse.id,
+                  content: formattedResult,
+                });
+              }
+
+              // Add ALL tool results in a single user message
               messageHistory.push({
                 role: 'user',
-                content: [
-                  {
-                    type: 'tool_result',
-                    tool_use_id: toolUse.id,
-                    content: formattedResult,
-                  },
-                ],
+                content: toolResults,
               });
 
               // Get Claude's response with the tool results

@@ -58,7 +58,7 @@ export const config: Config = {
     playground: getEnv('GRAPHQL_PLAYGROUND', 'true') === 'true',
   },
   cors: {
-    origins: getEnv('CORS_ORIGINS', 'http://localhost:3000').split(','),
+    origins: getEnv('CORS_ORIGINS', 'http://localhost:3000').split(/[,;]/),
   },
   nodeEnv: getEnv('NODE_ENV', 'development'),
 };
@@ -67,7 +67,28 @@ export function validateConfig(): void {
   console.log('🔍 Validating configuration...');
   console.log(`Neo4j URI: ${config.neo4j.uri}`);
   console.log(`Server Port: ${config.server.port}`);
-  console.log(`CORS Origins: ${config.cors.origins.join(', ')}`);
   console.log(`Environment: ${config.nodeEnv}`);
+
+  // Validate CORS origins
+  console.log(`CORS Origins (raw): ${JSON.stringify(config.cors.origins)}`);
+
+  if (!Array.isArray(config.cors.origins)) {
+    throw new Error(`CORS_ORIGINS failed to parse into array. Got: ${typeof config.cors.origins}`);
+  }
+
+  if (config.cors.origins.length === 0) {
+    throw new Error('CORS_ORIGINS must contain at least one origin');
+  }
+
+  // Validate each origin is a valid URL
+  config.cors.origins.forEach((origin, idx) => {
+    try {
+      new URL(origin);
+    } catch (e) {
+      throw new Error(`Invalid CORS origin at index ${idx}: "${origin}". Must be a valid URL (e.g., https://example.com)`);
+    }
+  });
+
+  console.log(`✅ CORS Origins (${config.cors.origins.length}): ${config.cors.origins.join(', ')}`);
   console.log('✅ Configuration valid');
 }

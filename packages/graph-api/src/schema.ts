@@ -685,6 +685,24 @@ export const typeDefs = `#graphql
         columnName: "mp"
       )
 
+    # Server-side randomized MPs with optional party filtering
+    randomMPs(
+      parties: [String!]
+      limit: Int = 8
+    ): [MP!]!
+      @cypher(
+        statement: """
+        MATCH (mp:MP)
+        WHERE mp.current = true
+          AND ($parties IS NULL OR size($parties) = 0 OR mp.party IN $parties)
+        WITH mp, rand() AS r
+        ORDER BY r
+        LIMIT $limit
+        RETURN mp
+        """
+        columnName: "mp"
+      )
+
     # Case-insensitive Bill search with filters
     searchBills(
       searchTerm: String

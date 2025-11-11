@@ -8,7 +8,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -29,13 +29,13 @@ export function UserMenu() {
     return (
       <div className="flex items-center space-x-2">
         <Link
-          href="/auth/login"
+          href={"/auth/login" as any}
           className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
         >
           Sign In
         </Link>
         <Link
-          href="/auth/signup"
+          href={"/auth/signup" as any}
           className="px-4 py-2 text-sm font-medium text-white bg-accent-red rounded-md hover:bg-accent-red-hover transition-colors"
         >
           Sign Up
@@ -140,7 +140,7 @@ export function UserMenu() {
             </div>
 
             <Link
-              href="/settings"
+              href={"/settings" as any}
               className="block px-4 py-2 text-sm text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors"
               onClick={() => setMenuOpen(false)}
             >
@@ -149,7 +149,7 @@ export function UserMenu() {
 
             {subscriptionTier === 'FREE' && (
               <Link
-                href="/pricing"
+                href={"/pricing" as any}
                 className="block px-4 py-2 text-sm text-accent-red hover:bg-accent-red/10 border-t border-border-subtle transition-colors"
                 onClick={() => setMenuOpen(false)}
               >

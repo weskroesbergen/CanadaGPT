@@ -33,7 +33,7 @@ export function Header() {
           </Link>
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-3 lg:space-x-5 flex-shrink min-w-0">
+          <nav className="hidden lg:flex items-center space-x-3 lg:space-x-5 flex-shrink min-w-0">
             <Link href="/dashboard" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
               {t('dashboard')}
             </Link>
@@ -69,7 +69,7 @@ export function Header() {
             <LanguageSwitcher />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+              className="lg:hidden p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
               aria-label="Menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -85,7 +85,7 @@ export function Header() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden border-t border-border-subtle"
+              className="lg:hidden border-t border-border-subtle"
             >
               <nav className="py-4 space-y-1">
                 <Link

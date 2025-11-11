@@ -18,7 +18,25 @@ echo "Image: $IMAGE"
 echo "Region: $REGION"
 echo ""
 
+# Step 1: Validate environment variables
+echo "🔍 Step 1/4: Validating environment variables..."
+export NEO4J_URI="bolt://${NEO4J_INTERNAL_IP}:7687"
+export CORS_ORIGINS="https://canadagpt.ca;http://localhost:3000;https://www.canadagpt.ca"
+./scripts/validate-env.sh graph-api production || {
+  echo "❌ Environment validation failed. Fix errors above and try again."
+  exit 1
+}
+echo ""
+
+# Build and push Docker image with linux/amd64 platform for Cloud Run
+echo "📦 Step 2/4: Building Docker image for linux/amd64 (no-cache to prevent stale code)..."
+cd packages/graph-api
+docker buildx build --platform linux/amd64 --no-cache -t $IMAGE --push .
+cd ../..
+echo ""
+
 # Deploy to Cloud Run with Direct VPC Egress
+echo "🚀 Step 3/4: Deploying to Cloud Run..."
 gcloud run deploy $SERVICE_NAME \
   --image=$IMAGE \
   --platform=managed \
@@ -31,8 +49,7 @@ gcloud run deploy $SERVICE_NAME \
   --min-instances=0 \
   --max-instances=10 \
   --timeout=300 \
-  --set-env-vars="NEO4J_URI=bolt://${NEO4J_INTERNAL_IP}:7687,NEO4J_USER=neo4j,NEO4J_PASSWORD=${NEO4J_PASSWORD},NODE_ENV=production" \
-  --set-env-vars="CORS_ORIGINS=https^:^//canadagpt.ca,http^:^//localhost^:^3000,https^:^//www.canadagpt.ca" \
+  --set-env-vars="NEO4J_URI=bolt://${NEO4J_INTERNAL_IP}:7687,NEO4J_USER=neo4j,NEO4J_PASSWORD=${NEO4J_PASSWORD},NODE_ENV=production,CORS_ORIGINS=https://canadagpt.ca;http://localhost:3000;https://www.canadagpt.ca" \
   --vpc-connector=canadagpt-connector \
   --vpc-egress=private-ranges-only
 
@@ -47,6 +64,19 @@ SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --proj
 echo ""
 echo "📡 GraphQL API URL: $SERVICE_URL/graphql"
 echo ""
-echo "Test with:"
-echo "  curl $SERVICE_URL/graphql?query={__typename}"
+
+# Step 4: Run smoke tests
+echo "🧪 Step 4/4: Running smoke tests..."
+./scripts/smoke-test.sh "$SERVICE_URL" "https://canadagpt.ca" || {
+  echo ""
+  echo "⚠️  Warning: Smoke tests failed. The deployment completed but may have issues."
+  echo "   Review the errors above and test manually:"
+  echo "   curl $SERVICE_URL/graphql?query={__typename}"
+  exit 1
+}
+
+echo ""
+echo "========================================="
+echo "🎉 Deployment successful and verified!"
+echo "========================================="
 echo ""

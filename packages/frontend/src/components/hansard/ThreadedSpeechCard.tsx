@@ -7,13 +7,15 @@
 
 import React, { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { ChevronDown, ChevronUp, MessageSquare, User, Calendar, Hash } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageSquare, User, Calendar, Hash, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { getBilingualContent } from '@/hooks/useBilingual';
 import { ShareButton } from '../ShareButton';
 import { PrintableCard } from '../PrintableCard';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
+import { useChatStore } from '@/lib/stores/chatStore';
+import { BookmarkButton } from '../bookmarks/BookmarkButton';
 
 interface Statement {
   id: string;
@@ -133,6 +135,9 @@ const StatementCard = React.memo(function StatementCard({
   const dateLocale = locale === 'fr' ? fr : enUS;
   const bilingualStatement = getBilingualContent(statement, locale);
 
+  const [isFactChecking, setIsFactChecking] = useState(false);
+  const { sendMessage, toggleOpen, setContext, isOpen } = useChatStore();
+
   const party = statement.madeBy?.party || '';
   const colors = getPartyColors(party);
   const typeBadge = getStatementTypeBadge(statement.statement_type);
@@ -141,12 +146,81 @@ const StatementCard = React.memo(function StatementCard({
   const photoUrl = statement.madeBy ? getMPPhotoUrl(statement.madeBy) : null;
   const [imageError, setImageError] = React.useState(false);
 
-  // Share data
-  const shareUrl = `/${locale}/hansard#${statement.id}`;
+  // Share data - use dedicated share route for rich social media previews
+  const shareUrl = `/${locale}/share/speech/${statement.id}`;
   const shareTitle = `${statement.madeBy?.name || bilingualStatement.who} - ${typeBadge.label}`;
   const shareDescription = bilingualStatement.content
     ? bilingualStatement.content.substring(0, 150) + (bilingualStatement.content.length > 150 ? '...' : '')
     : '';
+
+  // Fact-check handler
+  const handleFactCheck = async () => {
+    setIsFactChecking(true);
+
+    try {
+      // Get localized content
+      const content = locale === 'fr' ? statement.content_fr : statement.content_en;
+      const speaker = statement.madeBy?.name ||
+                     (locale === 'fr' ? statement.who_fr : statement.who_en);
+      const date = statement.time ?
+                  new Date(statement.time).toLocaleDateString() :
+                  'Unknown date';
+
+      // Build parent context if exists
+      let parentContext = '';
+      if (statement.replyTo) {
+        const parentContent = locale === 'fr' ?
+                            statement.replyTo.content_fr :
+                            statement.replyTo.content_en;
+        const parentSpeaker = statement.replyTo.madeBy?.name ||
+                            (locale === 'fr' ? statement.replyTo.who_fr : statement.replyTo.who_en);
+
+        parentContext = `\n\nContext - Previous statement this is responding to:
+Speaker: ${parentSpeaker} (${statement.replyTo.madeBy?.party || 'Unknown'})
+Statement: "${parentContent}"
+`;
+      }
+
+      // Build fact-check prompt
+      const prompt = `Please act as a professional fact-checker and verify this parliamentary statement:
+
+Speaker: ${speaker} (${statement.madeBy?.party || 'Unknown'})
+Date: ${date}
+Type: ${statement.statement_type || 'Unknown'}
+${parentContext}
+
+Statement to fact-check:
+"${content}"
+
+Please verify:
+1. Any factual claims made
+2. Statistics or numbers cited
+3. References to legislation, bills, or votes
+4. Claims about other MPs' positions or actions
+5. Historical or contextual accuracy
+
+Use Hansard records, bills, votes, and other parliamentary data to support your analysis. Provide sources for your verification.`;
+
+      // Set context for AI
+      setContext('general', statement.id, {
+        statement_id: statement.id,
+        speaker: speaker,
+        party: statement.madeBy?.party,
+        statement_type: statement.statement_type,
+        action: 'fact_check'
+      });
+
+      // Open chat if closed
+      if (!isOpen) {
+        toggleOpen();
+      }
+
+      // Send message
+      await sendMessage(prompt);
+    } finally {
+      setIsFactChecking(false);
+    }
+  };
 
   return (
     <PrintableCard>
@@ -170,8 +244,48 @@ const StatementCard = React.memo(function StatementCard({
       role={onClick ? 'button' : undefined}
       aria-label={`${isReply ? 'Reply from' : 'Statement by'} ${bilingualStatement.who}, ${statement.wordcount} words`}
     >
-      {/* Share Button - Top Right */}
-      <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+      {/* Action Buttons - Top Right */}
+      <div className="absolute top-3 right-3 z-20 flex gap-2" onClick={(e) => e.stopPropagation()}>
+        {/* Fact-Check Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFactCheck();
+          }}
+          disabled={isFactChecking}
+          className={`rounded-lg border-2 p-2 shadow-md transition-colors
+                      bg-white dark:bg-gray-900
+                      ${isFactChecking
+                        ? 'border-accent-blue text-accent-blue animate-pulse cursor-wait shadow-lg'
+                        : 'border-border text-text-secondary hover:text-accent-blue hover:border-accent-blue hover:shadow-lg'
+                      }`}
+          title="Fact-check this statement"
+          aria-label="Fact-check this statement"
+        >
+          <CheckCircle size={18} />
+        </button>
+
+        {/* Bookmark Button */}
+        <BookmarkButton
+          bookmarkData={{
+            itemType: 'statement',
+            itemId: statement.id,
+            title: shareTitle,
+            subtitle: `${bilingualStatement.content?.substring(0, 100)}...`,
+            imageUrl: photoUrl || undefined,
+            url: shareUrl,
+            metadata: {
+              speaker: statement.madeBy?.name || bilingualStatement.who,
+              party: statement.madeBy?.party,
+              statement_type: statement.statement_type,
+              wordcount: statement.wordcount,
+              time: statement.time,
+            },
+          }}
+          size="sm"
+        />
+
+        {/* Share Button */}
         <ShareButton
           url={shareUrl}
           title={shareTitle}
@@ -181,7 +295,7 @@ const StatementCard = React.memo(function StatementCard({
       </div>
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-3 pr-10">
+      <div className="flex items-start justify-between gap-3 mb-3 pr-40">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* Avatar */}
           {photoUrl && !imageError ? (

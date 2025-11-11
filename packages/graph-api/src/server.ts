@@ -46,6 +46,7 @@ export function createGraphQLSchema() {
  */
 export async function createGraphQLServer() {
   console.log('🚀 Creating GraphQL server...');
+  console.log(`📋 CORS Origins (type: ${typeof config.cors.origins}, value:`, config.cors.origins);
 
   const neoSchema = createGraphQLSchema();
   const schema = await neoSchema.getSchema();

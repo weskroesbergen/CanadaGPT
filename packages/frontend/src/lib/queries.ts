@@ -366,6 +366,28 @@ export const GET_TOP_SPENDERS = gql`
   ${MP_BASIC_FRAGMENT}
 `;
 
+// Optimized dashboard aggregate queries - avoid over-fetching
+export const GET_DASHBOARD_COUNTS = gql`
+  query GetDashboardCounts {
+    mpsAggregate(where: { current: true }) {
+      count
+    }
+    billsAggregate {
+      count
+    }
+  }
+`;
+
+// Server-side randomized MPs with party filtering
+export const GET_RANDOM_MPS = gql`
+  query GetRandomMPs($parties: [String!], $limit: Int = 8) {
+    randomMPs(parties: $parties, limit: $limit) {
+      ...MPBasic
+    }
+  }
+  ${MP_BASIC_FRAGMENT}
+`;
+
 export const GET_CONFLICTS_OF_INTEREST = gql`
   query GetConflictsOfInterest($limit: Int = 20) {
     conflictsOfInterest(limit: $limit) {

@@ -9,6 +9,7 @@
 'use client';
 
 import { getMajorParties, getPartyInfo, getPartyStyles } from '@/lib/partyConstants';
+import { PartyLogo } from './PartyLogo';
 
 export interface PartyFilterButtonsProps {
   selected: string[];
@@ -59,17 +60,15 @@ export function PartyFilterButtons({
           <button
             key={party.slug}
             onClick={() => handleToggle(party.name)}
-            className={`flex items-center justify-center w-10 h-10 rounded-lg font-bold text-sm transition-all ${
+            className={`transition-all ${
               isActive ? 'ring-2 ring-offset-2' : 'opacity-60 hover:opacity-100'
             }`}
             style={{
-              backgroundColor: party.color,
-              color: party.textColor,
               ...(isActive && { ringColor: party.color }),
             }}
             title={party.fullName}
           >
-            {party.name === 'NDP' ? 'NDP' : party.name === 'Bloc Québécois' ? 'BQ' : party.name.charAt(0)}
+            <PartyLogo party={party.name} size="md" />
           </button>
         );
       })}
@@ -114,17 +113,15 @@ export function CompactPartyFilterButtons({
           <button
             key={party.slug}
             onClick={() => handleToggle(party.name)}
-            className={`flex items-center justify-center w-10 h-10 rounded-lg font-bold text-sm transition-all ${
+            className={`transition-all ${
               isActive ? 'ring-2 ring-offset-2' : 'opacity-60 hover:opacity-100'
             }`}
             style={{
-              backgroundColor: party.color,
-              color: party.textColor,
               ...(isActive && { ringColor: party.color }),
             }}
             title={party.fullName}
           >
-            {party.name === 'NDP' ? 'NDP' : party.name === 'Bloc Québécois' ? 'BQ' : party.name.charAt(0)}
+            <PartyLogo party={party.name} size="sm" />
           </button>
         );
       })}

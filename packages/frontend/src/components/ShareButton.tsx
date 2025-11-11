@@ -2,12 +2,13 @@
  * ShareButton Component
  *
  * Universal share button with social media sharing, clipboard, email, and print.
- * Uses Web Share API on mobile when available, falls back to dropdown menu.
+ * Uses Web Share API on mobile when available, falls back to dropdown menu via portal.
  */
 
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import {
   Share2,
@@ -41,7 +42,10 @@ export function ShareButton({
 }: ShareButtonProps) {
   const t = useTranslations('share');
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
   const shareData: ShareData = { url, title, description };
   const {
@@ -59,10 +63,33 @@ export function ShareButton({
     shareThreads,
   } = useShare(shareData);
 
+  // Handle mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Calculate dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = 224; // w-56 = 14rem = 224px
+
+      setDropdownPosition({
+        top: rect.bottom + 8, // 8px gap below button
+        left: rect.right - dropdownWidth, // Right-align with button
+      });
+    }
+  }, [isOpen]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -80,6 +107,17 @@ export function ShareButton({
     // Stop propagation to prevent parent Link from being triggered
     e.preventDefault();
     e.stopPropagation();
+
+    // Calculate position BEFORE opening to prevent flicker
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = 224; // w-56 = 14rem = 224px
+
+      setDropdownPosition({
+        top: rect.bottom + 8, // 8px gap below button
+        left: rect.right - dropdownWidth, // Right-align with button
+      });
+    }
 
     // Always show dropdown menu for consistent experience across devices
     setIsOpen(!isOpen);
@@ -111,31 +149,21 @@ export function ShareButton({
     lg: 24,
   };
 
-  return (
-    <div className={cn('relative', className)} ref={dropdownRef}>
-      {/* Share button */}
-      <button
-        onClick={handleShareClick}
-        className={cn(
-          'rounded-lg border-2 border-text-secondary bg-transparent transition-colors',
-          'text-text-secondary hover:text-accent-red hover:border-accent-red',
-          sizeClasses[size]
-        )}
-        aria-label={t('button')}
-        title={t('button')}
-      >
-        <Share2 size={iconSizes[size]} />
-      </button>
-
-      {/* Dropdown menu */}
-      {isOpen && (
-        <div
-          className="
-            absolute right-0 mt-2 w-56
-            bg-bg-secondary border-2 border-border rounded-lg
-            shadow-2xl z-50 py-2
-          "
-        >
+  const dropdownContent = isOpen && mounted && (
+    <div
+      ref={dropdownRef}
+      style={{
+        position: 'fixed',
+        top: `${dropdownPosition.top}px`,
+        left: `${dropdownPosition.left}px`,
+        zIndex: 9999,
+      }}
+      className="
+        w-56
+        bg-bg-secondary border-2 border-border rounded-lg
+        shadow-2xl py-2
+      "
+    >
           {/* Primary action: Copy link */}
           <button
             onClick={handleCopyClick}
@@ -300,8 +328,30 @@ export function ShareButton({
             </svg>
             <span className="text-sm text-text-primary">{t('threads')}</span>
           </button>
-        </div>
-      )}
     </div>
+  );
+
+  return (
+    <>
+      {/* Share button */}
+      <button
+        ref={buttonRef}
+        onClick={handleShareClick}
+        className={cn(
+          'rounded-lg border-2 border-border shadow-md transition-colors',
+          'bg-transparent',
+          'text-text-secondary hover:text-accent-red hover:border-accent-red hover:shadow-lg',
+          sizeClasses[size],
+          className
+        )}
+        aria-label={t('button')}
+        title={t('button')}
+      >
+        <Share2 size={iconSizes[size]} />
+      </button>
+
+      {/* Dropdown menu rendered via portal */}
+      {mounted && dropdownContent && createPortal(dropdownContent, document.body)}
+    </>
   );
 }

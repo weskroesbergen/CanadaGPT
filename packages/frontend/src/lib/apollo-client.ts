@@ -61,3 +61,21 @@ export const apolloClient = new ApolloClient({
     },
   },
 });
+
+/**
+ * Create a new Apollo Client instance for server-side use (e.g., in metadata generation)
+ * This is necessary because the main apolloClient is shared and may not be suitable for SSR
+ */
+export function createApolloClient() {
+  return new ApolloClient({
+    link: from([errorLink, httpLink]),
+    cache: new InMemoryCache(),
+    defaultOptions: {
+      query: {
+        fetchPolicy: 'no-cache', // Always fetch fresh data for metadata generation
+        errorPolicy: 'all',
+      },
+    },
+    ssrMode: true, // Enable SSR mode for server-side rendering
+  });
+}

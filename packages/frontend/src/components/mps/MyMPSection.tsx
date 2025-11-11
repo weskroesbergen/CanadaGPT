@@ -44,6 +44,7 @@ export function MyMPSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPendingSave, setIsPendingSave] = useState(false);
 
   // Query to get MP directly by ID if preferred_mp_id exists
   const { data: preferredMpData, loading: preferredMpLoading } = useQuery(GET_MP, {
@@ -95,12 +96,9 @@ export function MyMPSection() {
         return prev;
       });
 
-      // Save MP ID to user profile
-      if (user && profile && mpId !== profile.preferred_mp_id) {
-        updateUserPostalCode(postalCode, mpId);
-      }
+      // Don't auto-save - let user click Save button
     }
-  }, [dbMpData, user, profile, postalCode, updateUserPostalCode]);
+  }, [dbMpData]);
 
   // Load preferred MP from database if available
   useEffect(() => {
@@ -116,6 +114,8 @@ export function MyMPSection() {
         phone: mp.phone,
         url: mp.ourcommons_url
       });
+      // This MP is already saved, so no pending save
+      setIsPendingSave(false);
     }
   }, [preferredMpData, mpData]);
 
@@ -168,13 +168,32 @@ export function MyMPSection() {
         offices: mp.offices
       });
 
-      // Save postal code to user profile if authenticated
-      if (user && profile && pc !== profile.postal_code) {
-        await updateUserPostalCode(pc);
-      }
+      // Mark as pending save - let user click Save button
+      setIsPendingSave(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.genericError'));
       setMpData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveMP = async () => {
+    if (!mpData || !user || !profile) return;
+
+    setLoading(true);
+    try {
+      // Get the correct database ID if we have it
+      const mpId = dbMpData?.searchMPs?.[0]?.id || mpData.id;
+
+      // Save to user profile
+      await updateUserPostalCode(postalCode, mpId);
+
+      // Clear pending save state
+      setIsPendingSave(false);
+    } catch (err) {
+      setError('Failed to save MP preference');
+      console.error('Error saving MP:', err);
     } finally {
       setLoading(false);
     }
@@ -220,6 +239,9 @@ export function MyMPSection() {
             url: mp.url,
             offices: mp.offices
           });
+
+          // Mark as pending save - let user click Save button
+          setIsPendingSave(true);
         } catch (err) {
           setError(err instanceof Error ? err.message : t('errors.genericError'));
         } finally {
@@ -332,13 +354,25 @@ export function MyMPSection() {
             </div>
           )}
 
-          {/* Change Button */}
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-md transition-colors flex-shrink-0"
-          >
-            Change
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-2 flex-shrink-0">
+            {isPendingSave ? (
+              <button
+                onClick={handleSaveMP}
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
+              >
+                {loading ? 'Saving...' : 'Save'}
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsExpanded(true)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-md transition-colors"
+              >
+                Change
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Action Buttons */}

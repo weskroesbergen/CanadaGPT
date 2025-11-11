@@ -59,57 +59,21 @@ export function ChatWidget() {
     refreshUsageStats();
   }, [user, checkQuota, refreshUsageStats]);
 
-  // Welcome flow for first-time users
+  // Welcome flow for first-time users - DISABLED (auto-open removed)
   React.useEffect(() => {
     const showWelcome = async () => {
-      // Only show welcome if user is logged in, hasn't seen it, and we haven't shown it this session
+      // Only mark as seen if user is logged in and hasn't seen it
       if (user && preferences && !preferences.has_seen_welcome && !hasShownWelcome) {
         // Mark as shown immediately to prevent re-triggering
         setHasShownWelcome(true);
 
-        // Wait a moment for the page to settle
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Open the chat
-        if (!isOpen) {
-          toggleOpen();
-        }
-
-        // Create conversation if it doesn't exist
-        const currentConversation = useChatStore.getState().conversation;
-        if (!currentConversation) {
-          await createConversation();
-        }
-
-        // Wait another moment for the chat to open
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Add welcome message directly (not through API)
-        const welcomeMessage = `Hey there. I'm Gordie, your guide to Canadian Parliament.
-
-Ask me about MPs, bills, committees, lobbying, or anything related to federal politics. I'll give you context and connections from parliamentary records, lobbying data, and The Canadian Encyclopedia.
-
-What would you like to know?`;
-
-        const finalConversation = useChatStore.getState().conversation;
-        if (finalConversation) {
-          addMessage({
-            id: crypto.randomUUID(),
-            conversation_id: finalConversation.id,
-            role: 'assistant',
-            content: welcomeMessage,
-            used_byo_key: false,
-            created_at: new Date().toISOString(),
-          });
-        }
-
-        // Mark as seen in preferences
+        // Mark as seen in preferences (without auto-opening)
         await updatePreferences({ has_seen_welcome: true });
       }
     };
 
     showWelcome();
-  }, [user, preferences, hasShownWelcome, isOpen, toggleOpen, createConversation, addMessage, updatePreferences]);
+  }, [user, preferences, hasShownWelcome, updatePreferences]);
 
   // Keyboard shortcut: Cmd/Ctrl + K
   React.useEffect(() => {

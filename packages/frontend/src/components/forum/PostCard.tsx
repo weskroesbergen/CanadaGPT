@@ -10,6 +10,7 @@ import type { ForumPost } from '@/types/forum';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '../ShareButton';
 import { PrintableCard } from '../PrintableCard';
+import { BookmarkButton } from '../bookmarks/BookmarkButton';
 
 interface PostCardProps {
   post: ForumPost;
@@ -108,8 +109,26 @@ export function PostCard({
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-start justify-between gap-2 mb-2 relative">
-            {/* Share Button - Top Right */}
-            <div className="absolute top-0 right-0">
+            {/* Action Buttons - Top Right */}
+            <div className="absolute top-0 right-0 flex gap-2">
+              <BookmarkButton
+                bookmarkData={{
+                  itemType: 'post',
+                  itemId: post.id,
+                  title: shareTitle,
+                  subtitle: shareDescription,
+                  url: shareUrl,
+                  metadata: {
+                    post_type: post.post_type,
+                    category_id: post.category_id,
+                    bill_number: post.bill_number,
+                    author_name: post.author?.display_name,
+                    upvotes: localUpvotes,
+                    replies: post.reply_count,
+                  },
+                }}
+                size="sm"
+              />
               <ShareButton
                 url={shareUrl}
                 title={shareTitle}

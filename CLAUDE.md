@@ -346,3 +346,7 @@ The client code includes fixes from the original canfedinfo library:
 **OurCommonsHansardClient** (clients/ourcommons.py:89-96, 101-149):
 - Fixed UTF-8 BOM handling by decoding with 'utf-8-sig' encoding
 - Updated XML parsing to match actual Hansard structure using `<ExtractedInformation>`, `<Intervention>`, and `<ParaText>` elements
+- Always compile graph-api for Cloud Run with --platform linux/amd64
+- production application is located on neo4j VM on google cloud services
+- Ingestion functions are handled on the ingestion VM in Google Cloud Services
+- canadagpt-graph-api is the container in Cloud Run for the production graph api

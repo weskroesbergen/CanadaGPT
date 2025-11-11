@@ -1,12 +1,13 @@
 /**
  * PartyLogo Component
  *
- * Displays a party logo or branded badge with consistent styling
+ * Displays official party logos where available, falls back to branded badges
  * Supports different sizes and optional linking
  */
 
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { getPartyInfo, getPartySlug } from '@/lib/partyConstants';
 
@@ -18,11 +19,19 @@ export interface PartyLogoProps {
   className?: string;
 }
 
+// Image sizes in pixels
+const imageSizes = {
+  sm: 28,
+  md: 38,
+  lg: 48,
+  xl: 58,
+};
+
 const sizeClasses = {
-  sm: 'h-6 w-6 text-xs',
-  md: 'h-8 w-8 text-sm',
-  lg: 'h-10 w-10 text-base',
-  xl: 'h-12 w-12 text-lg',
+  sm: 'h-[30px] w-[30px] text-xs',
+  md: 'h-10 w-10 text-sm',
+  lg: 'h-[50px] w-[50px] text-base',
+  xl: 'h-15 w-15 text-lg',
 };
 
 const labelSizes = {
@@ -33,7 +42,25 @@ const labelSizes = {
 };
 
 /**
- * Get party initials for badge display
+ * Get party logo URL from Google Cloud Storage
+ * Returns null if no official logo exists (will fall back to initials badge)
+ */
+function getPartyLogoPath(partyName: string): string | null {
+  const GCS_BASE = 'https://storage.googleapis.com/canada-gpt-ca-mp-photos/party-logos';
+
+  const logos: Record<string, string> = {
+    'Liberal': `${GCS_BASE}/liberal-logo.png`,
+    'Conservative': `${GCS_BASE}/conservative-logo.png`,
+    'NDP': `${GCS_BASE}/ndp-logo.png?v=2`,
+    'Bloc Québécois': `${GCS_BASE}/bloc-quebecois-logo.png`,
+    'Green': `${GCS_BASE}/green-logo.png`,
+  };
+
+  return logos[partyName] || null;
+}
+
+/**
+ * Get party initials for badge display (fallback when no logo available)
  */
 function getPartyInitials(partyName: string): string {
   const initials: Record<string, string> = {
@@ -59,6 +86,7 @@ export function PartyLogo({
 
   if (!partyInfo) return null;
 
+  const logoPath = getPartyLogoPath(partyInfo.name);
   const initials = getPartyInitials(partyInfo.name);
 
   // Build the link URL if linkTo is specified
@@ -71,20 +99,42 @@ export function PartyLogo({
     href = linkTo;
   }
 
-  const badge = (
-    <div
-      className={`flex items-center justify-center rounded-md font-bold ${sizeClasses[size]} ${className} ${
-        href ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
-      }`}
-      style={{
-        backgroundColor: partyInfo.color,
-        color: partyInfo.textColor,
-      }}
-      title={partyInfo.fullName}
-    >
-      {initials}
-    </div>
-  );
+  // Render official logo if available with consistent badge styling
+  let badge;
+  if (logoPath) {
+    badge = (
+      <div
+        className={`flex items-center justify-center rounded-md bg-white dark:bg-gray-900 shadow-md border border-border-subtle p-1 ${sizeClasses[size]} ${className} ${
+          href ? 'cursor-pointer hover:opacity-90 hover:shadow-lg transition-all' : ''
+        }`}
+        title={partyInfo.fullName}
+      >
+        <Image
+          src={logoPath}
+          alt={`${partyInfo.fullName} logo`}
+          width={imageSizes[size]}
+          height={imageSizes[size]}
+          className="object-contain"
+        />
+      </div>
+    );
+  } else {
+    // Fall back to initials badge with same styling
+    badge = (
+      <div
+        className={`flex items-center justify-center rounded-md font-bold shadow-md border border-border-subtle ${sizeClasses[size]} ${className} ${
+          href ? 'cursor-pointer hover:opacity-90 hover:shadow-lg transition-all' : ''
+        }`}
+        style={{
+          backgroundColor: partyInfo.color,
+          color: partyInfo.textColor,
+        }}
+        title={partyInfo.fullName}
+      >
+        {initials}
+      </div>
+    );
+  }
 
   const content = showLabel ? (
     <div className="flex items-center gap-2">

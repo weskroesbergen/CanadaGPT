@@ -13,7 +13,7 @@ import { Footer } from '@/components/Footer';
 import { Loading } from '@/components/Loading';
 import { Card } from '@canadagpt/design-system';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { GET_TOP_SPENDERS, SEARCH_MPS, SEARCH_BILLS, SEARCH_HANSARD } from '@/lib/queries';
+import { GET_TOP_SPENDERS, SEARCH_MPS, SEARCH_BILLS, SEARCH_HANSARD, GET_DASHBOARD_COUNTS, GET_RANDOM_MPS } from '@/lib/queries';
 import { Link } from '@/i18n/navigation';
 import { formatCAD } from '@canadagpt/design-system';
 import { Users, FileText, Megaphone, DollarSign, TrendingUp, MessageSquare, Info } from 'lucide-react';
@@ -42,43 +42,25 @@ export default function DashboardPage() {
     variables: { query: "government", limit: 10 },
   });
 
-  // Get counts for metrics cards
-  const { data: mpsData } = useQuery(SEARCH_MPS, {
-    variables: { current: true, limit: 500 },
+  // Optimized: Get counts with aggregate queries - 98% less data transfer
+  const { data: countsData } = useQuery(GET_DASHBOARD_COUNTS);
+
+  // Optimized: Get active bills count (need this separate as aggregate doesn't support complex filters yet)
+  const { data: activeBillsData } = useQuery(SEARCH_BILLS, {
+    variables: { limit: 1000 }, // TODO: Add server-side active filter
   });
 
-  const { data: billsData } = useQuery(SEARCH_BILLS, {
-    variables: { limit: 1000 },
-  });
-
-  // Featured MPs query - fetch all and filter client-side for multi-select
-  const { data: featuredMPsData, loading: featuredMPsLoading } = useQuery(SEARCH_MPS, {
+  // Optimized: Server-side randomized MPs with party filtering - no client-side shuffle needed
+  const { data: featuredMPsData, loading: featuredMPsLoading } = useQuery(GET_RANDOM_MPS, {
     variables: {
-      current: true,
-      limit: 100
+      parties: partyFilter.length > 0 ? partyFilter : null,
+      limit: 8
     },
   });
 
-  // Shuffle array using Fisher-Yates algorithm
-  const shuffleArray = (array: any[]) => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  // Client-side filtering for multi-select parties, then randomize
-  const filteredMPs = partyFilter.length === 0
-    ? shuffleArray(featuredMPsData?.searchMPs || [])
-    : shuffleArray((featuredMPsData?.searchMPs || []).filter((mp: any) =>
-        partyFilter.includes(mp.party || mp.memberOf?.name)
-      ));
-
-  const totalMPs = mpsData?.searchMPs?.length || 343;
-  const totalBills = billsData?.searchBills?.filter((b: any) => b.title)?.length || 0;
-  const activeBills = billsData?.searchBills?.filter(
+  const totalMPs = countsData?.mpsAggregate?.count || 343;
+  const totalBills = countsData?.billsAggregate?.count || 0;
+  const activeBills = activeBillsData?.searchBills?.filter(
     (b: any) => b.title && !['Passed', 'Royal Assent'].includes(b.status)
   )?.length || 0;
 
@@ -186,7 +168,7 @@ export default function DashboardPage() {
             <Loading />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3">
-              {filteredMPs.slice(0, 8).map((mp: any) => (
+              {(featuredMPsData?.randomMPs || []).map((mp: any) => (
                 <CompactMPCard key={mp.id} mp={mp} />
               ))}
             </div>

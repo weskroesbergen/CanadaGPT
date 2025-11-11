@@ -50,9 +50,13 @@ export default function MPsPage() {
         const mpParty = mp.party || mp.memberOf?.name;
         const normalizedMpParty = normalizePartyName(mpParty);
 
-        return partyFilter.some(selectedParty =>
-          normalizePartyName(selectedParty) === normalizedMpParty
-        );
+        return partyFilter.some(selectedParty => {
+          const normalizedSelected = normalizePartyName(selectedParty);
+          // Exact match or partial match (e.g., "bloc" matches "bloc quebecois")
+          return normalizedMpParty === normalizedSelected ||
+                 normalizedMpParty.includes(normalizedSelected) ||
+                 normalizedSelected.includes(normalizedMpParty);
+        });
       });
 
   return (

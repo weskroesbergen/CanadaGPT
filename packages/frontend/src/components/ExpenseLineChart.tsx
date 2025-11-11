@@ -94,7 +94,8 @@ export function ExpenseLineChart({ expenses, title = 'Expense Trend Over Time' }
 
   // Calculate points for the line
   const points = quarters.map((quarter, index) => {
-    const x = (index / (quarters.length - 1)) * 100; // percentage
+    // Handle single quarter case - place it in the center
+    const x = quarters.length === 1 ? 50 : (index / (quarters.length - 1)) * 100;
     const y = ((maxAmount - quarter.total) / (maxAmount - minAmount || 1)) * 100; // percentage from top
     return { x, y, quarter };
   });

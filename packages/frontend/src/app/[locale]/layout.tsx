@@ -15,6 +15,7 @@ import { ApolloWrapper } from '@/components/ApolloWrapper';
 import { SessionProvider } from '@/components/providers/SessionProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserPreferencesProvider } from '@/contexts/UserPreferencesContext';
+import { BookmarksProvider } from '@/contexts/BookmarksContext';
 import { ChatWidgetWrapper } from '@/components/chat';
 import { ContentWrapper } from '@/components/ContentWrapper';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -133,12 +134,14 @@ export default async function LocaleLayout({ children, params }: Props) {
             <SessionProvider>
               <AuthProvider>
                 <UserPreferencesProvider>
-                  <ApolloWrapper>
-                    <ContentWrapper>
-                      {children}
-                    </ContentWrapper>
-                    <ChatWidgetWrapper />
-                  </ApolloWrapper>
+                  <BookmarksProvider>
+                    <ApolloWrapper>
+                      <ContentWrapper>
+                        {children}
+                      </ContentWrapper>
+                      <ChatWidgetWrapper />
+                    </ApolloWrapper>
+                  </BookmarksProvider>
                 </UserPreferencesProvider>
               </AuthProvider>
             </SessionProvider>

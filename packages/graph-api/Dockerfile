@@ -25,7 +25,18 @@ COPY src ./src
 RUN pnpm build
 
 # ============================================
-# Stage 2: Production
+# Stage 2: Test
+# ============================================
+FROM builder AS test
+
+# Test that config loads without errors
+# This catches delimiter parsing issues before push
+RUN echo "🧪 Testing configuration..." && \
+    node -e "const { validateConfig } = require('./dist/config.js'); validateConfig();" || \
+    (echo "❌ Config validation failed!" && exit 1)
+
+# ============================================
+# Stage 3: Production
 # ============================================
 FROM node:20-alpine AS production
 
@@ -38,8 +49,8 @@ WORKDIR /app
 COPY package.json ./
 RUN pnpm install --prod
 
-# Copy built JavaScript from builder
-COPY --from=builder /app/dist ./dist
+# Copy built JavaScript from test stage (ensures tests passed)
+COPY --from=test /app/dist ./dist
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

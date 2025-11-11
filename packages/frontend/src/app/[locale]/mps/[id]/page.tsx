@@ -54,6 +54,7 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
 
   const [speechFilter, setSpeechFilter] = useState<string>('all'); // 'all', 'D' (Debates), 'E' (Committee)
   const [expandedSpeeches, setExpandedSpeeches] = useState<Set<string>>(new Set());
+  const [imageError, setImageError] = useState(false);
 
   // Threading state
   const { enabled: threadedViewEnabled, setEnabled: setThreadedViewEnabled } = usePageThreading();
@@ -84,7 +85,6 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
 
   // Get photo URL from GCS or fallback to ID-based construction
   const photoUrl = getMPPhotoUrl(mp);
-  const [imageError, setImageError] = React.useState(false);
 
   return (
     <div className="min-h-screen flex flex-col">

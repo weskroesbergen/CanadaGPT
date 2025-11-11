@@ -10,6 +10,8 @@ import { useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { BillGanttData } from '@/lib/billGanttUtils';
 import { ShareButton } from '@/components/ShareButton';
+import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
+import { PartyLogo } from '@/components/PartyLogo';
 
 interface BillPosition {
   column: number; // Stage column position (%)
@@ -135,8 +137,26 @@ export function BillSquare({ bill, gridPosition, swimlane }: BillSquareProps) {
             relative
           `}
         >
-          {/* Share button in top-right corner */}
-          <div className="absolute top-2 right-2">
+          {/* Action buttons in top-right corner */}
+          <div className="absolute top-2 right-2 flex gap-2">
+            <BookmarkButton
+              bookmarkData={{
+                itemType: 'bill',
+                itemId: `${bill.session}-${bill.number}`,
+                title: `Bill ${bill.number}`,
+                subtitle: String(title),
+                url: `/${locale}/bills/${bill.session}/${bill.number}`,
+                metadata: {
+                  session: bill.session,
+                  bill_type: billType,
+                  status: status,
+                  sponsor: bill.sponsor?.name,
+                  party: bill.sponsor?.party,
+                  is_government_bill: bill.is_government_bill,
+                },
+              }}
+              size="sm"
+            />
             <ShareButton
               url={`/${locale}/bills/${bill.session}/${bill.number}`}
               title={`Bill ${bill.number} - ${String(title)}`}
@@ -177,6 +197,17 @@ export function BillSquare({ bill, gridPosition, swimlane }: BillSquareProps) {
           >
             View Details →
           </Link>
+
+          {/* Sponsor Party Logo - Bottom Right */}
+          {bill.sponsor?.party && (
+            <div className="absolute bottom-2 right-2">
+              <PartyLogo
+                party={bill.sponsor.party}
+                size="sm"
+                linkTo={undefined}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

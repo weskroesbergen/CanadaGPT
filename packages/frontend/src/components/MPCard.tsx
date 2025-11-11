@@ -24,6 +24,7 @@ import { usePartyName } from '@/hooks/useBilingual';
 import { ShareButton } from './ShareButton';
 import { PrintableCard } from './PrintableCard';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
+import { BookmarkButton } from './bookmarks/BookmarkButton';
 
 export interface MPCardData {
   id: string;
@@ -57,25 +58,41 @@ export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) 
     <Link href={`/mps/${mp.id}` as any}>
       <PrintableCard>
         <Card className={`hover:border-accent-red transition-colors cursor-pointer h-full relative ${className}`}>
-          {/* Top Right Corner: Party Logo + Share Button */}
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-            {/* Party Logo */}
-            <div className="flex items-center justify-center">
-              <PartyLogo
-                party={mp.party}
-                size="md"
-                linkTo={undefined}
-              />
-            </div>
-            {/* Share Button - prevent click propagation to card link */}
-            <div className="flex items-center justify-center" onClick={(e) => e.preventDefault()}>
-              <ShareButton
-                url={shareUrl}
-                title={shareTitle}
-                description={shareDescription}
-                size="sm"
-              />
-            </div>
+          {/* Top Right Corner: Bookmark + Share Button */}
+          <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+            {/* Bookmark Button */}
+            <BookmarkButton
+              bookmarkData={{
+                itemType: 'mp',
+                itemId: mp.id,
+                title: mp.name,
+                subtitle: shareDescription,
+                imageUrl: photoUrl || undefined,
+                url: shareUrl,
+                metadata: {
+                  party: mp.party,
+                  riding: mp.riding,
+                  cabinet_position: mp.cabinet_position,
+                },
+              }}
+              size="sm"
+            />
+            {/* Share Button */}
+            <ShareButton
+              url={shareUrl}
+              title={shareTitle}
+              description={shareDescription}
+              size="sm"
+            />
+          </div>
+
+          {/* Bottom Right Corner: Party Logo Badge */}
+          <div className="absolute bottom-3 right-3 z-10">
+            <PartyLogo
+              party={mp.party}
+              size="md"
+              linkTo={undefined}
+            />
           </div>
 
         <div className="flex items-start space-x-4">
@@ -92,7 +109,7 @@ export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) 
           )}
 
           {/* MP Info */}
-          <div className="flex-1 min-w-0 pr-8">
+          <div className="flex-1 min-w-0 pr-28">
             {/* Name */}
             <h3 className="font-semibold text-text-primary truncate">{mp.name}</h3>
 

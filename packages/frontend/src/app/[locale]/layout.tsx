@@ -124,10 +124,10 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html lang={locale} className="h-full">
       <head>
-        <GoogleTagManager />
         <StructuredData locale={locale} />
       </head>
       <body className={`${inter.className} h-full`}>
+        <GoogleTagManager />
         <GoogleTagManagerNoScript />
         <ErrorBoundary>
           <NextIntlClientProvider messages={messages}>

@@ -44,33 +44,21 @@ echo -e "${YELLOW}→ Setting GCP project to ${PROJECT_ID}...${NC}"
 gcloud config set project ${PROJECT_ID}
 echo -e "${GREEN}✓ Project set${NC}"
 
-# Prompt for Supabase credentials
+# Supabase credentials are loaded from GCP Secret Manager
 echo ""
 echo -e "${BLUE}============================================${NC}"
-echo -e "${BLUE}  Supabase Configuration${NC}"
+echo -e "${BLUE}  Configuration${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
-echo -e "${YELLOW}Please enter your Supabase credentials:${NC}"
-echo -e "${YELLOW}(You can find these in your Supabase project settings → API)${NC}"
+echo -e "${YELLOW}Supabase and Auth credentials will be loaded from GCP Secret Manager${NC}"
+echo -e "${YELLOW}Secrets required:${NC}"
+echo -e "${YELLOW}  - supabase-url${NC}"
+echo -e "${YELLOW}  - supabase-anon-key${NC}"
+echo -e "${YELLOW}  - supabase-service-role-key${NC}"
+echo -e "${YELLOW}  - canadagpt-auth-secret${NC}"
+echo -e "${YELLOW}  - google-client-id, google-client-secret (OAuth)${NC}"
+echo -e "${YELLOW}  - encryption-key${NC}"
 echo ""
-
-read -p "Supabase Project URL (NEXT_PUBLIC_SUPABASE_URL): " SUPABASE_URL
-read -p "Supabase Anon Key (NEXT_PUBLIC_SUPABASE_ANON_KEY): " SUPABASE_ANON_KEY
-read -sp "Supabase Service Role Key (SUPABASE_SERVICE_ROLE_KEY): " SUPABASE_SERVICE_ROLE_KEY
-echo ""  # New line after password input
-
-echo ""
-echo -e "${YELLOW}NextAuth Configuration:${NC}"
-echo -e "${YELLOW}If you don't have an AUTH_SECRET, generate one with: openssl rand -base64 32${NC}"
-read -sp "NextAuth Secret (AUTH_SECRET): " AUTH_SECRET
-echo ""  # New line after password input
-
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$AUTH_SECRET" ]; then
-    echo -e "${RED}✗ All credentials are required (Supabase + AUTH_SECRET)${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Supabase credentials provided${NC}"
 
 # Configure Docker for Artifact Registry
 echo ""
@@ -93,14 +81,21 @@ cd "$(dirname "$0")/.."  # Go to repo root
 docker build \
   --platform linux/amd64 \
   --build-arg NEXT_PUBLIC_GRAPHQL_URL="${GRAPHQL_URL}" \
-  --build-arg NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL}" \
-  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}" \
+  --build-arg NEXT_PUBLIC_GRAPHQL_API_KEY="9587c9820b109977a43a9302c23d051d98eff56050581eab63784b0b7f08152d" \
   --build-arg NEXT_PUBLIC_BASE_URL="${BASE_URL}" \
-  --build-arg AUTH_SECRET="${AUTH_SECRET}" \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="https://s.canadagpt.ca" \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBieHloY2R6ZG92c2Rsc3lpeHNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNzc2ODUsImV4cCI6MjA3Nzg1MzY4NX0.zR_b05FSY35hm0TvJHWtzmQqI5hlpBbbw5rZjLOnWpI" \
   -t ${FULL_IMAGE_PATH} \
   -t ${LATEST_IMAGE_PATH} \
   -f packages/frontend/Dockerfile \
   .
+
+# Note: Public Supabase credentials (URL and anon key) are build args since they're exposed to browsers anyway.
+# Sensitive service role key is loaded at runtime from GCP Secret Manager.
+
+# NOTE: AUTH_SECRET is intentionally NOT passed as a build-arg to prevent it from
+# being baked into the Docker image. It is only passed as a runtime environment
+# variable during Cloud Run deployment (see --set-env-vars below).
 
 echo ""
 echo -e "${GREEN}✓ Docker image built successfully${NC}"
@@ -135,7 +130,9 @@ gcloud run deploy ${SERVICE_NAME} \
   --memory=512Mi \
   --cpu=1 \
   --timeout=60 \
-  --set-env-vars="NEXT_PUBLIC_GRAPHQL_URL=${GRAPHQL_URL},NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL},NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},NEXT_PUBLIC_BASE_URL=${BASE_URL},SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY},AUTH_SECRET=${AUTH_SECRET},AUTH_TRUST_HOST=true,NODE_ENV=production" \
+  --service-account=canadagpt-frontend-sa@canada-gpt-ca.iam.gserviceaccount.com \
+  --set-env-vars="NEXT_PUBLIC_GRAPHQL_URL=${GRAPHQL_URL},NEXT_PUBLIC_GRAPHQL_API_KEY=9587c9820b109977a43a9302c23d051d98eff56050581eab63784b0b7f08152d,NEXT_PUBLIC_BASE_URL=${BASE_URL},AUTH_TRUST_HOST=true,NEXTAUTH_URL=${BASE_URL},NODE_ENV=production" \
+  --set-secrets="NEXT_PUBLIC_SUPABASE_URL=supabase-url:latest,NEXT_PUBLIC_SUPABASE_ANON_KEY=supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=supabase-service-role-key:latest,AUTH_SECRET=canadagpt-auth-secret:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,GITHUB_CLIENT_ID=github-client-id:latest,GITHUB_CLIENT_SECRET=github-client-secret:latest,FACEBOOK_CLIENT_ID=facebook-client-id:latest,FACEBOOK_CLIENT_SECRET=facebook-client-secret:latest,LINKEDIN_CLIENT_ID=linkedin-client-id:latest,LINKEDIN_CLIENT_SECRET=linkedin-client-secret:latest,ENCRYPTION_KEY=encryption-key:latest" \
   --port=3000
 
 echo ""

@@ -60,18 +60,18 @@ COPY packages/frontend ./packages/frontend
 WORKDIR /app/packages/frontend
 
 # Build arguments for environment variables
+# NOTE: Only NEXT_PUBLIC_* variables are included at build time
+# Server-only secrets like AUTH_SECRET must be passed at runtime only
 ARG NEXT_PUBLIC_GRAPHQL_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_BASE_URL
-ARG AUTH_SECRET
 
 # Set environment variables for build
 ENV NEXT_PUBLIC_GRAPHQL_URL=$NEXT_PUBLIC_GRAPHQL_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
-ENV AUTH_SECRET=$AUTH_SECRET
 ENV NODE_ENV=production
 
 # Build Next.js application (standalone output)

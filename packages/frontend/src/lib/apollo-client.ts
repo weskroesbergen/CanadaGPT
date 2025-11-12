@@ -4,6 +4,19 @@
 
 import { ApolloClient, InMemoryCache, HttpLink, from } from '@apollo/client';
 import { onError } from '@apollo/client/link/error';
+import { setContext } from '@apollo/client/link/context';
+
+// Auth link to add API key to requests
+const authLink = setContext((_, { headers }) => {
+  const apiKey = process.env.NEXT_PUBLIC_GRAPHQL_API_KEY;
+
+  return {
+    headers: {
+      ...headers,
+      ...(apiKey ? { 'X-API-Key': apiKey } : {}),
+    }
+  };
+});
 
 const httpLink = new HttpLink({
   uri: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql',
@@ -27,7 +40,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 
 // Create Apollo Client instance
 export const apolloClient = new ApolloClient({
-  link: from([errorLink, httpLink]),
+  link: from([authLink, errorLink, httpLink]),
   cache: new InMemoryCache({
     typePolicies: {
       Query: {
@@ -94,7 +107,7 @@ export const apolloClient = new ApolloClient({
  */
 export function createApolloClient() {
   return new ApolloClient({
-    link: from([errorLink, httpLink]),
+    link: from([authLink, errorLink, httpLink]),
     cache: new InMemoryCache(),
     defaultOptions: {
       query: {

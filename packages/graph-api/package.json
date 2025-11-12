@@ -20,13 +20,16 @@
     "@neo4j/graphql-ogm": "^5.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "express-rate-limit": "^8.2.1",
     "fast-xml-parser": "^5.3.1",
     "graphql": "^16.8.1",
     "graphql-yoga": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
     "neo4j-driver": "^5.16.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",

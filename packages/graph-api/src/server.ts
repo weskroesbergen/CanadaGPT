@@ -11,9 +11,13 @@ import { getDriver } from './neo4j.js';
 import { config } from './config.js';
 import { fetchMPNews } from './utils/newsFetcher.js';
 import { queryCache, createCacheKey } from './utils/cache.js';
+import { validateLimit, DEFAULT_LIMITS } from './utils/validation.js';
+import { initializeAPIKeys, authenticateRequest, type AuthContext } from './utils/auth.js';
+import { checkRateLimit, formatResetTime } from './utils/rateLimiter.js';
 
 export interface ServerContext {
   req: Request;
+  auth: AuthContext;
 }
 
 /**
@@ -28,13 +32,18 @@ export function createGraphQLSchema() {
     resolvers: {
       Query: {
         mpNews: async (_parent: unknown, args: { mpName: string; limit?: number }) => {
-          const { mpName, limit = 10 } = args;
+          const { mpName } = args;
+          const limit = validateLimit(args.limit, DEFAULT_LIMITS.top);
           return await fetchMPNews(mpName, limit);
         },
 
         // Cached randomMPs query (5 minute TTL)
         randomMPs: async (_parent: unknown, args: { limit?: number; parties?: string[] }, context: any) => {
-          const cacheKey = createCacheKey('randomMPs', args);
+          // Validate limit to prevent DoS attacks (max 1000)
+          const validatedLimit = validateLimit(args.limit, DEFAULT_LIMITS.random);
+
+          // Create cache key with validated limit to prevent cache pollution
+          const cacheKey = createCacheKey('randomMPs', { limit: validatedLimit, parties: args.parties });
           const cached = queryCache.get(cacheKey);
 
           if (cached) {
@@ -45,7 +54,7 @@ export function createGraphQLSchema() {
           const session = driver.session();
           try {
             // Convert to Neo4j integer type to ensure proper type handling
-            const limit = neo4j.int(Math.floor(args.limit || 12));
+            const limit = neo4j.int(validatedLimit);
 
             const result = await session.run(
               `
@@ -73,7 +82,11 @@ export function createGraphQLSchema() {
 
         // Cached topSpenders query (1 hour TTL)
         topSpenders: async (_parent: unknown, args: { fiscalYear?: number; limit?: number }, context: any) => {
-          const cacheKey = createCacheKey('topSpenders', args);
+          // Validate limit to prevent DoS attacks (max 1000)
+          const validatedLimit = validateLimit(args.limit, DEFAULT_LIMITS.top);
+
+          // Create cache key with validated limit to prevent cache pollution
+          const cacheKey = createCacheKey('topSpenders', { fiscalYear: args.fiscalYear, limit: validatedLimit });
           const cached = queryCache.get(cacheKey);
 
           if (cached) {
@@ -84,7 +97,7 @@ export function createGraphQLSchema() {
           const session = driver.session();
           try {
             // Convert to Neo4j integer type to ensure proper type handling
-            const limit = neo4j.int(Math.floor(args.limit || 10));
+            const limit = neo4j.int(validatedLimit);
             const fiscalYear = args.fiscalYear ? neo4j.int(Math.floor(args.fiscalYear)) : null;
 
             const result = await session.run(
@@ -127,7 +140,7 @@ export function createGraphQLSchema() {
     },
     features: {
       authorization: {
-        key: 'not-used-yet', // TODO: Add JWT auth in production
+        key: config.auth.jwtSecret,
       },
     },
   });
@@ -142,11 +155,36 @@ export async function createGraphQLServer() {
   console.log('🚀 Creating GraphQL server...');
   console.log(`📋 CORS Origins (type: ${typeof config.cors.origins}, value:`, config.cors.origins);
 
+  // Initialize API keys from environment variables
+  initializeAPIKeys();
+
   const neoSchema = createGraphQLSchema();
   const schema = await neoSchema.getSchema();
 
   const yoga = createYoga<ServerContext>({
     schema,
+    context: async ({ request }) => {
+      // Authenticate request
+      const auth = await authenticateRequest(request);
+
+      // Enforce authentication if required
+      if (config.auth.required && !auth.authenticated) {
+        throw new Error(
+          'Authentication required. Provide a valid API key via X-API-Key header or Authorization: Bearer header.'
+        );
+      }
+
+      // Check rate limit
+      const rateLimit = checkRateLimit(auth);
+      if (!rateLimit.allowed) {
+        throw new Error(
+          `Rate limit exceeded. Try again in ${formatResetTime(rateLimit.resetTime)}. ` +
+          `Limit: ${rateLimit.limit} requests/hour`
+        );
+      }
+
+      return { req: request, auth };
+    },
     graphqlEndpoint: '/graphql',
     landingPage: config.graphql.playground,
     graphiql: config.graphql.playground

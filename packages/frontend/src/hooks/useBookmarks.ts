@@ -86,7 +86,7 @@ export function useBookmarks() {
    * Fetch all bookmarks
    */
   const fetchBookmarks = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     setLoading(true);
     setError(null);
@@ -117,7 +117,7 @@ export function useBookmarks() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   /**
    * Create or toggle bookmark
@@ -302,16 +302,17 @@ export function useBookmarks() {
     [user, bookmarks]
   );
 
-  // Fetch bookmarks on mount
+  // Fetch bookmarks on mount and when user changes
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchBookmarks();
     } else {
       setBookmarks([]);
       setFavorites([]);
       setUsage(null);
     }
-  }, [user, fetchBookmarks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // Only re-fetch when user ID changes, not on fetchBookmarks updates
 
   return {
     bookmarks,

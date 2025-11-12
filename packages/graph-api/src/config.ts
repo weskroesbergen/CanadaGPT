@@ -24,6 +24,11 @@ export interface Config {
   graphql: {
     introspection: boolean;
     playground: boolean;
+    allowedIPs: string[];
+  };
+  auth: {
+    required: boolean;
+    jwtSecret: string;
   };
   cors: {
     origins: string[];
@@ -56,6 +61,11 @@ export const config: Config = {
   graphql: {
     introspection: getEnv('GRAPHQL_INTROSPECTION', 'true') === 'true',
     playground: getEnv('GRAPHQL_PLAYGROUND', 'true') === 'true',
+    allowedIPs: getEnv('GRAPHIQL_ALLOWED_IPS', '').split(',').filter(Boolean),
+  },
+  auth: {
+    required: getEnv('AUTH_REQUIRED', 'true') === 'true',
+    jwtSecret: getEnv('JWT_SECRET', 'not-used-yet'),
   },
   cors: {
     origins: getEnv('CORS_ORIGINS', 'http://localhost:3000').split(/[,;]/),

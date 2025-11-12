@@ -36,7 +36,7 @@ cd ../..
 echo ""
 
 # Deploy to Cloud Run with Direct VPC Egress
-echo "🚀 Step 3/4: Deploying to Cloud Run..."
+echo "🚀 Step 3/4: Deploying to Cloud Run with authentication..."
 gcloud run deploy $SERVICE_NAME \
   --image=$IMAGE \
   --platform=managed \
@@ -49,7 +49,9 @@ gcloud run deploy $SERVICE_NAME \
   --min-instances=0 \
   --max-instances=10 \
   --timeout=300 \
-  --set-env-vars="NEO4J_URI=bolt://${NEO4J_INTERNAL_IP}:7687,NEO4J_USER=neo4j,NEO4J_PASSWORD=${NEO4J_PASSWORD},NODE_ENV=production,CORS_ORIGINS=https://canadagpt.ca;http://localhost:3000;https://www.canadagpt.ca" \
+  --set-env-vars="NEO4J_URI=bolt://${NEO4J_INTERNAL_IP}:7687,NEO4J_USER=neo4j,NODE_ENV=production,CORS_ORIGINS=https://canadagpt.ca;http://localhost:3000;https://www.canadagpt.ca,GRAPHQL_INTROSPECTION=false,GRAPHQL_PLAYGROUND=false,GRAPHIQL_ALLOWED_IPS=,AUTH_REQUIRED=true" \
+  --set-secrets="NEO4J_PASSWORD=neo4j-password:latest,FRONTEND_API_KEY=canadagpt-frontend-api-key:latest,PUBLIC_API_KEY=canadagpt-public-api-key:latest,ADMIN_API_KEY=canadagpt-admin-api-key:latest,JWT_SECRET=canadagpt-jwt-secret:latest" \
+  --service-account=canadagpt-graph-api-sa@canada-gpt-ca.iam.gserviceaccount.com \
   --vpc-connector=canadagpt-connector \
   --vpc-egress=private-ranges-only
 

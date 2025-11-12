@@ -334,7 +334,6 @@ export const GET_MP_SCORECARD = gql`
       total_petition_signatures
       current_year_expenses
       lobbyist_meetings
-      legislative_effectiveness
       question_period_interjections
     }
   }

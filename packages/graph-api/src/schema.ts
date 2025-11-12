@@ -288,7 +288,7 @@ export const typeDefs = `#graphql
 
     # Threading fields
     thread_id: String  # Conversation group identifier
-    parent_statement_id: String  # ID of statement this replies to
+    parent_statement_id: Int  # ID of statement this replies to
     sequence_in_thread: Int  # Order within conversation (0 = root)
 
     # Relationships
@@ -356,7 +356,7 @@ export const typeDefs = `#graphql
     statement_type: String
     politician_id: Int
     thread_id: String
-    parent_statement_id: String
+    parent_statement_id: Int
     sequence_in_thread: Int
     wordcount: Int
     procedural: Boolean
@@ -581,7 +581,6 @@ export const typeDefs = `#graphql
     total_petition_signatures: Int!
     current_year_expenses: Float!
     lobbyist_meetings: Int!
-    legislative_effectiveness: Float!
     question_period_interjections: Int!
   }
 
@@ -722,11 +721,6 @@ export const typeDefs = `#graphql
           total_petition_signatures: COALESCE(total_petition_signatures, 0),
           current_year_expenses: COALESCE(current_year_expenses, 0.0),
           lobbyist_meetings: lobbyist_meetings,
-          legislative_effectiveness: CASE
-            WHEN bills_sponsored > 0
-            THEN toFloat(bills_passed) / bills_sponsored * 100
-            ELSE 0.0
-          END,
           question_period_interjections: question_period_interjections
         } AS scorecard
         """

@@ -388,18 +388,12 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                         </div>
                         <div>
                           <div className="text-3xl font-bold text-accent-red">
-                            {scorecard.legislative_effectiveness.toFixed(1)}%
-                          </div>
-                          <div className="text-sm text-text-secondary">Legislative Effectiveness</div>
-                        </div>
-                        <div>
-                          <div className="text-3xl font-bold text-accent-red">
                             {formatCAD(scorecard.current_year_expenses, { compact: true })}
                           </div>
                           <div className="text-sm text-text-secondary">Current Year Expenses</div>
                         </div>
                         <div>
-                          <div className="text-3xl font-bold text-accent-red">{scorecard.question_period_interjections}</div>
+                          <div className="text-3xl font-bold text-accent-red">{scorecard.question_period_interjections || 0}</div>
                           <div className="text-sm text-text-secondary">Question Period Interjections</div>
                         </div>
                       </div>

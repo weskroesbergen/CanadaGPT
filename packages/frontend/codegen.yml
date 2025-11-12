@@ -1,5 +1,5 @@
 overwrite: true
-schema: "http://localhost:4000/graphql"
+schema: "schema.json"
 documents: "src/**/*.{ts,tsx}"
 generates:
   src/lib/generated/graphql.ts:
@@ -13,6 +13,7 @@ generates:
       withHOC: false
       skipTypename: false
       skipDocumentsValidation: true
+      ignoreNoDocuments: true
       scalars:
         DateTime: string
         Date: string

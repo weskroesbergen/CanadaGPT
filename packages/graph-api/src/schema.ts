@@ -324,6 +324,13 @@ export const typeDefs = `#graphql
     number: Int
   }
 
+  type DebateCalendarDay {
+    date: String!
+    hasHouseDebates: Boolean!
+    hasQuestionPeriod: Boolean!
+    hasCommittee: Boolean!
+  }
+
   type DebateDetail {
     document: DocumentInfo!
     statements: [StatementInfo!]!
@@ -572,6 +579,21 @@ export const typeDefs = `#graphql
   # Custom Types for Analytics
   # ============================================
 
+  # MP Summary for Scorecard (plain object, not a Node)
+  type MPSummary {
+    id: ID!
+    name: String!
+    given_name: String
+    family_name: String
+    party: String
+    riding: String
+    current: Boolean!
+    cabinet_position: String
+    email: String
+    phone: String
+    updated_at: DateTime!
+  }
+
   type MPScorecard {
     mp: MP!
     bills_sponsored: Int!
@@ -582,12 +604,10 @@ export const typeDefs = `#graphql
     current_year_expenses: Float!
     lobbyist_meetings: Int!
     question_period_interjections: Int!
-
-    # Calculated performance metrics
-    voting_participation_rate: Float  # Percentage of votes participated in (0-100)
-    party_discipline_score: Float  # Percentage of votes aligned with party (0-100)
-    legislative_success_rate: Float  # Percentage of bills passed (0-100)
-    committee_activity_index: Float  # Weighted committee participation score
+    voting_participation_rate: Float!
+    party_discipline_score: Float!
+    legislative_success_rate: Float!
+    committee_activity_index: Float!
   }
 
   type MPAverages {
@@ -608,10 +628,11 @@ export const typeDefs = `#graphql
     total_expenses: Float!
   }
 
-  type MPInterjectionStats {
-    mp: MP!
-    interjection_count: Int!
-  }
+  # TODO: Fix MPInterjectionStats validation error
+  # type MPInterjectionStats {
+  #   mp: MP!
+  #   interjection_count: Int!
+  # }
 
   # TODO: Implement as custom resolver (type currently disabled)
   # type GlobalExpenseStats {
@@ -672,6 +693,7 @@ export const typeDefs = `#graphql
     published_date: String
     description: String
     image_url: String
+    last_updated: String!
   }
 
 
@@ -681,6 +703,16 @@ export const typeDefs = `#graphql
 
   type Query {
     # MP Performance Scorecard
+    # Test query to debug MPScorecard issues
+    testMPScorecard(mpId: ID!): MP
+      @cypher(
+        statement: """
+        MATCH (mp:MP {id: $mpId})
+        RETURN mp
+        """
+        columnName: "mp"
+      )
+
     mpScorecard(mpId: ID!): MPScorecard
       @cypher(
         statement: """
@@ -740,8 +772,8 @@ export const typeDefs = `#graphql
           WITH mp
           OPTIONAL MATCH (mp)-[voted:VOTED]->(vote:Vote)
           WITH mp, voted, vote
-          OPTIONAL MATCH (vote)<-[party_votes:VOTED]-(party_mp:MP)-[:MEMBER_OF]->(mp_party:Party)
-          WHERE mp_party.code = mp.party
+          OPTIONAL MATCH (vote)<-[party_votes:VOTED]-(party_mp:MP)
+          WHERE party_mp.party = mp.party
           WITH mp, vote, voted,
                count(DISTINCT CASE WHEN party_votes.position = voted.position THEN party_mp END) AS same_position_count,
                count(DISTINCT party_mp) AS total_party_votes
@@ -771,14 +803,35 @@ export const typeDefs = `#graphql
           RETURN (toFloat(committee_memberships) + toFloat(committee_statements) * 0.1) AS committee_activity_index
         }
 
+        // Collect all variables for final return
+        WITH mp,
+             bills_sponsored,
+             bills_passed,
+             votes_participated,
+             petitions_sponsored,
+             total_petition_signatures,
+             current_year_expenses,
+             lobbyist_meetings,
+             question_period_interjections,
+             voting_participation_rate,
+             party_discipline_score,
+             legislative_success_rate,
+             committee_activity_index
+
+        // Return scorecard with explicitly projected MP fields
         RETURN {
           mp: {
             id: mp.id,
             name: mp.name,
+            given_name: mp.given_name,
+            family_name: mp.family_name,
             party: mp.party,
             riding: mp.riding,
             current: mp.current,
-            cabinet_position: mp.cabinet_position
+            cabinet_position: mp.cabinet_position,
+            email: mp.email,
+            phone: mp.phone,
+            updated_at: mp.updated_at
           },
           bills_sponsored: bills_sponsored,
           bills_passed: bills_passed,
@@ -842,28 +895,29 @@ export const typeDefs = `#graphql
         columnName: "mp"
       )
 
+    # TODO: Re-enable mpInterjectionLeaderboard after fixing MPInterjectionStats validation
     # MPs ranked by Question Period interjections
-    mpInterjectionLeaderboard(
-      party: String
-      limit: Int = 100
-    ): [MPInterjectionStats!]!
-      @cypher(
-        statement: """
-        MATCH (mp:MP)
-        WHERE mp.current = true
-          AND ($party IS NULL OR mp.party = $party)
-        OPTIONAL MATCH (mp)<-[:MADE_BY]-(statement:Statement {statement_type: 'interjection'})
-        WHERE statement.h1_en CONTAINS 'Oral Question'
-        WITH mp, count(DISTINCT statement) AS interjection_count
-        RETURN {
-          mp: mp,
-          interjection_count: interjection_count
-        } AS result
-        ORDER BY interjection_count DESC, mp.name ASC
-        LIMIT $limit
-        """
-        columnName: "result"
-      )
+    # mpInterjectionLeaderboard(
+    #   party: String
+    #   limit: Int = 100
+    # ): [MPInterjectionStats!]!
+    #   @cypher(
+    #     statement: """
+    #     MATCH (mp:MP)
+    #     WHERE mp.current = true
+    #       AND ($party IS NULL OR mp.party = $party)
+    #     OPTIONAL MATCH (mp)<-[:MADE_BY]-(statement:Statement {statement_type: 'interjection'})
+    #     WHERE statement.h1_en CONTAINS 'Oral Question'
+    #     WITH mp, count(DISTINCT statement) AS interjection_count
+    #     RETURN {
+    #       mp: mp,
+    #       interjection_count: interjection_count
+    #     } AS result
+    #     ORDER BY interjection_count DESC, mp.name ASC
+    #     LIMIT $limit
+    #     """
+    #     columnName: "result"
+    #   )
 
     # Case-insensitive Bill search with filters
     searchBills(
@@ -983,15 +1037,7 @@ export const typeDefs = `#graphql
              collect(DISTINCT {name: org.name, industry: org.industry, lobbying_count: lobbying_count}) as organizations
         WHERE size(organizations) > 0 OR organizations_lobbying = 0
         RETURN {
-          bill: {
-            number: bill.number,
-            session: bill.session,
-            title: bill.title,
-            summary: bill.summary,
-            status: bill.status,
-            stage: bill.stage,
-            updated_at: bill.updated_at
-          },
+          bill: bill,
           organizations_lobbying: COALESCE(organizations_lobbying, 0),
           total_lobbying_events: COALESCE(total_lobbying_events, 0),
           organizations: CASE WHEN organizations_lobbying > 0 THEN organizations ELSE [] END
@@ -1011,33 +1057,9 @@ export const typeDefs = `#graphql
           AND exists((org)-[:RECEIVED]->(:Contract))
         WITH mp, org, bill, count(*) AS suspicion_score
         RETURN {
-          mp: {
-            id: mp.id,
-            name: mp.name,
-            given_name: mp.given_name,
-            family_name: mp.family_name,
-            party: mp.party,
-            riding: mp.riding,
-            current: mp.current,
-            email: mp.email,
-            phone: mp.phone,
-            updated_at: mp.updated_at
-          },
-          organization: {
-            id: org.id,
-            name: org.name,
-            industry: org.industry,
-            ceo: org.ceo
-          },
-          bill: {
-            number: bill.number,
-            session: bill.session,
-            title: bill.title,
-            summary: bill.summary,
-            status: bill.status,
-            stage: bill.stage,
-            updated_at: bill.updated_at
-          },
+          mp: mp,
+          organization: org,
+          bill: bill,
           suspicion_score: suspicion_score
         } AS conflict
         ORDER BY suspicion_score DESC
@@ -1193,12 +1215,16 @@ export const typeDefs = `#graphql
       limit: Int = 20
       documentType: String  # "D" (Debates) or "E" (Evidence)
       questionPeriodOnly: Boolean = false
+      startDate: String  # Filter by date range (YYYY-MM-DD)
+      endDate: String    # Filter by date range (YYYY-MM-DD)
     ): [DebateSummary!]!
       @cypher(
         statement: """
         MATCH (d:Document)
         WHERE d.public = true
           AND ($documentType IS NULL OR d.document_type = $documentType)
+          AND ($startDate IS NULL OR d.date >= date($startDate))
+          AND ($endDate IS NULL OR d.date <= date($endDate))
         OPTIONAL MATCH (d)<-[:PART_OF]-(s:Statement)
         WITH d, s
         WHERE NOT $questionPeriodOnly OR s.h1_en CONTAINS 'Oral Question' OR s.h1_en CONTAINS 'Question Period'
@@ -1272,6 +1298,41 @@ export const typeDefs = `#graphql
         } AS detail
         """
         columnName: "detail"
+      )
+
+    # Get calendar data for debates (for calendar view)
+    debatesCalendarData(
+      startDate: String!
+      endDate: String!
+    ): [DebateCalendarDay!]!
+      @cypher(
+        statement: """
+        MATCH (d:Document)
+        WHERE d.public = true
+          AND d.date >= date($startDate)
+          AND d.date <= date($endDate)
+        OPTIONAL MATCH (d)<-[:PART_OF]-(s:Statement)
+        WITH d,
+             ANY(stmt IN collect(s.h1_en) WHERE stmt CONTAINS 'Oral Question' OR stmt CONTAINS 'Question Period') AS has_qp_statements
+        WITH d.date AS debate_date,
+             collect({
+               doc_type: d.document_type,
+               has_qp: has_qp_statements
+             }) AS docs
+        WITH debate_date,
+             ANY(doc IN docs WHERE doc.doc_type = 'D' AND NOT doc.has_qp) AS hasHouseDebates,
+             ANY(doc IN docs WHERE doc.doc_type = 'D' AND doc.has_qp) AS hasQuestionPeriod,
+             ANY(doc IN docs WHERE doc.doc_type = 'E') AS hasCommittee
+        WHERE hasHouseDebates OR hasQuestionPeriod OR hasCommittee
+        RETURN {
+          date: toString(debate_date),
+          hasHouseDebates: hasHouseDebates,
+          hasQuestionPeriod: hasQuestionPeriod,
+          hasCommittee: hasCommittee
+        } AS calendar_day
+        ORDER BY debate_date ASC
+        """
+        columnName: "calendar_day"
       )
 
     # Question Period debates only

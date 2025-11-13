@@ -57,8 +57,8 @@ export function MarkdownRenderer({
             <a {...props} target="_blank" rel="noopener noreferrer" />
           ),
           // Style code blocks
-          code: ({ node, inline, ...props }) =>
-            inline ? (
+          code: ({ node, ...props }: any) =>
+            props.inline ? (
               <code
                 className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono"
                 {...props}

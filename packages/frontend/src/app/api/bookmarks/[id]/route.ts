@@ -36,6 +36,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       collectionId,
       tags,
       notes,
+      aiPrompt,
       isFavorite,
       favoriteOrder,
       notificationsEnabled,
@@ -109,6 +110,65 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     }
 
+    // Check notes tier permissions and limits
+    if (notes !== undefined && notes !== null && notes.trim() !== '') {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('subscription_tier')
+        .eq('id', session.user.id)
+        .single();
+
+      const tier = profile?.subscription_tier || 'FREE';
+      const tierLimits = getTierLimits(tier);
+
+      if (!tierLimits.hasNotes) {
+        return NextResponse.json(
+          {
+            error: 'Notes are not available on your tier. Upgrade to BASIC or PRO.',
+            tier,
+            upgradeRequired: true,
+          },
+          { status: 403 }
+        );
+      }
+
+      // Check note length limit
+      if (tierLimits.maxNoteLength !== null && notes.length > tierLimits.maxNoteLength) {
+        return NextResponse.json(
+          {
+            error: `Note exceeds character limit of ${tierLimits.maxNoteLength} for ${tier} tier`,
+            tier,
+            currentLength: notes.length,
+            limit: tierLimits.maxNoteLength,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Check AI prompt permissions (PRO tier only)
+    if (aiPrompt !== undefined && aiPrompt !== null && aiPrompt.trim() !== '') {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('subscription_tier')
+        .eq('id', session.user.id)
+        .single();
+
+      const tier = profile?.subscription_tier || 'FREE';
+      const tierLimits = getTierLimits(tier);
+
+      if (!tierLimits.hasAIPrompts) {
+        return NextResponse.json(
+          {
+            error: 'AI context prompts are only available on PRO tier',
+            tier,
+            upgradeRequired: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // Build update object
     const updates: any = {};
 
@@ -120,6 +180,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
     if (notes !== undefined) {
       updates.notes = notes;
+    }
+    if (aiPrompt !== undefined) {
+      updates.ai_prompt = aiPrompt;
     }
     if (isFavorite !== undefined) {
       updates.is_favorite = isFavorite;

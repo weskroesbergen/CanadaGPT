@@ -8,16 +8,22 @@
 import { useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { MapleLeafIcon } from '@canadagpt/design-system';
-import { Search, Menu, X } from 'lucide-react';
+import { Search, Menu, X, Bookmark } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserMenu } from './UserMenu';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBookmarksContext } from '@/contexts/BookmarksContext';
+import { useBookmarksDrawerOpen } from '@/lib/stores/bookmarksDrawerStore';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const t = useTranslations('nav');
   const tCommon = useTranslations('common');
+  const { user } = useAuth();
+  const { bookmarks } = useBookmarksContext();
+  const { toggleOpen } = useBookmarksDrawerOpen();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border-subtle bg-bg-primary/95 backdrop-blur supports-[backdrop-filter]:bg-bg-primary/60">
@@ -62,6 +68,23 @@ export function Header() {
             >
               <Search className="h-5 w-5" />
             </button>
+
+            {/* Bookmarks Button - Only shown when authenticated */}
+            {user && (
+              <button
+                onClick={toggleOpen}
+                className="relative p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                aria-label="View bookmarks"
+              >
+                <Bookmark className="h-5 w-5" />
+                {bookmarks.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-accent-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                    {bookmarks.length > 99 ? '99+' : bookmarks.length}
+                  </span>
+                )}
+              </button>
+            )}
+
             <UserMenu />
             <LanguageSwitcher />
             <button

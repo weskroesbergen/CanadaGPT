@@ -2,8 +2,8 @@
  * Bookmark Tier Limits and Enforcement
  *
  * FREE: 10 bookmarks
- * BASIC: 100 bookmarks + 10 collections
- * PRO: Unlimited bookmarks + unlimited collections + AI features
+ * BASIC: 100 bookmarks + 10 collections + notes (5000 char limit)
+ * PRO: Unlimited bookmarks + unlimited collections + notes (unlimited) + AI prompts
  */
 
 export type SubscriptionTier = 'FREE' | 'BASIC' | 'PRO';
@@ -17,6 +17,14 @@ export interface TierLimits {
   hasExport: boolean;
   hasBulkOperations: boolean;
   hasSharing: boolean;
+  // Notes features
+  hasNotes: boolean; // Can add notes to bookmarks
+  maxNoteLength: number | null; // null = unlimited, 0 = disabled
+  hasAIPrompts: boolean; // Can add AI context prompts (PRO only)
+  hasVoiceNotes: boolean; // Can record voice notes (PRO only)
+  hasNoteHistory: boolean; // Can access note version history (PRO only)
+  hasNoteLinks: boolean; // Can link notes to other bookmarks (PRO only)
+  maxWorkspaces: number | null; // Number of workspaces (PRO only)
 }
 
 export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
@@ -29,6 +37,14 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     hasExport: false,
     hasBulkOperations: false,
     hasSharing: false,
+    // Notes - locked for FREE tier
+    hasNotes: false,
+    maxNoteLength: 0,
+    hasAIPrompts: false,
+    hasVoiceNotes: false,
+    hasNoteHistory: false,
+    hasNoteLinks: false,
+    maxWorkspaces: 0,
   },
   BASIC: {
     maxBookmarks: 100,
@@ -39,6 +55,14 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     hasExport: true, // Can export to CSV/PDF
     hasBulkOperations: false,
     hasSharing: false,
+    // Notes - basic features
+    hasNotes: true,
+    maxNoteLength: 5000, // 5000 character limit
+    hasAIPrompts: false,
+    hasVoiceNotes: false,
+    hasNoteHistory: false,
+    hasNoteLinks: false,
+    maxWorkspaces: 0,
   },
   PRO: {
     maxBookmarks: null, // Unlimited
@@ -49,6 +73,14 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     hasExport: true,
     hasBulkOperations: true,
     hasSharing: true, // Share collections publicly
+    // Notes - all features unlocked
+    hasNotes: true,
+    maxNoteLength: null, // Unlimited
+    hasAIPrompts: true, // Can add AI context prompts
+    hasVoiceNotes: true, // Can record voice notes
+    hasNoteHistory: true, // Can access note version history
+    hasNoteLinks: true, // Can link notes with [[notation]]
+    maxWorkspaces: null, // Unlimited workspaces
   },
 };
 
@@ -135,10 +167,69 @@ export function getLimitMessage(
 }
 
 /**
+ * Check if user can add/edit notes
+ */
+export function canUseNotes(tier?: string | null): boolean {
+  const limits = getTierLimits(tier);
+  return limits.hasNotes;
+}
+
+/**
+ * Check if note length is within tier limit
+ */
+export function isNoteWithinLimit(
+  noteLength: number,
+  tier?: string | null
+): boolean {
+  const limits = getTierLimits(tier);
+  if (!limits.hasNotes) return false;
+  if (limits.maxNoteLength === null) return true; // Unlimited
+  return noteLength <= limits.maxNoteLength;
+}
+
+/**
+ * Get remaining note characters
+ */
+export function getRemainingNoteChars(
+  noteLength: number,
+  tier?: string | null
+): number | null {
+  const limits = getTierLimits(tier);
+  if (!limits.hasNotes) return 0;
+  if (limits.maxNoteLength === null) return null; // Unlimited
+  return Math.max(0, limits.maxNoteLength - noteLength);
+}
+
+/**
+ * Get note character limit message
+ */
+export function getNoteLimitMessage(
+  noteLength: number,
+  tier?: string | null
+): string {
+  const limits = getTierLimits(tier);
+
+  if (!limits.hasNotes) {
+    return 'Notes are not available on FREE tier. Upgrade to BASIC or PRO.';
+  }
+
+  if (limits.maxNoteLength === null) {
+    return `${noteLength.toLocaleString()} characters (unlimited)`;
+  }
+
+  const remaining = limits.maxNoteLength - noteLength;
+  if (remaining < 0) {
+    return `Over limit by ${Math.abs(remaining).toLocaleString()} characters`;
+  }
+
+  return `${noteLength.toLocaleString()} / ${limits.maxNoteLength.toLocaleString()} characters`;
+}
+
+/**
  * Get upgrade message for a specific feature
  */
 export function getUpgradeMessage(
-  feature: 'bookmark' | 'collection' | 'ai' | 'sidebar' | 'export' | 'bulk' | 'sharing',
+  feature: 'bookmark' | 'collection' | 'ai' | 'sidebar' | 'export' | 'bulk' | 'sharing' | 'notes' | 'ai-prompts' | 'voice-notes' | 'note-history' | 'workspaces',
   currentTier?: string | null
 ): { message: string; targetTier: SubscriptionTier } {
   const tier = (currentTier?.toUpperCase() || 'FREE') as SubscriptionTier;
@@ -201,6 +292,42 @@ export function getUpgradeMessage(
     case 'sharing':
       return {
         message: 'Upgrade to PRO to share collections publicly',
+        targetTier: 'PRO',
+      };
+
+    case 'notes':
+      if (tier === 'FREE') {
+        return {
+          message: 'Upgrade to BASIC for note-taking or PRO for unlimited notes + AI features',
+          targetTier: 'BASIC',
+        };
+      }
+      return {
+        message: 'Upgrade to PRO for unlimited note length and AI-powered features',
+        targetTier: 'PRO',
+      };
+
+    case 'ai-prompts':
+      return {
+        message: 'Upgrade to PRO to add AI context prompts to your notes',
+        targetTier: 'PRO',
+      };
+
+    case 'voice-notes':
+      return {
+        message: 'Upgrade to PRO to record voice notes',
+        targetTier: 'PRO',
+      };
+
+    case 'note-history':
+      return {
+        message: 'Upgrade to PRO to access note version history',
+        targetTier: 'PRO',
+      };
+
+    case 'workspaces':
+      return {
+        message: 'Upgrade to PRO to create workspaces for organizing your research',
         targetTier: 'PRO',
       };
 

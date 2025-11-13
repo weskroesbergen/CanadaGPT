@@ -20,6 +20,7 @@ export interface Bookmark {
   collection_id?: string | null;
   tags: string[];
   notes?: string;
+  ai_prompt?: string; // PRO tier: AI context instructions
   is_favorite: boolean;
   favorite_order?: number | null;
   notifications_enabled: boolean;
@@ -203,6 +204,7 @@ export function useBookmarks() {
         collectionId: string | null;
         tags: string[];
         notes: string;
+        aiPrompt: string; // PRO tier only
         isFavorite: boolean;
         notificationsEnabled: boolean;
       }>

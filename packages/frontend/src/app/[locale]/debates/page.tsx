@@ -121,8 +121,9 @@ export default function DebatesPage() {
               <div className="sticky top-4">
                 <DebatesCalendar
                   onDateRangeSelect={handleDateRangeSelect}
+                  selectedStartDate={selectedStartDate}
+                  selectedEndDate={selectedEndDate}
                   onViewModeChange={handleViewModeChange}
-                  initialViewMode={calendarViewMode}
                 />
               </div>
             </div>
@@ -260,8 +261,9 @@ export default function DebatesPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <DebatesCalendar
               onDateRangeSelect={handleDateRangeSelect}
+              selectedStartDate={selectedStartDate}
+              selectedEndDate={selectedEndDate}
               onViewModeChange={handleViewModeChange}
-              initialViewMode={calendarViewMode}
             />
           </div>
 

@@ -19,7 +19,7 @@ export default function DebatesPage() {
   const [limit] = useState(20);
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
-  const [calendarViewMode, setCalendarViewMode] = useState<1 | 3>(3);
+  const [calendarViewMode, setCalendarViewMode] = useState<1 | 3>(1);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Handlers

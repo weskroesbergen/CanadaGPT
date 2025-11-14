@@ -217,7 +217,7 @@ export function createGraphQLSchema() {
               WHERE $fiscalYear IS NULL OR e.fiscal_year = $fiscalYear
               WITH mp, sum(e.amount) AS total_expenses
               RETURN {
-                mp: mp,
+                mp: properties(mp),
                 total_expenses: total_expenses
               } AS summary
               ORDER BY total_expenses DESC
@@ -226,7 +226,13 @@ export function createGraphQLSchema() {
               { fiscalYear, limit }
             );
 
-            const summaries = result.records.map(record => record.get('summary'));
+            const summaries = result.records.map(record => {
+              const summary = record.get('summary');
+              return {
+                mp: summary.mp,
+                total_expenses: summary.total_expenses
+              };
+            });
 
             // Cache for 1 hour (3600 seconds)
             queryCache.set(cacheKey, summaries, 3600);

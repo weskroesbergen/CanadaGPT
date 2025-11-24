@@ -1,0 +1,33 @@
+# Dockerfile for daily committee meeting import Cloud Run job
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install data pipeline package
+COPY packages/data-pipeline/pyproject.toml /app/pyproject.toml
+
+# Install Python dependencies (including beautifulsoup4, lxml, and data pipeline deps)
+RUN pip install --no-cache-dir neo4j requests beautifulsoup4 lxml python-dotenv rich loguru tqdm httpx psycopg2-binary
+
+# Copy the pipeline code (just the modules we need)
+COPY packages/data-pipeline/fedmcp_pipeline/ ./fedmcp_pipeline/
+
+# Copy the FedMCP package (for API clients)
+COPY packages/fedmcp/src/fedmcp/ ./fedmcp/
+
+# Set PYTHONPATH so Python can find our modules
+ENV PYTHONPATH=/app
+
+# Copy the import script
+COPY scripts/daily-committee-import.py /app/daily-committee-import.py
+
+# Make script executable
+RUN chmod +x /app/daily-committee-import.py
+
+# Run the import script
+CMD ["python", "/app/daily-committee-import.py"]

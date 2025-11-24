@@ -33,9 +33,22 @@ def ingest_lobbying_data(neo4j_client: Neo4jClient, batch_size: int = 10000) -> 
     logger.info("LOBBYING DATA INGESTION")
     logger.info("=" * 60)
 
-    lobby_client = LobbyingRegistryClient()
+    # Use official source (lobbycanada.gc.ca) as the opendata URLs are outdated/broken
+    # The official site is accessible from Cloud Run without any networking issues
+    lobby_client = LobbyingRegistryClient(source="official")
 
     stats = {}
+
+    # Clear existing lobbying data for full refresh (in batches to avoid Neo4j memory limits)
+    logger.info("Clearing existing lobbying data...")
+    for label in ["LobbyRegistration", "LobbyCommunication", "Organization", "Lobbyist"]:
+        while True:
+            result = neo4j_client.run_query(f"MATCH (n:{label}) WITH n LIMIT 10000 DETACH DELETE n RETURN count(n) as deleted")
+            deleted = result[0]["deleted"] if result else 0
+            if deleted == 0:
+                break
+            logger.info(f"  Deleted {deleted} {label} nodes...")
+    logger.info("✓ Cleared existing lobbying data")
 
     # Track unique entities for later creation
     unique_organizations = {}

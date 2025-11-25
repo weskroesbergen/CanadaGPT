@@ -33,12 +33,19 @@ export const typeDefs = `#graphql
     photo_url: String  # Custom high-res GCS URL (manually upgraded, takes precedence)
 
     # House of Commons seating information
-    parl_mp_id: Int  # House of Commons PersonId for matching
+    parl_mp_id: Int  # House of Commons PersonId (MP XML, Votes, Committee Evidence)
+    hansard_db_id: Int  # Hansard Affiliation DbId (for Hansard statement linking)
     seat_row: Int  # Row number in chamber (1-12 across both sides)
     seat_column: Int  # Column position within row
     bench_section: String  # "government" | "opposition" | "speaker"
     seat_visual_x: Float  # SVG X coordinate for rendering
     seat_visual_y: Float  # SVG Y coordinate for rendering
+
+    # Enhanced MP metadata from OurCommons XML
+    honorific: String  # "Hon.", "Right Hon." (for ministers and former PMs)
+    term_start_date: DateTime  # Precise swearing-in date from OurCommons XML
+    term_end_date: DateTime  # Term end date (null if currently serving)
+    province: String  # Province/territory directly from OurCommons XML
 
     updated_at: DateTime!
 
@@ -46,6 +53,7 @@ export const typeDefs = `#graphql
     memberOf: Party @relationship(type: "MEMBER_OF", direction: OUT)
     represents: Riding @relationship(type: "REPRESENTS", direction: OUT)
     sponsored: [Bill!]! @relationship(type: "SPONSORED", direction: OUT)
+    ballots: [Ballot!]! @relationship(type: "CAST_BY", direction: IN)
     voted: [Vote!]! @relationship(type: "VOTED", direction: OUT, properties: "VotedProperties")
     sponsoredPetitions: [Petition!]! @relationship(type: "SPONSORED", direction: OUT)
     expenses: [Expense!]! @relationship(type: "INCURRED", direction: OUT)
@@ -136,6 +144,41 @@ export const typeDefs = `#graphql
   # Legislative Entities
   # ============================================
 
+  # Parliament and Session - Foundational structure
+  type Parliament @node {
+    number: Int! @unique
+    ordinal: String!  # "45th"
+    election_date: Date!
+    opening_date: Date
+    dissolution_date: Date
+    party_in_power: String
+    prime_minister: String
+    total_seats: Int!
+    is_current: Boolean!
+    updated_at: DateTime!
+
+    # Relationships
+    sessions: [Session!]! @relationship(type: "HAS_SESSION", direction: OUT)
+    bills: [Bill!]! @relationship(type: "FROM_PARLIAMENT", direction: IN)
+  }
+
+  type Session @node {
+    id: ID! @unique  # "45-1"
+    parliament_number: Int!
+    session_number: Int!
+    start_date: Date!
+    end_date: Date
+    prorogation_date: Date
+    is_current: Boolean!
+    updated_at: DateTime!
+
+    # Relationships
+    parliament: Parliament! @relationship(type: "HAS_SESSION", direction: IN)
+    bills: [Bill!]! @relationship(type: "FROM_SESSION", direction: IN)
+    votes: [Vote!]! @relationship(type: "FROM_SESSION", direction: IN)
+    documents: [Document!]! @relationship(type: "FROM_SESSION", direction: IN)
+  }
+
   type Bill @node {
     # Basic identifiers
     number: String!
@@ -206,24 +249,60 @@ export const typeDefs = `#graphql
     referredTo: [Committee!]! @relationship(type: "REFERRED_TO", direction: OUT)
     lobbiedOnBy: [Organization!]! @relationship(type: "LOBBIED_ON", direction: IN, properties: "LobbiedOnProperties")
     citedIn: [Case!]! @relationship(type: "CITED_IN", direction: OUT)
+    fromSession: Session @relationship(type: "FROM_SESSION", direction: OUT)
+    fromParliament: Parliament @relationship(type: "FROM_PARLIAMENT", direction: OUT)
   }
 
   type Vote @node {
-    id: ID! @unique
-    number: Int!
-    session: String!
-    date: Date!
+    # Primary identifiers - handle both property naming conventions
+    # Some votes have vote_number (from votes_xml_import), others have id (from lightweight_update)
+    id: ID! @cypher(statement: "RETURN toString(COALESCE(this.vote_number, this.id)) AS value", columnName: "value")
+    vote_number: Int @cypher(statement: "RETURN COALESCE(this.vote_number, toInteger(this.id)) AS value", columnName: "value")
+    number: Int! @cypher(statement: "RETURN COALESCE(this.vote_number, this.number, toInteger(this.id)) AS value", columnName: "value")
+
+    # Session info
+    parliament_number: Int
+    session_number: Int
+
+    # Vote details - handle both property naming conventions
+    date: DateTime! @cypher(statement: "RETURN COALESCE(this.date_time, this.date) AS value", columnName: "value")
     result: String!
-    yeas: Int!
-    nays: Int!
-    paired: Int
+    yeas: Int! @cypher(statement: "RETURN COALESCE(this.num_yeas, this.yeas) AS value", columnName: "value")
+    nays: Int! @cypher(statement: "RETURN COALESCE(this.num_nays, this.nays) AS value", columnName: "value")
+    paired: Int @cypher(statement: "RETURN COALESCE(this.num_paired, this.paired) AS value", columnName: "value")
+    description: String @cypher(statement: "RETURN COALESCE(this.subject, this.description) AS value", columnName: "value")
+
+    # Additional metadata
     bill_number: String
-    description: String
+    vote_type: String
+    vote_type_id: Int
+    updated_at: DateTime
+
+    # Relationships
+    ballots: [Ballot!]! @relationship(type: "CAST_IN", direction: IN)
+    subjectOf: Bill @relationship(type: "SUBJECT_OF", direction: OUT)
+    fromSession: Session @relationship(type: "FROM_SESSION", direction: OUT)
+  }
+
+  type Ballot @node {
+    id: ID! @unique
+    vote_number: Int!
+    person_id: Int!
+    vote_value: String!
+    is_yea: Boolean!
+    is_nay: Boolean!
+    is_paired: Boolean!
+    person_first_name: String
+    person_last_name: String
+    person_salutation: String
+    constituency_name: String
+    province_territory: String
+    caucus_short_name: String
     updated_at: DateTime!
 
     # Relationships
-    voters: [MP!]! @relationship(type: "VOTED", direction: IN, properties: "VotedProperties")
-    subjectOf: Bill @relationship(type: "SUBJECT_OF", direction: OUT)
+    castIn: Vote! @relationship(type: "CAST_IN", direction: OUT)
+    castBy: MP! @relationship(type: "CAST_BY", direction: OUT)
   }
 
   type Debate @node {
@@ -265,9 +344,19 @@ export const typeDefs = `#graphql
     keywords_en: String  # JSON: [{"word": "keyword", "weight": 0.95}, ...]
     keywords_fr: String  # JSON: [{"word": "mot-clé", "weight": 0.95}, ...]
 
+    # Enhanced Hansard XML document metadata
+    creation_timestamp: DateTime  # When document was created/published (MetaCreationTime)
+    speaker_of_day: String  # Speaker of the House for this sitting
+    hansard_document_id: String  # Official Hansard document identifier
+    parliament_number: Int  # Parliament number (e.g., 45)
+    session_number: Int  # Session number (e.g., 1)
+    volume: String  # Hansard volume number
+
     # Relationships
     statements: [Statement!]! @relationship(type: "PART_OF", direction: IN)
+    speakers: [MP!]! @relationship(type: "SPOKE_AT", direction: IN, properties: "SpokeAtProperties")
     presentedTo: Committee @relationship(type: "PRESENTED_TO", direction: OUT)
+    fromSession: Session @relationship(type: "FROM_SESSION", direction: OUT)
   }
 
   type Statement @node {
@@ -298,6 +387,16 @@ export const typeDefs = `#graphql
     thread_id: String  # Conversation group identifier
     parent_statement_id: Int  # ID of statement this replies to
     sequence_in_thread: Int  # Order within conversation (0 = root)
+
+    # Enhanced Hansard XML metadata (from direct XML ingestion)
+    person_db_id: Int  # House of Commons stable person database ID (Affiliation@DbId)
+    role_type_code: Int  # Parliamentary role classification (1=PM, 2=MP, 9=Opposition Leader, 15=Speaker, 60107=Presiding Officer)
+    intervention_id: String  # Hansard XML Intervention ID (distinct from statement id)
+    paragraph_ids: [String!]  # ParaText IDs for precise paragraph-level citations
+    timestamp_hour: Int  # Structured hour from Timestamp element (0-23)
+    timestamp_minute: Int  # Structured minute from Timestamp element (0-59)
+    floor_language: String  # Language spoken on floor (en/fr)
+    intervention_type: String  # Type attribute from Intervention element
 
     # Government response (for written questions)
     # Finds the matching government response by looking for a Statement with:
@@ -444,7 +543,7 @@ export const typeDefs = `#graphql
 
   type Committee @node {
     code: ID! @unique
-    name: String!
+    name: String  # Made nullable to handle edge cases in @neo4j/graphql query generation
     mandate: String
     chamber: String  # Nullable - historical committees may not have a specified chamber
 
@@ -453,22 +552,112 @@ export const typeDefs = `#graphql
     bills: [Bill!]! @relationship(type: "REFERRED_TO", direction: IN)
     meetings: [Meeting!]! @relationship(type: "HELD_MEETING", direction: OUT)
     evidence: [Document!]! @relationship(type: "PRESENTED_TO", direction: IN)
+
+    # Activity tracking fields (computed)
+    latestMeetingDate: Date
+      @cypher(
+        statement: """
+        MATCH (this)-[:HELD_MEETING]->(m:Meeting)
+        WHERE m.date IS NOT NULL
+        WITH m
+        ORDER BY m.date DESC
+        LIMIT 1
+        RETURN m.date AS date
+        """
+        columnName: "date"
+      )
+
+    latestMeetingNumber: Int
+      @cypher(
+        statement: """
+        MATCH (this)-[:HELD_MEETING]->(m:Meeting)
+        WHERE m.date IS NOT NULL
+        WITH m
+        ORDER BY m.date DESC
+        LIMIT 1
+        RETURN m.number AS number
+        """
+        columnName: "number"
+      )
+
+    totalMeetingsCount: Int
+      @cypher(
+        statement: """
+        MATCH (this)-[:HELD_MEETING]->(m:Meeting)
+        RETURN count(m) AS count
+        """
+        columnName: "count"
+      )
   }
 
   type Meeting @node {
-    id: ID! @unique
+    id: ID
+    ourcommons_meeting_id: String
     committee_code: String!
-    date: Date!
-    number: Int!
+    date: Date
+    time_description: String
+    subject: String
+    status: String
+    webcast_available: Boolean
+    webcast: Boolean
+    televised: Boolean
+    travel: Boolean
+    source: String
+    imported_at: String
+    number: Int
     in_camera: Boolean
     has_evidence: Boolean
     meeting_url: String
     session: String
+    session_id: String
     parliament: Int
+    evidence_id: String
+    start_time: String
+    end_time: String
     updated_at: DateTime
+    created_at: DateTime
 
     # Relationships
     heldBy: Committee @relationship(type: "HELD_MEETING", direction: IN)
+    evidence: CommitteeEvidence @relationship(type: "HAS_EVIDENCE", direction: OUT)
+  }
+
+  type CommitteeEvidence @node {
+    id: ID! @unique
+    committee_code: String!
+    meeting_number: Int!
+    date: Date
+    title: String
+    parliament_number: Int
+    session_number: Int
+    publication_status: String
+    source_xml_url: String
+    updated_at: DateTime!
+
+    # Relationships
+    meeting: Meeting @relationship(type: "HAS_EVIDENCE", direction: IN)
+    testimonies: [CommitteeTestimony!]! @relationship(type: "GIVEN_IN", direction: IN)
+    speakers: [MP!]! @relationship(type: "SPOKE_AT", direction: IN, properties: "SpokeAtProperties")
+    committee: Committee @relationship(type: "EVIDENCE_FOR", direction: OUT)
+  }
+
+  type CommitteeTestimony @node {
+    id: ID! @unique
+    intervention_id: String
+    speaker_name: String
+    organization: String
+    role: String
+    text: String!
+    is_witness: Boolean!
+    person_db_id: Int
+    timestamp_hour: Int
+    timestamp_minute: Int
+    floor_language: String
+    updated_at: DateTime!
+
+    # Relationships
+    evidence: CommitteeEvidence! @relationship(type: "GIVEN_IN", direction: OUT)
+    speaker: MP @relationship(type: "TESTIFIED_BY", direction: OUT)
   }
 
   type Petition @node {
@@ -635,8 +824,13 @@ export const typeDefs = `#graphql
   }
 
   type SpokeAtProperties @relationshipProperties {
-    timestamp: DateTime
-    excerpt: String
+    timestamp: DateTime  # For Hansard statements
+    statement_id: String  # Statement node ID (for Hansard)
+    testimony_id: String  # CommitteeTestimony node ID (for committees)
+    intervention_id: String  # XML intervention ID
+    person_db_id: Int  # House of Commons person database ID
+    timestamp_hour: Int  # Structured hour (0-23)
+    timestamp_minute: Int  # Structured minute (0-59)
   }
 
   type LobbiedOnProperties @relationshipProperties {
@@ -699,6 +893,42 @@ export const typeDefs = `#graphql
   type MPExpenseSummary {
     mp: MP!
     total_expenses: Float!
+  }
+
+  type ParliamentStats {
+    parliament: ParliamentInfo!
+    bill_count: Int!
+    vote_count: Int!
+    document_count: Int!
+    session_count: Int!
+  }
+
+  type ParliamentInfo {
+    number: Int!
+    ordinal: String!
+    election_date: Date!
+    opening_date: Date
+    dissolution_date: Date
+    party_in_power: String
+    prime_minister: String
+    total_seats: Int!
+  }
+
+  type SessionStats {
+    session: SessionInfo!
+    bill_count: Int!
+    vote_count: Int!
+    document_count: Int!
+  }
+
+  type SessionInfo {
+    id: ID!
+    parliament_number: Int!
+    session_number: Int!
+    start_date: Date!
+    end_date: Date
+    prorogation_date: Date
+    is_current: Boolean!
   }
 
   # TODO: Fix MPInterjectionStats validation error
@@ -771,10 +1001,30 @@ export const typeDefs = `#graphql
 
 
   # ============================================
+  # Custom Types for MP Counts
+  # ============================================
+
+  type MPCount {
+    count: Int!
+  }
+
+  # ============================================
   # Custom Queries (Accountability Analytics)
   # ============================================
 
   type Query {
+    # Custom query to get a single meeting by ID (workaround for @neo4j/graphql ID filtering issue)
+    meeting(id: ID!): Meeting
+      @cypher(
+        statement: """
+        MATCH (m:Meeting)
+        WHERE toString(m.id) = $id OR m.ourcommons_meeting_id = $id
+        RETURN m
+        LIMIT 1
+        """
+        columnName: "m"
+      )
+
     # MP Performance Scorecard
     # Test query to debug MPScorecard issues
     testMPScorecard(mpId: ID!): MP
@@ -948,6 +1198,60 @@ export const typeDefs = `#graphql
         LIMIT $limit
         """
         columnName: "mp"
+      )
+
+    # Paginated MPs with offset-based pagination for optimal performance
+    # Supports server-side party filtering (multiple parties)
+    paginatedMPs(
+      parties: [String!]
+      current: Boolean = true
+      cabinetOnly: Boolean
+      searchTerm: String
+      limit: Int = 24
+      offset: Int = 0
+    ): [MP!]!
+      @cypher(
+        statement: """
+        MATCH (mp:MP)
+        WHERE ($current IS NULL OR mp.current = $current)
+          AND ($cabinetOnly IS NULL OR $cabinetOnly = false OR mp.cabinet_position IS NOT NULL)
+          AND ($parties IS NULL OR size($parties) = 0 OR mp.party IN $parties)
+          AND (
+            $searchTerm IS NULL OR $searchTerm = '' OR
+            toLower(mp.name) CONTAINS toLower($searchTerm) OR
+            toLower(COALESCE(mp.given_name, '')) CONTAINS toLower($searchTerm) OR
+            toLower(COALESCE(mp.family_name, '')) CONTAINS toLower($searchTerm)
+          )
+        RETURN mp
+        ORDER BY mp.name ASC
+        SKIP $offset
+        LIMIT $limit
+        """
+        columnName: "mp"
+      )
+
+    # Count MPs matching filters (for pagination info)
+    countMPs(
+      parties: [String!]
+      current: Boolean = true
+      cabinetOnly: Boolean
+      searchTerm: String
+    ): MPCount!
+      @cypher(
+        statement: """
+        MATCH (mp:MP)
+        WHERE ($current IS NULL OR mp.current = $current)
+          AND ($cabinetOnly IS NULL OR $cabinetOnly = false OR mp.cabinet_position IS NOT NULL)
+          AND ($parties IS NULL OR size($parties) = 0 OR mp.party IN $parties)
+          AND (
+            $searchTerm IS NULL OR $searchTerm = '' OR
+            toLower(mp.name) CONTAINS toLower($searchTerm) OR
+            toLower(COALESCE(mp.given_name, '')) CONTAINS toLower($searchTerm) OR
+            toLower(COALESCE(mp.family_name, '')) CONTAINS toLower($searchTerm)
+          )
+        RETURN {count: count(mp)} AS result
+        """
+        columnName: "result"
       )
 
     # Server-side randomized MPs with optional party filtering
@@ -1659,15 +1963,41 @@ export const typeDefs = `#graphql
       @cypher(
         statement: """
         MATCH (c:Committee {code: $committeeCode})
+        OPTIONAL MATCH (c)-[:HELD_MEETING]->(m:Meeting)
+        OPTIONAL MATCH (c)<-[:PRESENTED_TO]-(e:Document {document_type: 'E'})
+        OPTIONAL MATCH (c)<-[:REFERRED_TO]-(b:Bill)
+
+        WITH c, m, e, b,
+          date() - duration({days: 30}) AS thirtyDaysAgo,
+          date() - duration({days: 90}) AS ninetyDaysAgo
+
+        WITH c,
+          count(DISTINCT m) AS totalMeetings,
+          count(DISTINCT CASE WHEN m.date >= thirtyDaysAgo THEN m END) AS meetings30,
+          count(DISTINCT CASE WHEN m.date >= ninetyDaysAgo THEN m END) AS meetings90,
+          count(DISTINCT e) AS evidenceDocs,
+          count(DISTINCT CASE WHEN b.status IN ['In Committee', 'Reported'] THEN b END) AS activeBills,
+          size((c)<-[:SERVES_ON]-()) AS memberCount
+
+        OPTIONAL MATCH (c)-[:HELD_MEETING]->(allM:Meeting)
+        OPTIONAL MATCH (allM)<-[:PART_OF]-(s:Statement)
+
+        WITH c, totalMeetings, meetings30, meetings90, evidenceDocs, activeBills, memberCount,
+          count(DISTINCT s) AS totalStatements,
+          count(DISTINCT allM) AS meetingsWithStatements
+
         RETURN {
           committee: c,
-          total_meetings: 0,
-          meetings_last_30_days: 0,
-          meetings_last_90_days: 0,
-          total_evidence_documents: 0,
-          active_bills_count: 0,
-          member_count: size((c)<-[:SERVES_ON]-()),
-          avg_statements_per_meeting: 0.0
+          total_meetings: toInteger(totalMeetings),
+          meetings_last_30_days: toInteger(meetings30),
+          meetings_last_90_days: toInteger(meetings90),
+          total_evidence_documents: toInteger(evidenceDocs),
+          active_bills_count: toInteger(activeBills),
+          member_count: toInteger(memberCount),
+          avg_statements_per_meeting: CASE WHEN meetingsWithStatements > 0
+            THEN toFloat(totalStatements) / toFloat(meetingsWithStatements)
+            ELSE 0.0
+          END
         }
         """
         columnName: "committeeActivityMetrics"
@@ -1761,6 +2091,104 @@ export const typeDefs = `#graphql
         } AS averages
         """
         columnName: "averages"
+      )
+
+    # ============================================
+    # Parliament & Session Queries
+    # ============================================
+
+    # Get current parliament
+    currentParliament: Parliament
+      @cypher(
+        statement: """
+        MATCH (p:Parliament {is_current: true})
+        RETURN p
+        """
+        columnName: "p"
+      )
+
+    # Get current session
+    currentSession: Session
+      @cypher(
+        statement: """
+        MATCH (s:Session {is_current: true})
+        RETURN s
+        """
+        columnName: "s"
+      )
+
+    # Get statistics for a parliament (bills, votes, debates)
+    parliamentStats(parliamentNumber: Int!): ParliamentStats
+      @cypher(
+        statement: """
+        MATCH (p:Parliament {number: $parliamentNumber})
+        WITH p.number AS number,
+             p.ordinal AS ordinal,
+             p.election_date AS election_date,
+             p.opening_date AS opening_date,
+             p.dissolution_date AS dissolution_date,
+             p.party_in_power AS party_in_power,
+             p.prime_minister AS prime_minister,
+             p.total_seats AS total_seats,
+             p
+        OPTIONAL MATCH (p)<-[:FROM_PARLIAMENT]-(b:Bill)
+        OPTIONAL MATCH (p)-[:HAS_SESSION]->(s:Session)
+        OPTIONAL MATCH (s)<-[:FROM_SESSION]-(v:Vote)
+        OPTIONAL MATCH (s)<-[:FROM_SESSION]-(d:Document)
+
+        RETURN {
+          parliament: {
+            number: number,
+            ordinal: ordinal,
+            election_date: election_date,
+            opening_date: opening_date,
+            dissolution_date: dissolution_date,
+            party_in_power: party_in_power,
+            prime_minister: prime_minister,
+            total_seats: total_seats
+          },
+          bill_count: count(DISTINCT b),
+          vote_count: count(DISTINCT v),
+          document_count: count(DISTINCT d),
+          session_count: count(DISTINCT s)
+        } AS stats
+        """
+        columnName: "stats"
+      )
+
+    # Get statistics for a session (bills, votes, debates)
+    sessionStats(sessionId: ID!): SessionStats
+      @cypher(
+        statement: """
+        MATCH (s:Session {id: $sessionId})
+        WITH s.id AS id,
+             s.parliament_number AS parliament_number,
+             s.session_number AS session_number,
+             s.start_date AS start_date,
+             s.end_date AS end_date,
+             s.prorogation_date AS prorogation_date,
+             s.is_current AS is_current,
+             s
+        OPTIONAL MATCH (s)<-[:FROM_SESSION]-(b:Bill)
+        OPTIONAL MATCH (s)<-[:FROM_SESSION]-(v:Vote)
+        OPTIONAL MATCH (s)<-[:FROM_SESSION]-(d:Document)
+
+        RETURN {
+          session: {
+            id: id,
+            parliament_number: parliament_number,
+            session_number: session_number,
+            start_date: start_date,
+            end_date: end_date,
+            prorogation_date: prorogation_date,
+            is_current: is_current
+          },
+          bill_count: count(DISTINCT b),
+          vote_count: count(DISTINCT v),
+          document_count: count(DISTINCT d)
+        } AS stats
+        """
+        columnName: "stats"
       )
   }
 `;

@@ -27,17 +27,18 @@ class RecentDataImporter:
     - Only needs ~2-3 GB disk space
     """
 
-    def __init__(self, neo4j_client: Neo4jClient, start_date: str = "2022-01-01"):
+    def __init__(self, neo4j_client: Neo4jClient, start_date: str = "2022-01-01", op_client: Optional[OpenParliamentClient] = None):
         """
         Initialize recent data importer.
 
         Args:
             neo4j_client: Neo4j client instance
             start_date: Import data from this date forward (YYYY-MM-DD)
+            op_client: Optional OpenParliamentClient instance (for custom timeout/session)
         """
         self.neo4j = neo4j_client
         self.start_date = start_date
-        self.op_client = OpenParliamentClient()
+        self.op_client = op_client or OpenParliamentClient()
 
     def import_recent_debates(self, batch_size: int = 1000) -> Dict[str, int]:
         """
@@ -121,12 +122,12 @@ class RecentDataImporter:
 
         # Import to Neo4j
         if debates_data:
-            created = self.neo4j.batch_create_nodes("Debate", debates_data, batch_size=batch_size)
+            created = self.neo4j.batch_merge_nodes("Debate", debates_data, merge_keys=["id"], batch_size=batch_size)
             stats["debates"] = created
             logger.success(f"✅ Imported {created} debates")
 
         if statements_data:
-            created = self.neo4j.batch_create_nodes("Statement", statements_data, batch_size=batch_size)
+            created = self.neo4j.batch_merge_nodes("Statement", statements_data, merge_keys=["id"], batch_size=batch_size)
             stats["statements"] = created
             logger.success(f"✅ Imported {created} statements")
 
@@ -186,7 +187,7 @@ class RecentDataImporter:
             votes_data.append(vote_props)
 
         if votes_data:
-            created = self.neo4j.batch_create_nodes("Vote", votes_data, batch_size=batch_size)
+            created = self.neo4j.batch_merge_nodes("Vote", votes_data, merge_keys=["id"], batch_size=batch_size)
             logger.success(f"✅ Imported {created} votes")
             return created
 

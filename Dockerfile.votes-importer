@@ -1,0 +1,30 @@
+# Dockerfile for hourly votes import Cloud Run job
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY packages/data-pipeline/requirements.txt /app/requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the data pipeline package
+COPY packages/data-pipeline /app/packages/data-pipeline
+
+# Copy the fedmcp package (contains votes XML parser)
+COPY packages/fedmcp /app/packages/fedmcp
+
+# Copy the import script
+COPY scripts/daily-votes-import.py /app/daily-votes-import.py
+
+# Make script executable
+RUN chmod +x /app/daily-votes-import.py
+
+# Run the import script
+CMD ["python", "/app/daily-votes-import.py"]

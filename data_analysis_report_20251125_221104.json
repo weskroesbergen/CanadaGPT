@@ -1,0 +1,1234 @@
+{
+  "metadata": {
+    "generated_at": "2025-11-25T22:11:04.540586",
+    "session": "45-1",
+    "focus_month": "2025-11",
+    "database_uri": "bolt://localhost:7687"
+  },
+  "analyses": {
+    "completeness": {
+      "session_coverage": {
+        "parliament": 45,
+        "session": 1,
+        "documents_total": 0,
+        "documents_debates": 0,
+        "documents_evidence": 0,
+        "statements": 0,
+        "votes": 0,
+        "bills": 0,
+        "meetings": 0
+      },
+      "november_coverage": {
+        "documents_found": 1,
+        "documents": [
+          {
+            "id": 25591,
+            "date": "2025-11-21",
+            "number": "No. 058",
+            "statements": 571,
+            "linked": 542,
+            "link_rate": 94.92
+          }
+        ]
+      },
+      "missing_dates": [
+        "2025-11-03",
+        "2025-11-04",
+        "2025-11-05",
+        "2025-11-06",
+        "2025-11-07",
+        "2025-11-10",
+        "2025-11-11",
+        "2025-11-12",
+        "2025-11-13",
+        "2025-11-14",
+        "2025-11-17",
+        "2025-11-18",
+        "2025-11-19",
+        "2025-11-20",
+        "2025-11-24",
+        "2025-11-25",
+        "2025-11-26",
+        "2025-11-27",
+        "2025-11-28"
+      ]
+    },
+    "quality": {
+      "statement_linking": {
+        "total_statements": 0,
+        "with_person_db_id": 0,
+        "linked_to_mp": 0,
+        "orphaned": 0,
+        "db_id_rate": 0.0,
+        "link_rate": 0.0
+      },
+      "vote_linking": {
+        "total_ballots": 0,
+        "with_person_id": 0,
+        "linked_to_mp": 0,
+        "link_rate": 0.0
+      },
+      "committee_completeness": {
+        "total_meetings": 0
+      },
+      "timestamp_validation": {
+        "malformed_timestamps": 13,
+        "sample_malformed_ids": [
+          "13254297",
+          "13254384",
+          "13254458",
+          "13254907",
+          "13254983"
+        ]
+      },
+      "mp_metadata": {
+        "total_current_mps": 343,
+        "with_hansard_db_id": 337,
+        "with_parl_mp_id": 343,
+        "hansard_id_coverage": 98.25,
+        "parl_id_coverage": 100.0
+      }
+    },
+    "integrity": {
+      "orphaned_statements": {
+        "count": 29,
+        "sample_person_db_ids": [
+          319101
+        ]
+      },
+      "orphaned_ballots": {
+        "count": 0
+      },
+      "empty_documents": {
+        "count": 18291,
+        "sample_ids": [
+          161,
+          162,
+          163,
+          164,
+          165
+        ]
+      },
+      "silent_mps": {
+        "count": 13,
+        "sample_names": [
+          "Chrystia Freeland",
+          "Emmanuella Lambropoulos",
+          "Hedy Fry",
+          "Iqwinder Gaheer",
+          "Judy Sgro",
+          "Louis Plamondon",
+          "Mandy Gull-Masty",
+          "Marc Miller",
+          "Rachel Bendayan",
+          "Shafqat Ali"
+        ]
+      },
+      "cardinality_metrics": {
+        "avg_statements_per_document": 201.66,
+        "avg_ballots_per_vote": 0
+      }
+    },
+    "schema": {
+      "indexes": [
+        {
+          "name": "activity_id",
+          "labels": [
+            "Activity"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "activity_instance_id",
+          "labels": [
+            "ActivityInstance"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_composite",
+          "labels": [
+            "Bill"
+          ],
+          "properties": [
+            "number",
+            "session"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_introduced_date_idx",
+          "labels": [
+            "Bill"
+          ],
+          "properties": [
+            "introduced_date"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_search",
+          "labels": [
+            "Bill"
+          ],
+          "properties": [
+            "title",
+            "title_fr",
+            "summary",
+            "summary_fr"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "bill_session",
+          "labels": [
+            "Bill"
+          ],
+          "properties": [
+            "session"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_stage",
+          "labels": [
+            "Bill"
+          ],
+          "properties": [
+            "stage"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_status",
+          "labels": [
+            "Bill"
+          ],
+          "properties": [
+            "status"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_text_docid",
+          "labels": [
+            "BillText"
+          ],
+          "properties": [
+            "docid"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_text_en",
+          "labels": [
+            "BillText"
+          ],
+          "properties": [
+            "text_en"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "bill_text_fr",
+          "labels": [
+            "BillText"
+          ],
+          "properties": [
+            "text_fr"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "bill_text_id",
+          "labels": [
+            "BillText"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "bill_text_summary",
+          "labels": [
+            "BillText"
+          ],
+          "properties": [
+            "summary_en"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "candidacy_elected",
+          "labels": [
+            "Candidacy"
+          ],
+          "properties": [
+            "elected"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "candidacy_election",
+          "labels": [
+            "Candidacy"
+          ],
+          "properties": [
+            "election_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "candidacy_id",
+          "labels": [
+            "Candidacy"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "candidacy_riding",
+          "labels": [
+            "Candidacy"
+          ],
+          "properties": [
+            "riding_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "case_id",
+          "labels": [
+            "Case"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "committee_chamber_idx",
+          "labels": [
+            "Committee"
+          ],
+          "properties": [
+            "chamber"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "committee_code",
+          "labels": [
+            "Committee"
+          ],
+          "properties": [
+            "code"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "committee_id",
+          "labels": [
+            "Committee"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "committee_instance_id",
+          "labels": [
+            "CommitteeInstance"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "committee_instance_session",
+          "labels": [
+            "CommitteeInstance"
+          ],
+          "properties": [
+            "session_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "committee_name",
+          "labels": [
+            "Committee"
+          ],
+          "properties": [
+            "name_en"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "committee_slug",
+          "labels": [
+            "Committee"
+          ],
+          "properties": [
+            "slug"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "contract_amount",
+          "labels": [
+            "Contract"
+          ],
+          "properties": [
+            "amount"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "contract_date",
+          "labels": [
+            "Contract"
+          ],
+          "properties": [
+            "date"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "contract_department",
+          "labels": [
+            "Contract"
+          ],
+          "properties": [
+            "department"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "contract_id",
+          "labels": [
+            "Contract"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "debate_id",
+          "labels": [
+            "Debate"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "document_date",
+          "labels": [
+            "Document"
+          ],
+          "properties": [
+            "date"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "document_id_unique",
+          "labels": [
+            "Document"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "document_type_idx",
+          "labels": [
+            "Document"
+          ],
+          "properties": [
+            "document_type"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "donation_amount",
+          "labels": [
+            "Donation"
+          ],
+          "properties": [
+            "amount"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "donation_id",
+          "labels": [
+            "Donation"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "donation_party",
+          "labels": [
+            "Donation"
+          ],
+          "properties": [
+            "political_party"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "donation_year",
+          "labels": [
+            "Donation"
+          ],
+          "properties": [
+            "contribution_year"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "expense_category",
+          "labels": [
+            "Expense"
+          ],
+          "properties": [
+            "category"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "expense_fiscal_quarter_idx",
+          "labels": [
+            "Expense"
+          ],
+          "properties": [
+            "fiscal_year",
+            "quarter"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "expense_fiscal_year",
+          "labels": [
+            "Expense"
+          ],
+          "properties": [
+            "fiscal_year"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "expense_id",
+          "labels": [
+            "Expense"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "expense_mp_id_idx",
+          "labels": [
+            "Expense"
+          ],
+          "properties": [
+            "mp_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "expense_quarter",
+          "labels": [
+            "Expense"
+          ],
+          "properties": [
+            "quarter"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "grant_department",
+          "labels": [
+            "Grant"
+          ],
+          "properties": [
+            "owner_org"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "grant_id",
+          "labels": [
+            "Grant"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "grant_program",
+          "labels": [
+            "Grant"
+          ],
+          "properties": [
+            "program_name"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "grant_year",
+          "labels": [
+            "Grant"
+          ],
+          "properties": [
+            "agreement_year"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "index_343aff4e",
+          "labels": null,
+          "properties": null,
+          "type": "LOOKUP"
+        },
+        {
+          "name": "index_f7700477",
+          "labels": null,
+          "properties": null,
+          "type": "LOOKUP"
+        },
+        {
+          "name": "legislation_id",
+          "labels": [
+            "Legislation"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_comm_date",
+          "labels": [
+            "LobbyCommunication"
+          ],
+          "properties": [
+            "date"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_comm_id",
+          "labels": [
+            "LobbyCommunication"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_communication_client_idx",
+          "labels": [
+            "LobbyCommunication"
+          ],
+          "properties": [
+            "client_org_name"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_reg_active",
+          "labels": [
+            "LobbyRegistration"
+          ],
+          "properties": [
+            "active"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_reg_id",
+          "labels": [
+            "LobbyRegistration"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_registration_client_idx",
+          "labels": [
+            "LobbyRegistration"
+          ],
+          "properties": [
+            "client_org_name"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_registration_effective_date_idx",
+          "labels": [
+            "LobbyRegistration"
+          ],
+          "properties": [
+            "effective_date"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobby_registration_reg_number_idx",
+          "labels": [
+            "LobbyRegistration"
+          ],
+          "properties": [
+            "reg_number"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobbyist_firm_idx",
+          "labels": [
+            "Lobbyist"
+          ],
+          "properties": [
+            "firm"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobbyist_id",
+          "labels": [
+            "Lobbyist"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobbyist_name_idx",
+          "labels": [
+            "Lobbyist"
+          ],
+          "properties": [
+            "name"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "lobbyist_search",
+          "labels": [
+            "Lobbyist"
+          ],
+          "properties": [
+            "name",
+            "firm"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "meeting_committee_code_idx",
+          "labels": [
+            "Meeting"
+          ],
+          "properties": [
+            "committee_code"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "meeting_date",
+          "labels": [
+            "Meeting"
+          ],
+          "properties": [
+            "date"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "meeting_id",
+          "labels": [
+            "Meeting"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "meeting_session",
+          "labels": [
+            "Meeting"
+          ],
+          "properties": [
+            "session_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "mp_current",
+          "labels": [
+            "MP"
+          ],
+          "properties": [
+            "current"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "mp_current_name_idx",
+          "labels": [
+            "MP"
+          ],
+          "properties": [
+            "current",
+            "name"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "mp_current_party_idx",
+          "labels": [
+            "MP"
+          ],
+          "properties": [
+            "current",
+            "party"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "mp_id",
+          "labels": [
+            "MP"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "mp_name",
+          "labels": [
+            "MP"
+          ],
+          "properties": [
+            "name"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "mp_party",
+          "labels": [
+            "MP"
+          ],
+          "properties": [
+            "party"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "org_name",
+          "labels": [
+            "Organization"
+          ],
+          "properties": [
+            "name"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "organization_id",
+          "labels": [
+            "Organization"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "organization_industry_idx",
+          "labels": [
+            "Organization"
+          ],
+          "properties": [
+            "industry"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "organization_search",
+          "labels": [
+            "Organization"
+          ],
+          "properties": [
+            "name",
+            "industry"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "party_code",
+          "labels": [
+            "Party"
+          ],
+          "properties": [
+            "code"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "petition_id_unique",
+          "labels": [
+            "Petition"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "petition_number",
+          "labels": [
+            "Petition"
+          ],
+          "properties": [
+            "number"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "petition_signatures",
+          "labels": [
+            "Petition"
+          ],
+          "properties": [
+            "signatures"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "petition_status",
+          "labels": [
+            "Petition"
+          ],
+          "properties": [
+            "status"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "report_id",
+          "labels": [
+            "Report"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "report_session",
+          "labels": [
+            "Report"
+          ],
+          "properties": [
+            "session_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "riding_id",
+          "labels": [
+            "Riding"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "riding_province_idx",
+          "labels": [
+            "Riding"
+          ],
+          "properties": [
+            "province"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "role_is_current_idx",
+          "labels": [
+            "Role"
+          ],
+          "properties": [
+            "is_current"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "role_person_current_idx",
+          "labels": [
+            "Role"
+          ],
+          "properties": [
+            "person_id",
+            "is_current"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "role_person_id_idx",
+          "labels": [
+            "Role"
+          ],
+          "properties": [
+            "person_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "search_bills",
+          "labels": [
+            "Bill"
+          ],
+          "properties": [
+            "title",
+            "summary"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "search_mps",
+          "labels": [
+            "MP"
+          ],
+          "properties": [
+            "name"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "search_orgs",
+          "labels": [
+            "Organization"
+          ],
+          "properties": [
+            "name"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "statement_bill_debated_id_idx",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "bill_debated_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "statement_content_en",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "content_en"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "statement_content_fr",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "content_fr"
+          ],
+          "type": "FULLTEXT"
+        },
+        {
+          "name": "statement_document_id_idx",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "document_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "statement_document_time",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "document_id",
+            "time"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "statement_id_unique",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "statement_member_id_idx",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "member_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "statement_politician_id_idx",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "politician_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "statement_thread_id_idx",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "thread_id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "statement_time_idx",
+          "labels": [
+            "Statement"
+          ],
+          "properties": [
+            "time"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "vote_bill_number_idx",
+          "labels": [
+            "Vote"
+          ],
+          "properties": [
+            "bill_number"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "vote_date",
+          "labels": [
+            "Vote"
+          ],
+          "properties": [
+            "date"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "vote_id",
+          "labels": [
+            "Vote"
+          ],
+          "properties": [
+            "id"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "vote_result",
+          "labels": [
+            "Vote"
+          ],
+          "properties": [
+            "result"
+          ],
+          "type": "RANGE"
+        },
+        {
+          "name": "vote_session_idx",
+          "labels": [
+            "Vote"
+          ],
+          "properties": [
+            "session"
+          ],
+          "type": "RANGE"
+        }
+      ],
+      "duplicate_mps": [],
+      "recommended_indexes": [
+        {
+          "index_name": "statement_person_db_id",
+          "node_type": "Statement",
+          "property": "person_db_id",
+          "reason": "Used for MP linking in Hansard imports",
+          "command": "CREATE INDEX statement_person_db_id FOR (s:Statement) ON (s.person_db_id)"
+        }
+      ]
+    },
+    "november": {
+      "daily_analysis": [
+        {
+          "date": "2025-11-21",
+          "doc_id": 25591,
+          "sitting_number": "No. 058",
+          "total_statements": 571,
+          "linked_statements": 542,
+          "unique_speakers": 138,
+          "link_rate": 94.92
+        }
+      ],
+      "unlinked_speakers": [
+        {
+          "person_db_id": 319101,
+          "speaker_name": "The Assistant Deputy Speaker",
+          "statement_count": 14
+        }
+      ],
+      "corruption_patterns": {
+        "malformed_timestamps": 13
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@
 
 'use client';
 
-import { use } from 'react';
+import { use, useEffect } from 'react';
 import { useQuery, gql } from '@apollo/client';
 import { useLocale } from 'next-intl';
 import { Header } from '@/components/Header';
@@ -16,44 +16,54 @@ import Link from 'next/link';
 import { Calendar, Users, ArrowLeft, ExternalLink } from 'lucide-react';
 import { ShareButton } from '@/components/ShareButton';
 import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
-import { ThreadedSpeechCard } from '@/components/hansard';
+import { useCommitteeActivity } from '@/hooks/useCommitteeActivity';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 
 // GraphQL query for meeting details
 const GET_MEETING_DETAILS = gql`
   query GetMeetingDetails($meetingId: ID!) {
-    meetings(where: { id: $meetingId }) {
+    meeting(id: $meetingId) {
       id
+      ourcommons_meeting_id
       date
+      time_description
+      subject
+      status
+      webcast_available
       number
+      committee_code
       in_camera
       has_evidence
       meeting_url
       session
       parliament
-      of {
+      heldBy {
         code
         name
         chamber
       }
-      statements(options: { limit: 500, sort: [{ time: ASC }] }) {
+      evidence {
         id
-        time
-        who_en
-        who_fr
-        content_en
-        content_fr
-        h2_en
-        h2_fr
-        h3_en
-        h3_fr
-        statement_type
-        wordcount
-        madeBy {
+        title
+        testimonies(options: { limit: 500 }) {
           id
-          name
-          party
-          photo_url
-          photo_url_source
+          intervention_id
+          speaker_name
+          organization
+          role
+          text
+          is_witness
+          person_db_id
+          timestamp_hour
+          timestamp_minute
+          floor_language
+          speaker {
+            id
+            name
+            party
+            photo_url
+            photo_url_source
+          }
         }
       }
     }
@@ -68,9 +78,21 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ code: 
     variables: { meetingId: id },
   });
 
-  const meeting = data?.meetings?.[0];
-  const committee = meeting?.of;
-  const statements = meeting?.statements || [];
+  const meeting = data?.meeting;
+  const committee = meeting?.heldBy;
+  const testimonies = meeting?.evidence?.testimonies || [];
+
+  // Committee activity tracking
+  const { markCommitteeViewed, isTracking } = useCommitteeActivity();
+  const { preferences } = useUserPreferences();
+
+  // Mark as viewed on page load if preference is 'click_meeting'
+  useEffect(() => {
+    if (meeting && committee && isTracking(code) && preferences.committeeMarkReadOn === 'click_meeting') {
+      // When viewing a specific meeting, mark it as viewed
+      markCommitteeViewed(code, meeting.number, undefined);
+    }
+  }, [code, meeting, committee, isTracking, markCommitteeViewed, preferences.committeeMarkReadOn]);
 
   if (loading) {
     return (
@@ -140,33 +162,64 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ code: 
 
           <div className="pr-24">
             <h1 className="text-4xl font-bold text-text-primary mb-2">
-              Meeting #{meeting.number}
+              {meeting.number ? `Meeting #${meeting.number}` : 'Committee Meeting'}
             </h1>
             <p className="text-xl text-text-secondary mb-2">{committee.name}</p>
-            <div className="flex items-center gap-4 text-sm text-text-secondary">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {new Date(meeting.date).toLocaleDateString('en-CA', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </div>
+
+            {/* Meeting Subject */}
+            {meeting.subject && (
+              <p className="text-lg text-text-primary mb-3 font-medium">
+                {meeting.subject}
+              </p>
+            )}
+
+            {/* Meeting Metadata */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary mb-2">
+              {meeting.date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  {new Date(meeting.date).toLocaleDateString('en-CA', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </div>
+              )}
+              {meeting.time_description && (
+                <div className="text-sm">
+                  {meeting.time_description}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                {statements.length} statements
+                {testimonies.length} testimonies
               </div>
+            </div>
+
+            {/* Status Badges */}
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              {meeting.status && (
+                <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs">
+                  {meeting.status}
+                </span>
+              )}
               {meeting.in_camera && (
-                <span className="px-2 py-1 rounded bg-gray-500/20 text-gray-400">
+                <span className="px-2 py-1 rounded bg-gray-500/20 text-gray-400 text-xs">
                   In Camera
                 </span>
               )}
               {meeting.has_evidence && (
-                <span className="px-2 py-1 rounded bg-green-500/20 text-green-400">
+                <span className="px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs">
                   Evidence Available
                 </span>
               )}
+              {meeting.webcast_available && (
+                <span className="px-2 py-1 rounded bg-purple-500/20 text-purple-400 text-xs">
+                  Webcast Available
+                </span>
+              )}
             </div>
+
             {meeting.meeting_url && (
               <a
                 href={`https://openparliament.ca${meeting.meeting_url}`}
@@ -183,19 +236,93 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ code: 
 
         {/* Transcript */}
         <Card>
-          <h2 className="text-2xl font-bold text-text-primary mb-6">Transcript</h2>
-          {statements.length > 0 ? (
-            <div className="space-y-4">
-              {statements.map((statement: any) => (
-                <ThreadedSpeechCard
-                  key={statement.id}
-                  rootStatement={statement}
-                  variant="partisan"
-                />
+          <h2 className="text-2xl font-bold text-text-primary mb-6">Evidence & Testimony</h2>
+          {testimonies.length > 0 ? (
+            <div className="space-y-6">
+              {testimonies.map((testimony: any) => (
+                <div key={testimony.id} className="border-l-4 border-accent-red pl-4">
+                  {/* Speaker Info */}
+                  <div className="flex items-start gap-3 mb-2">
+                    {testimony.speaker && (
+                      <img
+                        src={testimony.speaker.photo_url || '/default-avatar.png'}
+                        alt={testimony.speaker.name}
+                        className="w-10 h-10 rounded-full"
+                      />
+                    )}
+                    <div>
+                      <div className="font-semibold text-text-primary">
+                        {testimony.speaker?.name || testimony.speaker_name}
+                      </div>
+                      {testimony.organization && (
+                        <div className="text-sm text-text-secondary">
+                          {testimony.role && `${testimony.role}, `}
+                          {testimony.organization}
+                        </div>
+                      )}
+                      {testimony.is_witness && (
+                        <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
+                          Witness
+                        </span>
+                      )}
+                      {testimony.timestamp_hour !== null && (
+                        <div className="text-xs text-text-secondary mt-1">
+                          {String(testimony.timestamp_hour).padStart(2, '0')}:
+                          {String(testimony.timestamp_minute || 0).padStart(2, '0')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Testimony Text */}
+                  <div className="text-text-primary whitespace-pre-wrap">
+                    {testimony.text}
+                  </div>
+
+                  {testimony.floor_language && (
+                    <div className="mt-2 text-xs text-text-secondary">
+                      Language: {testimony.floor_language === 'en' ? 'English' : 'French'}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           ) : (
-            <p className="text-text-secondary">No transcript available for this meeting.</p>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-blue-400 mb-2">Evidence Not Yet Available</h3>
+              <p className="text-text-secondary mb-4">
+                Committee evidence and testimony transcripts are imported separately from meeting metadata.
+                {meeting.has_evidence && (
+                  <span className="block mt-2 text-green-400">
+                    Evidence exists for this meeting and will be available after the next import run.
+                  </span>
+                )}
+              </p>
+              <div className="text-sm text-text-secondary">
+                <p className="mb-2">Evidence includes:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Witness testimony and presentations</li>
+                  <li>MP questions and interventions</li>
+                  <li>Expert opinions and stakeholder input</li>
+                </ul>
+              </div>
+              {meeting.meeting_url && (
+                <div className="mt-4 pt-4 border-t border-blue-500/20">
+                  <p className="text-sm text-text-secondary mb-2">
+                    View evidence on the official House of Commons website:
+                  </p>
+                  <a
+                    href={`https://openparliament.ca${meeting.meeting_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-accent-red hover:text-accent-red-hover font-medium"
+                  >
+                    View on OpenParliament
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
           )}
         </Card>
       </main>

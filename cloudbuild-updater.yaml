@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'packages/data-pipeline/Dockerfile.updater'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/canadagpt-updater:latest'
+      - '.'
+images:
+  - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/canadagpt-updater:latest'
+timeout: 1200s

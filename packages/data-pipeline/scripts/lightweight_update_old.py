@@ -2,29 +2,20 @@
 """
 Lightweight hourly update job for Cloud Run.
 
-OPTIMIZED VERSION with:
-- Batch MERGE operations instead of loops
-- Parallel execution for independent operations
-- Smart scheduling (only run debates when House sits)
-- Debate ingestion support
-
 Updates only critical data that changes frequently:
 - MP party affiliations (e.g., floor-crossers like Chris d'Entrement)
 - Cabinet positions
 - New bills introduced
 - Recent votes (last 24 hours)
-- Recent debates (when available)
 
-Designed to be fast (<30 seconds) and low-memory (<1GB).
+Designed to be fast (<1 minute) and low-memory (<200MB).
 """
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List
-from concurrent.futures import ThreadPoolExecutor
-import logging
+from typing import Dict, Any
 
 # Add packages to path
 SCRIPT_DIR = Path(__file__).parent
@@ -40,7 +31,6 @@ FEDMCP_PATH = PIPELINE_DIR.parent / "fedmcp" / "src"
 sys.path.insert(0, str(FEDMCP_PATH))
 
 from fedmcp.clients.openparliament import OpenParliamentClient
-from fedmcp.http import RateLimitedSession
 
 
 class LightweightUpdater:
@@ -48,33 +38,24 @@ class LightweightUpdater:
 
     def __init__(self, neo4j_client: Neo4jClient):
         self.neo4j = neo4j_client
-
-        # Create session with longer timeout for pagination-heavy operations
-        # 90s timeout allows for fetching multiple pages without timing out
-        session = RateLimitedSession(
-            min_request_interval=0.1,  # 10 req/s (respectful rate limiting)
-            default_timeout=90.0,       # 90s timeout for long-running queries
-            max_attempts=5,
-            backoff_factor=1.0
-        )
-        self.op_client = OpenParliamentClient(session=session)
-
+        self.op_client = OpenParliamentClient()
         self.stats = {
             "mps_updated": 0,
             "party_changes": [],
             "cabinet_changes": [],
             "new_bills": 0,
             "new_votes": 0,
-            "debates": 0,
         }
 
     def update_mp_parties(self) -> int:
         """
-        Update MP party affiliations using batch MERGE.
+        Update MP party affiliations.
 
         Returns count of MPs updated.
         """
         logger.info("Checking for MP party changes...")
+
+        updated_count = 0
 
         # Fetch all current MPs from OpenParliament
         mps_list = list(self.op_client.list_mps())
@@ -87,8 +68,6 @@ class LightweightUpdater:
         """
         current_parties = {row["id"]: row for row in self.neo4j.run_query(current_parties_query)}
 
-        # Collect all MP updates
-        mp_updates = []
         for mp_data in mps_list:
             mp_id = mp_data.get("url", "").split("/")[-2]
             mp_name = mp_data.get("name")
@@ -109,31 +88,39 @@ class LightweightUpdater:
                     "mp_name": mp_name,
                     "old_party": old_party,
                     "new_party": new_party,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.utcnow().isoformat()
                 })
 
-            # Add to batch update
-            mp_updates.append({
+            # Update MP record
+            update_query = """
+            MATCH (m:MP {id: $id})
+            SET m.party = $party,
+                m.name = $name,
+                m.updated_at = datetime()
+            RETURN m
+            """
+
+            result = self.neo4j.run_query(update_query, {
                 "id": mp_id,
-                "name": mp_name,
                 "party": new_party,
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "name": mp_name
             })
 
-        # Batch MERGE operation with conservative batch size to avoid connection resets
-        if mp_updates:
-            self.neo4j.batch_merge_nodes("MP", mp_updates, merge_keys=["id"], batch_size=100)
+            if result:
+                updated_count += 1
 
-        logger.success(f"✅ Updated {len(mp_updates)} MP records")
-        return len(mp_updates)
+        logger.success(f"✅ Updated {updated_count} MP records")
+        return updated_count
 
     def update_cabinet_positions(self) -> int:
         """
-        Update cabinet positions using batch operations.
+        Update cabinet positions from OpenParliament current_role field.
 
         Returns count of cabinet ministers updated.
         """
         logger.info("Checking for cabinet changes...")
+
+        updated_count = 0
 
         # Get current cabinet positions from Neo4j
         current_cabinet_query = """
@@ -145,10 +132,6 @@ class LightweightUpdater:
 
         # Fetch MPs with cabinet roles from OpenParliament
         mps_list = list(self.op_client.list_mps())
-
-        # Collect updates
-        cabinet_updates = []
-        cabinet_removals = []
 
         for mp_data in mps_list:
             mp_id = mp_data.get("url", "").split("/")[-2]
@@ -174,21 +157,15 @@ class LightweightUpdater:
                         "mp_name": mp_name,
                         "type": "exit",
                         "old_position": old_position,
-                        "timestamp": datetime.now(timezone.utc).isoformat()
+                        "timestamp": datetime.utcnow().isoformat()
                     })
-                    cabinet_removals.append(mp_id)
                 elif not old_position and new_position:
                     logger.warning(f"📈 New cabinet minister: {mp_name} → {new_position}")
                     self.stats["cabinet_changes"].append({
                         "mp_name": mp_name,
                         "type": "appointment",
                         "new_position": new_position,
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    })
-                    cabinet_updates.append({
-                        "id": mp_id,
-                        "cabinet_position": new_position,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
+                        "timestamp": datetime.utcnow().isoformat()
                     })
                 elif old_position and new_position:
                     logger.warning(f"🔄 Cabinet shuffle: {mp_name} ({old_position} → {new_position})")
@@ -197,29 +174,34 @@ class LightweightUpdater:
                         "type": "shuffle",
                         "old_position": old_position,
                         "new_position": new_position,
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    })
-                    cabinet_updates.append({
-                        "id": mp_id,
-                        "cabinet_position": new_position,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
+                        "timestamp": datetime.utcnow().isoformat()
                     })
 
-        # Batch update cabinet positions
-        if cabinet_updates:
-            self.neo4j.batch_merge_nodes("MP", cabinet_updates, merge_keys=["id"], batch_size=100)
+            # Update record
+            if new_position:
+                update_query = """
+                MATCH (m:MP {id: $id})
+                SET m.cabinet_position = $position,
+                    m.updated_at = datetime()
+                RETURN m
+                """
+            else:
+                # Remove cabinet position if no longer in cabinet
+                update_query = """
+                MATCH (m:MP {id: $id})
+                REMOVE m.cabinet_position
+                SET m.updated_at = datetime()
+                RETURN m
+                """
 
-        # Batch remove cabinet positions
-        if cabinet_removals:
-            remove_query = """
-            UNWIND $ids AS mp_id
-            MATCH (m:MP {id: mp_id})
-            REMOVE m.cabinet_position
-            SET m.updated_at = datetime()
-            """
-            self.neo4j.run_query(remove_query, {"ids": cabinet_removals})
+            result = self.neo4j.run_query(update_query, {
+                "id": mp_id,
+                "position": new_position
+            } if new_position else {"id": mp_id})
 
-        updated_count = len(cabinet_updates) + len(cabinet_removals)
+            if result:
+                updated_count += 1
+
         logger.success(f"✅ Updated {updated_count} cabinet positions")
         return updated_count
 
@@ -234,7 +216,7 @@ class LightweightUpdater:
         """
         logger.info(f"Checking for bills introduced in last {since_hours} hours...")
 
-        cutoff_date = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).date().isoformat()
+        cutoff_date = (datetime.utcnow() - timedelta(hours=since_hours)).date().isoformat()
         new_count = 0
 
         # Get latest bills from OpenParliament
@@ -298,7 +280,7 @@ class LightweightUpdater:
         """
         logger.info(f"Checking for votes in last {since_hours} hours...")
 
-        cutoff_date = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).date().isoformat()
+        cutoff_date = (datetime.utcnow() - timedelta(hours=since_hours)).date().isoformat()
         new_count = 0
 
         for vote in self.op_client.list_votes():
@@ -307,184 +289,74 @@ class LightweightUpdater:
             if not vote_date or vote_date < cutoff_date:
                 continue
 
-            # Parse session to get parliament and session numbers (format: "44-1")
-            session_str = vote.get("session", "")
-            parliament_number = None
-            session_number = None
-            if "-" in session_str:
-                parts = session_str.split("-")
-                if len(parts) == 2:
-                    try:
-                        parliament_number = int(parts[0])
-                        session_number = int(parts[1])
-                    except ValueError:
-                        pass
+            # Check if vote already exists
+            vote_id = f"{vote.get('session')}-{vote.get('number')}"
 
-            vote_number = vote.get("number")
-            if not vote_number:
-                continue
-
-            # Check if vote already exists using canonical vote_number field
             check_query = """
-            MATCH (v:Vote {vote_number: $vote_number})
+            MATCH (v:Vote {id: $id})
             RETURN v
             """
 
-            existing = self.neo4j.run_query(check_query, {"vote_number": vote_number})
+            existing = self.neo4j.run_query(check_query, {"id": vote_id})
 
             if not existing:
-                # Create new vote node with canonical property names
-                # Matching schema from votes_xml_import.py
+                # Create new vote node
                 create_query = """
-                MERGE (v:Vote {vote_number: $vote_number})
-                SET v.parliament_number = $parliament_number,
-                    v.session_number = $session_number,
-                    v.date_time = datetime($date_time),
+                MERGE (v:Vote {id: $id})
+                SET v.number = $number,
+                    v.session = $session,
+                    v.date = $date,
                     v.result = $result,
-                    v.num_yeas = $num_yeas,
-                    v.num_nays = $num_nays,
-                    v.num_paired = $num_paired,
+                    v.yeas = $yeas,
+                    v.nays = $nays,
+                    v.paired = $paired,
                     v.updated_at = datetime()
                 RETURN v
                 """
 
                 self.neo4j.run_query(create_query, {
-                    "vote_number": vote_number,
-                    "parliament_number": parliament_number,
-                    "session_number": session_number,
-                    "date_time": vote_date,  # Will be converted to datetime
+                    "id": vote_id,
+                    "number": vote.get("number"),
+                    "session": vote.get("session"),
+                    "date": vote_date,
                     "result": vote.get("result"),
-                    "num_yeas": vote.get("yeas"),
-                    "num_nays": vote.get("nays"),
-                    "num_paired": vote.get("paired")
+                    "yeas": vote.get("yeas"),
+                    "nays": vote.get("nays"),
+                    "paired": vote.get("paired")
                 })
 
                 new_count += 1
-                logger.info(f"🗳️  New vote: #{vote_number} - {vote.get('result')}")
+                logger.info(f"🗳️  New vote: {vote_id} - {vote.get('result')}")
 
         logger.success(f"✅ Found {new_count} new votes")
         return new_count
 
-    def should_run_debate_import(self) -> int:
-        """
-        Check if new debates likely available (smart scheduling).
-
-        Returns:
-            Number of days to look back for imports (0 if should skip)
-        """
-        from datetime import datetime, timedelta
-
-        # 1. Check if any debates published in last 48 hours
-        recent_cutoff = (datetime.now(timezone.utc) - timedelta(hours=48)).date()
-        try:
-            # Query OpenParliament API for recent debates
-            debates = list(self.op_client.list_debates(limit=10))
-            recent_debates = [d for d in debates if d.get("date", "") >= str(recent_cutoff)]
-
-            if recent_debates:
-                logger.info(f"Found {len(recent_debates)} debates in last 48h - importing")
-                return 2  # Look back 2 days
-        except Exception as e:
-            logger.warning(f"Error checking debate schedule: {e}")
-
-        # 2. Safety fallback - catch up on missed debates
-        # (Check Neo4j for last successful import timestamp)
-        query = """
-            MATCH (d:Document)
-            WHERE d.public = true
-            RETURN d.date as last_debate_date
-            ORDER BY d.date DESC
-            LIMIT 1
-        """
-        result = self.neo4j.run_query(query)
-        if result and len(result) > 0:
-            last_date_str = result[0]["last_debate_date"]
-            last_date = datetime.fromisoformat(last_date_str).replace(tzinfo=timezone.utc)
-            days_since = (datetime.now(timezone.utc) - last_date).days
-
-            if days_since > 7:
-                # Look back enough days to catch up + buffer
-                lookback_days = min(days_since + 2, 30)  # Cap at 30 days
-                logger.info(f"Last debate {days_since} days ago - running catch-up import ({lookback_days} days)")
-                return lookback_days
-
-        logger.info("No recent debates - skipping import")
-        return 0
-
-    def import_recent_debates(self, since_hours: int = 24) -> int:
-        """
-        Import debates from last N hours via OpenParliament API.
-
-        Args:
-            since_hours: Import debates from last N hours
-
-        Returns count of debates imported.
-        """
-        logger.info(f"Importing debates from last {since_hours} hours...")
-
-        try:
-            from fedmcp_pipeline.ingest.recent_import import RecentDataImporter
-
-            # Calculate cutoff date
-            cutoff = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()[:10]  # YYYY-MM-DD
-
-            # Use existing importer (already optimized with MERGE) with our configured 90s timeout client
-            importer = RecentDataImporter(self.neo4j, start_date=cutoff, op_client=self.op_client)
-            stats = importer.import_recent_debates(batch_size=5000)
-
-            logger.success(f"✅ Imported {stats.get('debates', 0)} debates, {stats.get('statements', 0)} statements")
-            return stats.get('debates', 0)
-
-        except Exception as e:
-            logger.error(f"Error importing debates: {e}")
-            return 0
-
     def run_all(self) -> Dict[str, Any]:
         """
-        Run all lightweight updates with parallelization.
+        Run all lightweight updates.
 
         Returns statistics dictionary.
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.utcnow()
 
         logger.info("=" * 60)
-        logger.info("LIGHTWEIGHT HOURLY UPDATE (OPTIMIZED)")
+        logger.info("LIGHTWEIGHT HOURLY UPDATE")
         logger.info(f"Started: {start_time.isoformat()}")
         logger.info("=" * 60)
 
-        # 1. MP updates (sequential - modify same nodes)
-        logger.info("\n1. Updating MP data...")
+        # Update MP parties (most important - catches floor-crossers)
         self.stats["mps_updated"] = self.update_mp_parties()
+
+        # Update cabinet positions
         cabinet_count = self.update_cabinet_positions()
 
-        # 2. Bills + Votes (parallel - independent operations)
-        logger.info("\n2. Checking bills and votes (parallel)...")
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            bills_future = executor.submit(self.check_new_bills, 24)
-            votes_future = executor.submit(self.check_recent_votes, 24)
+        # Check for new bills (last 24 hours)
+        self.stats["new_bills"] = self.check_new_bills(since_hours=24)
 
-            # Get results with error handling
-            try:
-                self.stats["new_bills"] = bills_future.result()
-            except Exception as e:
-                logger.error(f"Error checking bills: {e}")
-                self.stats["new_bills"] = 0
+        # Check for new votes (last 24 hours)
+        self.stats["new_votes"] = self.check_recent_votes(since_hours=24)
 
-            try:
-                self.stats["new_votes"] = votes_future.result()
-            except Exception as e:
-                logger.error(f"Error checking votes: {e}")
-                self.stats["new_votes"] = 0
-
-        # 3. Debates (only if House is sitting)
-        logger.info("\n3. Checking for recent debates...")
-        lookback_days = self.should_run_debate_import()
-        if lookback_days > 0:
-            self.stats["debates"] = self.import_recent_debates(since_hours=lookback_days * 24)
-        else:
-            self.stats["debates"] = 0
-
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.utcnow()
         duration = (end_time - start_time).total_seconds()
 
         logger.info("=" * 60)
@@ -495,7 +367,6 @@ class LightweightUpdater:
         logger.info(f"Cabinet changes: {len(self.stats['cabinet_changes'])}")
         logger.info(f"New bills: {self.stats['new_bills']}")
         logger.info(f"New votes: {self.stats['new_votes']}")
-        logger.info(f"Debates imported: {self.stats['debates']}")
 
         # Log any party changes prominently
         if self.stats["party_changes"]:

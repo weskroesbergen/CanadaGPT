@@ -13,6 +13,7 @@ sys.path.insert(0, str(FEDMCP_PATH))
 
 from fedmcp.clients.openparliament import OpenParliamentClient
 from fedmcp.clients.legisinfo import LegisInfoClient
+from fedmcp.clients.ourcommons_mps import OurCommonsMPsClient
 
 from ..utils.neo4j_client import Neo4jClient
 from ..utils.progress import logger, ProgressTracker, batch_iterator
@@ -59,6 +60,12 @@ def ingest_mps(neo4j_client: Neo4jClient, batch_size: int = 10000) -> int:
     """
     Ingest all MPs from OpenParliament API with full details.
 
+    Augments OpenParliament data with OurCommons XML for missing fields:
+    - honorific ("Hon.", "Right Hon.")
+    - term_start_date (precise swearing-in date)
+    - term_end_date (or None if current)
+    - province (direct from XML, not inferred)
+
     Args:
         neo4j_client: Neo4j client instance
         batch_size: Batch size for Neo4j operations
@@ -68,6 +75,15 @@ def ingest_mps(neo4j_client: Neo4jClient, batch_size: int = 10000) -> int:
     """
     logger.info("Fetching MPs from OpenParliament API...")
     op_client = OpenParliamentClient()
+
+    # Fetch OurCommons MP XML for honorifics, term dates, and province
+    logger.info("Fetching MP metadata from OurCommons XML...")
+    ourcommons_client = OurCommonsMPsClient()
+    ourcommons_mps = ourcommons_client.get_all_mps()
+
+    # Create lookup dict indexed by person_id (matches parl_mp_id in OpenParliament)
+    ourcommons_lookup = {mp.person_id: mp for mp in ourcommons_mps}
+    logger.info(f"Loaded {len(ourcommons_lookup)} MPs from OurCommons XML")
 
     # Load cabinet positions
     cabinet_file = Path(__file__).parent.parent / "data" / "cabinet_positions.json"
@@ -154,6 +170,14 @@ def ingest_mps(neo4j_client: Neo4jClient, batch_size: int = 10000) -> int:
                 "updated_at": datetime.utcnow().isoformat(),
             }
 
+            # Merge in OurCommons XML data if available (honorific, term dates, province)
+            if parl_mp_id and parl_mp_id in ourcommons_lookup:
+                ourcommons_mp = ourcommons_lookup[parl_mp_id]
+                mp_props["honorific"] = ourcommons_mp.honorific
+                mp_props["term_start_date"] = ourcommons_mp.term_start
+                mp_props["term_end_date"] = ourcommons_mp.term_end
+                mp_props["province"] = ourcommons_mp.province
+
             # Filter out None values
             mp_props = {k: v for k, v in mp_props.items() if v is not None}
             mps_data.append(mp_props)
@@ -181,12 +205,30 @@ def ingest_mps(neo4j_client: Neo4jClient, batch_size: int = 10000) -> int:
                 "photo_url_source": photo_url_source,
                 "updated_at": datetime.utcnow().isoformat(),
             }
+
+            # Try to get OurCommons XML data even in fallback case
+            # We need parl_mp_id from summary's other_info
+            other_info = mp_summary.get("other_info", {})
+            parl_mp_ids = other_info.get("parl_mp_id", [])
+            parl_mp_id = int(parl_mp_ids[0]) if parl_mp_ids else None
+
+            if parl_mp_id:
+                mp_props["parl_mp_id"] = parl_mp_id
+
+                # Merge in OurCommons XML data if available
+                if parl_mp_id in ourcommons_lookup:
+                    ourcommons_mp = ourcommons_lookup[parl_mp_id]
+                    mp_props["honorific"] = ourcommons_mp.honorific
+                    mp_props["term_start_date"] = ourcommons_mp.term_start
+                    mp_props["term_end_date"] = ourcommons_mp.term_end
+                    mp_props["province"] = ourcommons_mp.province
+
             mp_props = {k: v for k, v in mp_props.items() if v is not None}
             mps_data.append(mp_props)
 
-    # Batch create MPs
-    created = neo4j_client.batch_create_nodes("MP", mps_data, batch_size=batch_size)
-    logger.success(f"✅ Created {created:,} MPs with full details")
+    # Batch create/update MPs using MERGE (idempotent)
+    created = neo4j_client.batch_merge_nodes("MP", mps_data, merge_keys=["id"], batch_size=batch_size)
+    logger.success(f"✅ Created/updated {created:,} MPs with full details")
     return created
 
 
@@ -242,9 +284,9 @@ def ingest_parties(neo4j_client: Neo4jClient) -> int:
                 "updated_at": datetime.utcnow().isoformat(),
             })
 
-    # Create parties
-    created = neo4j_client.batch_create_nodes("Party", parties_data)
-    logger.success(f"✅ Created {created} parties")
+    # Create/update parties using MERGE (idempotent)
+    created = neo4j_client.batch_merge_nodes("Party", parties_data, merge_keys=["code"])
+    logger.success(f"✅ Created/updated {created} parties")
     return created
 
 
@@ -282,8 +324,8 @@ def ingest_ridings(neo4j_client: Neo4jClient) -> int:
 
     logger.info(f"Detected provinces for {provinces_detected}/{len(ridings)} ridings")
 
-    created = neo4j_client.batch_create_nodes("Riding", ridings_data)
-    logger.success(f"✅ Created {created} ridings with province data")
+    created = neo4j_client.batch_merge_nodes("Riding", ridings_data, merge_keys=["id"])
+    logger.success(f"✅ Created/updated {created} ridings with province data")
     return created
 
 
@@ -644,9 +686,9 @@ def ingest_committees(neo4j_client: Neo4jClient) -> int:
         committee_props = {k: v for k, v in committee_props.items() if v is not None}
         committees_data.append(committee_props)
 
-    # Create committees
-    created = neo4j_client.batch_create_nodes("Committee", committees_data)
-    logger.success(f"✅ Created {created} committees")
+    # Create/update committees using MERGE (idempotent)
+    created = neo4j_client.batch_merge_nodes("Committee", committees_data, merge_keys=["code"])
+    logger.success(f"✅ Created/updated {created} committees")
     return created
 
 
@@ -708,9 +750,9 @@ def ingest_government_roles(neo4j_client: Neo4jClient, batch_size: int = 10000) 
         }
         roles_data.append({k: v for k, v in role_props.items() if v is not None})
 
-    # Batch create roles
-    created = neo4j_client.batch_create_nodes("Role", roles_data, batch_size=batch_size)
-    logger.success(f"✅ Created {created} government roles")
+    # Batch create/update roles using MERGE (idempotent)
+    created = neo4j_client.batch_merge_nodes("Role", roles_data, merge_keys=["id"], batch_size=batch_size)
+    logger.success(f"✅ Created/updated {created} government roles")
     return created
 
 

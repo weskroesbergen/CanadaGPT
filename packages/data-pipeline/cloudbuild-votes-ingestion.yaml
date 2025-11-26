@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/votes-ingestion:latest'
+      - '-f'
+      - 'packages/data-pipeline/Dockerfile.votes-ingestion'
+      - '.'
+images:
+  - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/votes-ingestion:latest'
+timeout: 600s

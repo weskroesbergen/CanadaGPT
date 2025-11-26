@@ -12,6 +12,8 @@ import { Loading } from '@/components/Loading';
 import { Card } from '@canadagpt/design-system';
 import { GET_COMMITTEES } from '@/lib/queries';
 import { Users, Building2, Landmark, Search, SortAsc, SortDesc } from 'lucide-react';
+import { useCommitteeActivity } from '@/hooks/useCommitteeActivity';
+import { UnreadBadge } from '@/components/committees/UnreadBadge';
 
 interface Committee {
   code: string;
@@ -21,10 +23,13 @@ interface Committee {
   membersAggregate: {
     count: number;
   };
+  latestMeetingDate?: string | null;
+  latestMeetingNumber?: number | null;
+  totalMeetingsCount?: number | null;
 }
 
 type ChamberFilter = 'all' | 'House' | 'Senate';
-type SortOption = 'name' | 'members';
+type SortOption = 'name' | 'members' | 'activity';
 
 // Committee type colors based on code patterns
 const getCommitteeColor = (code: string, chamber: string) => {
@@ -91,9 +96,12 @@ const getCommitteeColor = (code: string, chamber: string) => {
 export default function CommitteesPage() {
   const { data, loading, error } = useQuery(GET_COMMITTEES);
   const [chamberFilter, setChamberFilter] = useState<ChamberFilter>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('name');
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('activity');
+  const [sortAsc, setSortAsc] = useState(false); // Most recent first for activity
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Committee activity tracking
+  const { getNewMeetingsCount } = useCommitteeActivity();
 
   const committees: Committee[] = data?.committees || [];
 
@@ -121,11 +129,17 @@ export default function CommitteesPage() {
         return sortAsc
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name);
-      } else {
+      } else if (sortBy === 'members') {
         const aCount = a.membersAggregate.count;
         const bCount = b.membersAggregate.count;
         return sortAsc ? aCount - bCount : bCount - aCount;
+      } else if (sortBy === 'activity') {
+        // Sort by latest meeting date
+        const aDate = a.latestMeetingDate ? new Date(a.latestMeetingDate).getTime() : 0;
+        const bDate = b.latestMeetingDate ? new Date(b.latestMeetingDate).getTime() : 0;
+        return sortAsc ? aDate - bDate : bDate - aDate;
       }
+      return 0;
     });
 
     return filtered;
@@ -207,6 +221,7 @@ export default function CommitteesPage() {
                 className="px-3 py-2 bg-bg-secondary border border-border-primary rounded-lg
                          text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-red"
               >
+                <option value="activity">Recent Activity</option>
                 <option value="name">Sort by Name</option>
                 <option value="members">Sort by Members</option>
               </select>
@@ -250,6 +265,10 @@ export default function CommitteesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCommittees.map((committee) => {
               const colors = getCommitteeColor(committee.code, committee.chamber);
+              const newMeetingsCount = getNewMeetingsCount(
+                committee.code,
+                committee.latestMeetingNumber
+              );
 
               return (
                 <Card
@@ -263,9 +282,14 @@ export default function CommitteesPage() {
                       <Users className={`h-6 w-6 ${colors.icon}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-text-primary mb-1 line-clamp-2 leading-tight">
-                        {committee.name}
-                      </h3>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold text-text-primary mb-1 line-clamp-2 leading-tight">
+                          {committee.name}
+                        </h3>
+                        {newMeetingsCount > 0 && (
+                          <UnreadBadge count={newMeetingsCount} className="flex-shrink-0" />
+                        )}
+                      </div>
                       <p className="text-xs text-text-tertiary font-mono">{committee.code}</p>
                     </div>
                   </div>

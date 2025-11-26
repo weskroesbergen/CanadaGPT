@@ -120,10 +120,19 @@ def import_hansard_to_neo4j(neo4j: Neo4jClient, hansard_data: Dict[str, Any], is
         statement_id = speech.get("intervention_id") or f"{document_id}-{idx}"
         wordcount = len(speech["text"].split()) if speech["text"] else 0
 
+        # Format time as ISO-8601 DateTime (Neo4j requires seconds)
+        time_value = None
+        if speech.get("timecode"):
+            timecode = speech["timecode"]
+            # Ensure timecode has seconds (HH:MM -> HH:MM:00)
+            if len(timecode) == 5 and timecode.count(":") == 1:
+                timecode = f"{timecode}:00"
+            time_value = f"{iso_date}T{timecode}"
+
         statement = {
             "id": statement_id,
             "document_id": document_id,
-            "time": f"{iso_date}T{speech['timecode']}" if speech.get("timecode") else None,
+            "time": time_value,
             "who_en": speech.get("speaker_name") or "",
             "content_en": (speech.get("text") or "")[:10000],  # Limit content size
             "h1_en": speech.get("h1_en"),
@@ -242,17 +251,39 @@ def get_latest_document_id(neo4j: Neo4jClient) -> int:
     return result[0]['max_id'] if result and result[0]['max_id'] else 25000
 
 
-def check_and_import_recent_debates(neo4j: Neo4jClient, lookback_days: int = 7):
-    """Check for and import any missing debates from the last N days."""
+def check_and_import_recent_debates(neo4j: Neo4jClient, lookback_days: int = 7, target_month: str = None):
+    """Check for and import any missing debates from the last N days or a specific month.
+
+    Args:
+        neo4j: Neo4j client
+        lookback_days: Number of days to look back (default: 7)
+        target_month: Optional month in YYYY-MM format (e.g., '2025-11') to check all weekdays in that month
+    """
     imported_count = 0
 
-    # Get dates to check (last N days)
+    # Get dates to check
     dates_to_check = []
-    for i in range(lookback_days, -1, -1):
-        date = datetime.now() - timedelta(days=i)
-        # Skip weekends (House doesn't sit on weekends)
-        if date.weekday() < 5:  # Monday = 0, Friday = 4
-            dates_to_check.append(date.strftime('%Y-%m-%d'))
+
+    if target_month:
+        # Generate all weekdays in the specified month
+        year, month = map(int, target_month.split('-'))
+        from calendar import monthrange
+        days_in_month = monthrange(year, month)[1]
+
+        for day in range(1, days_in_month + 1):
+            date = datetime(year, month, day)
+            # Skip weekends (House doesn't sit on weekends)
+            if date.weekday() < 5:  # Monday = 0, Friday = 4
+                dates_to_check.append(date.strftime('%Y-%m-%d'))
+
+        logger.info(f"Checking for debates in {target_month}: {len(dates_to_check)} weekdays")
+    else:
+        # Original logic: last N days
+        for i in range(lookback_days, -1, -1):
+            date = datetime.now() - timedelta(days=i)
+            # Skip weekends (House doesn't sit on weekends)
+            if date.weekday() < 5:  # Monday = 0, Friday = 4
+                dates_to_check.append(date.strftime('%Y-%m-%d'))
 
     logger.info(f"Checking for debates on dates: {dates_to_check}")
 
@@ -269,81 +300,101 @@ def check_and_import_recent_debates(neo4j: Neo4jClient, lookback_days: int = 7):
     logger.info(f"Already imported: {existing_dates}")
     logger.info(f"Missing dates to check: {missing_dates}")
 
-    # Try to import each missing date
-    for date_str in missing_dates:
-        # Try sitting numbers around expected range
-        # House typically has 100-150 sittings per session
-        # We'll try a range based on recent patterns
-        latest_doc_id = get_latest_document_id(neo4j)
+    # Get the latest sitting number we have to estimate range
+    result = neo4j.run_query("""
+        MATCH (d:Document)
+        WHERE d.number IS NOT NULL
+        WITH d.number as num
+        ORDER BY d.date DESC
+        LIMIT 1
+        RETURN num
+    """)
 
-        # Try to find the XML by testing sitting numbers
-        for sitting_offset in range(0, 10):  # Check up to 10 sitting numbers ahead
-            # Estimate sitting number based on existing data
-            # Get the latest sitting number we have
-            result = neo4j.run_query("""
-                MATCH (d:Document)
-                WHERE d.number IS NOT NULL
-                WITH d.number as num
-                ORDER BY d.date DESC
-                LIMIT 1
-                RETURN num
-            """)
+    if result and result[0]['num']:
+        # Extract sitting number from "No. 053"
+        latest_sitting = int(result[0]['num'].replace('No. ', '').strip())
+        # Search backward and forward: from (latest - 15) to (latest + 15)
+        search_range = range(max(1, latest_sitting - 15), latest_sitting + 16)
+    else:
+        # Fallback: search from sitting 040 to 070
+        search_range = range(40, 71)
 
-            if result and result[0]['num']:
-                # Extract sitting number from "No. 053"
-                latest_sitting = int(result[0]['num'].replace('No. ', '').strip())
-                sitting_num = latest_sitting + sitting_offset + 1
-            else:
-                # Fallback if we can't determine
-                sitting_num = 50 + sitting_offset
+    logger.info(f"Searching sitting numbers: {search_range.start} to {search_range.stop - 1}")
 
-            sitting_str = str(sitting_num).zfill(3)
-            xml_url = f"https://www.ourcommons.ca/Content/House/451/Debates/{sitting_str}/HAN{sitting_str}-E.XML"
+    # Try each sitting number in range
+    for sitting_num in search_range:
+        sitting_str = str(sitting_num).zfill(3)
+        xml_url = f"https://www.ourcommons.ca/Content/House/451/Debates/{sitting_str}/HAN{sitting_str}-E.XML"
 
-            logger.info(f"Checking {date_str} sitting {sitting_str}: {xml_url}")
+        try:
+            # Check if XML exists
+            response = requests.head(xml_url, timeout=10)
+            if response.status_code != 200:
+                continue
 
+            # Fetch and parse to get actual date
+            response = requests.get(xml_url, headers={"Accept": "application/xml"})
+            response.raise_for_status()
+            xml_text = response.content.decode('utf-8-sig')
+
+            hansard_data = parse_hansard_with_enhanced_metadata(xml_text, source_url=xml_url)
+
+            # Parse the verbose date from XML to ISO format
             try:
-                response = requests.head(xml_url, timeout=10)
-                if response.status_code == 200:
-                    logger.info(f"✓ Found XML for {date_str} at sitting {sitting_str}")
+                # Parse date like "Monday, November 17, 2025" to ISO "2025-11-17"
+                parsed_date = datetime.strptime(hansard_data['date'], '%A, %B %d, %Y')
+                iso_date = parsed_date.strftime('%Y-%m-%d')
 
-                    # Fetch and import
-                    response = requests.get(xml_url, headers={"Accept": "application/xml"})
-                    response.raise_for_status()
-                    xml_text = response.content.decode('utf-8-sig')
-
-                    hansard_data = parse_hansard_with_enhanced_metadata(xml_text, source_url=xml_url)
-
-                    # Parse the verbose date from XML to ISO format
-                    try:
-                        # Parse date like "Monday, November 17, 2025" to ISO "2025-11-17"
-                        parsed_date = datetime.strptime(hansard_data['date'], '%A, %B %d, %Y')
-                        iso_date = parsed_date.strftime('%Y-%m-%d')
-
-                        # Import if we don't already have this sitting number
-                        # (date might not match expected due to recesses, but that's OK)
-                        document_id = latest_doc_id + 1
-                        stmt_count, linked_count = import_hansard_to_neo4j(
-                            neo4j, hansard_data, iso_date,
-                            document_id, sitting_str
-                        )
-                        logger.success(f"✅ Imported sitting {sitting_str} ({iso_date}): {stmt_count} statements, {linked_count} linked")
-                        imported_count += 1
-                        break
-                    except (ValueError, TypeError) as e:
-                        logger.warning(f"Could not parse date '{hansard_data['date']}': {e}")
-
-            except requests.exceptions.RequestException as e:
-                if hasattr(e.response, 'status_code') and e.response.status_code == 404:
-                    # 404 is expected, keep trying
+                # Skip if not in our target date range
+                if iso_date not in missing_dates:
+                    logger.info(f"⏭  Sitting {sitting_str} ({iso_date}) not in missing dates, skipping")
                     continue
-                logger.error(f"Error fetching {xml_url}: {e}")
+
+                # Skip if already imported (by date check)
+                if iso_date in existing_dates:
+                    logger.info(f"⏭  Sitting {sitting_str} ({iso_date}) already imported, skipping")
+                    continue
+
+                logger.success(f"✓ Found sitting {sitting_str} for missing date {iso_date}")
+
+                # Get next document ID
+                latest_doc_id = get_latest_document_id(neo4j)
+                document_id = latest_doc_id + 1
+
+                # Import
+                stmt_count, linked_count = import_hansard_to_neo4j(
+                    neo4j, hansard_data, iso_date,
+                    document_id, sitting_str
+                )
+                logger.success(f"✅ Imported sitting {sitting_str} ({iso_date}): {stmt_count} statements, {linked_count} linked")
+                imported_count += 1
+
+                # Mark as imported
+                existing_dates.add(iso_date)
+
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Could not parse date '{hansard_data['date']}': {e}")
+
+        except requests.exceptions.RequestException as e:
+            if hasattr(e.response, 'status_code') and e.response.status_code == 404:
+                # 404 is expected for sitting numbers that don't exist
+                continue
+            logger.error(f"Error fetching {xml_url}: {e}")
 
     return imported_count
 
 
 def main():
     """Main entry point for daily import job."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Daily Hansard import job')
+    parser.add_argument('--lookback-days', type=int, default=30,
+                        help='Number of days to look back (default: 30)')
+    parser.add_argument('--month', type=str, default=None,
+                        help='Target month in YYYY-MM format (e.g., 2025-11) to check all weekdays')
+    args = parser.parse_args()
+
     logger.info("=" * 80)
     logger.info("DAILY HANSARD IMPORT JOB")
     logger.info(f"Started at: {datetime.now().isoformat()}")
@@ -361,8 +412,12 @@ def main():
     neo4j = Neo4jClient(uri=neo4j_uri, user=neo4j_user, password=neo4j_password)
 
     try:
-        # Check for debates from last 7 days
-        imported = check_and_import_recent_debates(neo4j, lookback_days=7)
+        # Check for debates from specified period
+        imported = check_and_import_recent_debates(
+            neo4j,
+            lookback_days=args.lookback_days,
+            target_month=args.month
+        )
 
         logger.info("=" * 80)
         if imported > 0:

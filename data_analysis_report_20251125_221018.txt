@@ -1,0 +1,56 @@
+════════════════════════════════════════════════════════════════════════════════
+CANADAGPT NEO4J DATABASE ANALYSIS REPORT
+Session 45-1 Analysis with November 2025 Deep Dive
+Generated: 2025-11-25 22:10:18 ET
+════════════════════════════════════════════════════════════════════════════════
+
+EXECUTIVE SUMMARY
+────────────────────────────────────────────────────────────────────────────────
+Overall Health: ✗ NEEDS ATTENTION
+Critical Issues: 3
+Warnings: 0
+
+Key Findings:
+  ✗ CRITICAL: 19 missing November sitting days
+  ✗ CRITICAL: Statement linking rate 0% (target: 98%+)
+  ✗ CRITICAL: 29 orphaned statements
+
+════════════════════════════════════════════════════════════════════════════════
+1. DATA COMPLETENESS ANALYSIS
+════════════════════════════════════════════════════════════════════════════════
+
+Session 45-1 Coverage
+────────────────────────────────────────
+  Parliament: 45
+  Session: 1
+  Documents: 0 (Debates: 0, Evidence: 0)
+  Statements: 0
+  Votes: 0
+  Bills: 0
+  Meetings: 0
+
+November 2025 Coverage
+────────────────────────────────────────
+  Documents Found: 1
+  Missing Dates: 19
+
+  ⚠ 2025-11-21 - Doc 25591 - 571 statements - 94.92% linked
+
+  Missing dates:
+    ✗ 2025-11-03 (Mon)
+    ✗ 2025-11-04 (Tue)
+    ✗ 2025-11-05 (Wed)
+    ✗ 2025-11-06 (Thu)
+    ✗ 2025-11-07 (Fri)
+    ✗ 2025-11-10 (Mon)
+    ✗ 2025-11-11 (Tue)
+    ✗ 2025-11-12 (Wed)
+    ✗ 2025-11-13 (Thu)
+    ✗ 2025-11-14 (Fri)
+
+════════════════════════════════════════════════════════════════════════════════
+2. DATA QUALITY ANALYSIS
+════════════════════════════════════════════════════════════════════════════════
+
+Statement → MP Linking
+────────────────────────────────────────

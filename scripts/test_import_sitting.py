@@ -85,10 +85,19 @@ def import_hansard_to_neo4j(neo4j: Neo4jClient, hansard_data: Dict[str, Any], is
         statement_id = speech.get("intervention_id") or f"{document_id}-{idx}"
         wordcount = len(speech["text"].split()) if speech["text"] else 0
 
+        # Format time as ISO-8601 DateTime (Neo4j requires seconds)
+        time_value = None
+        if speech.get("timecode"):
+            timecode = speech["timecode"]
+            # Ensure timecode has seconds (HH:MM -> HH:MM:00)
+            if len(timecode) == 5 and timecode.count(":") == 1:
+                timecode = f"{timecode}:00"
+            time_value = f"{iso_date}T{timecode}"
+
         statement = {
             "id": statement_id,
             "document_id": document_id,
-            "time": f"{iso_date}T{speech['timecode']}" if speech.get("timecode") else None,
+            "time": time_value,
             "who_en": speech.get("speaker_name") or "",
             "content_en": (speech.get("text") or "")[:10000],
             "h1_en": speech.get("h1_en"),

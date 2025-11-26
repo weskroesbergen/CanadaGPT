@@ -13,7 +13,7 @@ COPY packages/data-pipeline/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy fedmcp package (for OpenParliament client)
-COPY src/fedmcp /app/fedmcp/src/fedmcp
+COPY packages/fedmcp/src/fedmcp /app/fedmcp/src/fedmcp
 
 # Copy data-pipeline package
 COPY packages/data-pipeline /app/data-pipeline

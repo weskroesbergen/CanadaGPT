@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 from datetime import datetime
 import re
+import unicodedata
 
 from ..utils.neo4j_client import Neo4jClient
 from ..utils.postgres_client import PostgresClient
@@ -110,6 +111,82 @@ def sanitize_statement_content(statement_data: Dict[str, Any]) -> Dict[str, Any]
             statement_data['time'] = None
 
     return statement_data
+
+
+# Name Matching Utilities (for linking statements to MPs by speaker name)
+# -----------------------------------------------------------------------
+
+# Common nickname mappings for Canadian MPs
+NICKNAME_MAPPING = {
+    'bobby': 'robert',
+    'rob': 'robert',
+    'bob': 'robert',
+    'bill': 'william',
+    'dick': 'richard',
+    'jim': 'james',
+    'joe': 'joseph',
+    'mike': 'michael',
+    'tony': 'anthony',
+    'shuv': 'shuvaloy',
+}
+
+
+def normalize_name(name: str) -> str:
+    """
+    Normalize a name for fuzzy matching by:
+    - Removing accents/diacritics (é → e, è → e)
+    - Converting to lowercase
+    - Removing extra whitespace
+    - Removing punctuation like periods
+
+    Args:
+        name: Name to normalize
+
+    Returns:
+        Normalized name string
+    """
+    if not name:
+        return ""
+
+    # Remove accents: é → e, è → e, ñ → n, etc.
+    # NFD decomposes characters into base + combining characters
+    # Then filter out combining characters
+    name = ''.join(
+        char for char in unicodedata.normalize('NFD', name)
+        if unicodedata.category(char) != 'Mn'
+    )
+
+    # Remove periods (for middle initials like "S." or "A.")
+    name = name.replace('.', '')
+
+    # Convert to lowercase and strip whitespace
+    name = name.lower().strip()
+
+    # Normalize whitespace
+    name = ' '.join(name.split())
+
+    return name
+
+
+def extract_core_name(given_name: str, family_name: str) -> str:
+    """
+    Extract core first and last name, removing middle names/initials.
+
+    Args:
+        given_name: Given/first name (may include middle names/initials)
+        family_name: Family/last name
+
+    Returns:
+        "FirstName LastName" with middle names removed
+    """
+    # Get first word from given name (removes middle names/initials)
+    first_only = given_name.split()[0] if given_name else ""
+
+    # Get first word from family name (handles hyphenated surnames)
+    # e.g., "Fancy-Landry" → "Fancy"
+    last_first = family_name.split()[0].split('-')[0] if family_name else ""
+
+    return f"{first_only} {last_first}".strip()
 
 
 def ingest_hansard_documents(
@@ -400,6 +477,190 @@ def link_statements_to_mps(
 
     logger.info(f"Created {total_created:,} MADE_BY relationships")
     return total_created
+
+
+def link_statements_to_mps_by_name(
+    neo4j_client: Neo4jClient,
+    document_id: Optional[int] = None,
+) -> int:
+    """
+    Create MADE_BY relationships between Statements and MPs using speaker name matching.
+
+    This function is used when politician_id is not available (e.g., XML imports).
+    Uses sophisticated name normalization to handle:
+    - French accents (é → e, è → e)
+    - Hyphenated surnames (Fancy-Landry)
+    - Compound surnames (Rempel Garner)
+    - Nicknames (Bobby ↔ Robert)
+    - Honorifics (Hon., Rt. Hon., Dr., etc.)
+    - Middle names/initials
+
+    Args:
+        neo4j_client: Neo4j client instance
+        document_id: Optional document ID to limit linking to specific document
+
+    Returns:
+        Number of relationships created
+    """
+    logger.info("Linking statements to MPs by speaker name...")
+
+    # Build MP name -> ID mapping from database
+    logger.info("Building MP name mapping with all variations...")
+    mp_mapping = {}
+    mp_query_result = neo4j_client.run_query("""
+        MATCH (m:MP)
+        RETURN m.id AS id, m.name AS name, m.given_name AS given_name, m.family_name AS family_name
+    """)
+
+    for record in mp_query_result:
+        mp_id = record.get("id")
+        name = record.get("name")
+        given = record.get("given_name", "")
+        family = record.get("family_name", "")
+
+        # Store by full name (normalized)
+        if name:
+            mp_mapping[normalize_name(name)] = mp_id
+
+        # Store by "FirstName LastName" format (normalized)
+        if given and family:
+            normalized_full = normalize_name(f"{given} {family}")
+            mp_mapping[normalized_full] = mp_id
+
+            # Also store core name without middle names/initials
+            # e.g., "Amanpreet S. Gill" -> "amanpreet gill"
+            core_name = normalize_name(extract_core_name(given, family))
+            if core_name:
+                mp_mapping[core_name] = mp_id
+
+            # Store with nickname variations
+            first_name = given.split()[0] if given else ""
+            first_normalized = normalize_name(first_name)
+            if first_normalized in NICKNAME_MAPPING:
+                # e.g., "Bobby Morrissey" also maps as "Robert Morrissey"
+                formal_name = normalize_name(f"{NICKNAME_MAPPING[first_normalized]} {family}")
+                mp_mapping[formal_name] = mp_id
+
+                # Also store core version with formal name
+                formal_core = normalize_name(f"{NICKNAME_MAPPING[first_normalized]} {family.split()[0].split('-')[0]}")
+                mp_mapping[formal_core] = mp_id
+
+        # For compound last names, also store with just the first part
+        # e.g., "Michelle Rempel Garner" -> "Michelle Rempel"
+        if given and family and " " in family:
+            first_family = family.split()[0]
+            mp_mapping[normalize_name(f"{given} {first_family}")] = mp_id
+
+        # For hyphenated last names, also store first part only
+        # e.g., "Jessica Fancy-Landry" -> "Jessica Fancy"
+        if given and family and "-" in family:
+            first_part = family.split('-')[0]
+            mp_mapping[normalize_name(f"{given} {first_part}")] = mp_id
+            # Also core version
+            mp_mapping[normalize_name(f"{given.split()[0]} {first_part}")] = mp_id
+
+    logger.info(f"Built {len(mp_mapping):,} MP name variations")
+
+    # Get statements that need linking
+    if document_id:
+        statements_query = """
+            MATCH (s:Statement)-[:PART_OF]->(d:Document {id: $document_id})
+            WHERE s.who_en IS NOT NULL
+              AND NOT exists((s)-[:MADE_BY]->())
+              AND s.who_en <> 'The Speaker'
+              AND s.who_en <> 'The Deputy Speaker'
+              AND s.who_en <> 'The Chair'
+              AND s.who_en <> 'The Acting Speaker'
+            RETURN s.id as statement_id, s.who_en as speaker_name
+        """
+        statements = neo4j_client.run_query(statements_query, {"document_id": document_id})
+    else:
+        statements_query = """
+            MATCH (s:Statement)
+            WHERE s.who_en IS NOT NULL
+              AND NOT exists((s)-[:MADE_BY]->())
+              AND s.who_en <> 'The Speaker'
+              AND s.who_en <> 'The Deputy Speaker'
+              AND s.who_en <> 'The Chair'
+              AND s.who_en <> 'The Acting Speaker'
+            RETURN s.id as statement_id, s.who_en as speaker_name
+            LIMIT 10000
+        """
+        statements = neo4j_client.run_query(statements_query)
+
+    logger.info(f"Found {len(statements):,} statements to link")
+
+    if not statements:
+        return 0
+
+    # Match statements to MPs
+    matched_pairs = []
+    unmatched = []
+
+    for stmt in statements:
+        statement_id = stmt["statement_id"]
+        speaker_name = stmt["speaker_name"]
+
+        if not speaker_name:
+            continue
+
+        # Strip honorifics from speaker name
+        clean_name = speaker_name
+        honorifics = ["Right Hon.", "Rt. Hon.", "Hon.", "Dr.", "Rev.", "Prof.", "Mr.", "Mrs.", "Ms.", "Miss"]
+        for honorific in honorifics:
+            clean_name = clean_name.replace(honorific, "").strip()
+
+        # Normalize the name
+        normalized_name = normalize_name(clean_name)
+
+        # Look up MP ID
+        mp_id = mp_mapping.get(normalized_name)
+
+        # If not found, try variations
+        if not mp_id and " " in normalized_name:
+            parts = normalized_name.split()
+
+            # Try: first name + first word of last name
+            if len(parts) >= 2:
+                first_last = f"{parts[0]} {parts[1]}"
+                mp_id = mp_mapping.get(first_last)
+
+            # Try: extracting just first + last (no middle names)
+            if not mp_id and len(parts) >= 2:
+                core_name = f"{parts[0]} {parts[-1]}"
+                mp_id = mp_mapping.get(core_name)
+
+        if mp_id:
+            matched_pairs.append({
+                "statement_id": statement_id,
+                "mp_id": mp_id,
+            })
+        else:
+            unmatched.append(speaker_name)
+
+    logger.info(f"Matched {len(matched_pairs):,} statements to MPs")
+    if unmatched:
+        logger.warning(f"Could not match {len(unmatched)} speaker names:")
+        for name in list(set(unmatched))[:10]:  # Show first 10 unique unmatched names
+            logger.warning(f"  - {name}")
+
+    # Create relationships in batches
+    if not matched_pairs:
+        return 0
+
+    cypher = """
+        UNWIND $pairs AS pair
+        MATCH (s:Statement {id: pair.statement_id})
+        MATCH (mp:MP {id: pair.mp_id})
+        MERGE (s)-[:MADE_BY]->(mp)
+        RETURN count(*) as created
+    """
+
+    result = neo4j_client.run_query(cypher, {"pairs": matched_pairs})
+    created = result[0]["created"] if result else 0
+
+    logger.success(f"✅ Created {created:,} MADE_BY relationships by name matching")
+    return created
 
 
 def link_statements_to_documents(

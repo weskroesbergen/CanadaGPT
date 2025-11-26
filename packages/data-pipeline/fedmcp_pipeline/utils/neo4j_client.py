@@ -153,6 +153,7 @@ class Neo4jClient:
         properties_list: List[Dict[str, Any]],
         merge_keys: List[str],
         batch_size: int = 10000,
+        max_retries: int = 3,
     ) -> int:
         """
         Merge nodes in batches (create if missing, update if exists).
@@ -162,6 +163,7 @@ class Neo4jClient:
             properties_list: List of property dicts
             merge_keys: Properties to match on (e.g., ["id"] or ["number", "session"])
             batch_size: Nodes per transaction
+            max_retries: Maximum retry attempts for connection errors
 
         Returns:
             Total number of nodes created or updated
@@ -171,6 +173,7 @@ class Neo4jClient:
             ...     {"id": "mp-1", "name": "Alice", "party": "Liberal"},
             ... ], merge_keys=["id"])
         """
+        import time
         total_processed = 0
 
         # Build MERGE clause dynamically based on merge_keys
@@ -181,18 +184,30 @@ class Neo4jClient:
         SET n += properties
         """
 
-        with self.driver.session() as session:
-            for i in range(0, len(properties_list), batch_size):
-                batch = properties_list[i : i + batch_size]
-                result = session.run(query, batch=batch)
-                summary = result.consume()
-                created = summary.counters.nodes_created
-                props_set = summary.counters.properties_set
-                total_processed += len(batch)
-                logger.debug(
-                    f"Merged {label} nodes: {created} created, "
-                    f"{props_set} properties set (batch {i // batch_size + 1})"
-                )
+        for i in range(0, len(properties_list), batch_size):
+            batch = properties_list[i : i + batch_size]
+
+            for attempt in range(max_retries):
+                try:
+                    with self.driver.session() as session:
+                        result = session.run(query, batch=batch)
+                        summary = result.consume()
+                        created = summary.counters.nodes_created
+                        props_set = summary.counters.properties_set
+                        total_processed += len(batch)
+                        logger.debug(
+                            f"Merged {label} nodes: {created} created, "
+                            f"{props_set} properties set (batch {i // batch_size + 1})"
+                        )
+                    break  # Success, exit retry loop
+                except ServiceUnavailable as e:
+                    if attempt < max_retries - 1:
+                        wait_time = 2 ** attempt
+                        logger.warning(f"Connection error in batch_merge (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s")
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(f"Batch merge failed after {max_retries} attempts: {e}")
+                        raise
 
         logger.info(f"Merged {total_processed:,} {label} nodes total")
         return total_processed
@@ -305,13 +320,14 @@ class Neo4jClient:
     # Query Utilities
     # ============================================
 
-    def run_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def run_query(self, query: str, parameters: Optional[Dict[str, Any]] = None, max_retries: int = 3) -> List[Dict[str, Any]]:
         """
         Execute a Cypher query and return results as a list.
 
         Args:
             query: Cypher query string
             parameters: Query parameters (optional)
+            max_retries: Maximum number of retry attempts for connection errors
 
         Returns:
             List of records as dictionaries
@@ -320,9 +336,21 @@ class Neo4jClient:
             >>> result = client.run_query("MATCH (m:MP) RETURN count(m) AS count")
             >>> count = result[0]["count"]
         """
-        with self.driver.session() as session:
-            result = session.run(query, parameters or {})
-            return [dict(record) for record in result]
+        import time
+
+        for attempt in range(max_retries):
+            try:
+                with self.driver.session() as session:
+                    result = session.run(query, parameters or {})
+                    return [dict(record) for record in result]
+            except ServiceUnavailable as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(f"Connection error (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s: {e}")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Connection failed after {max_retries} attempts: {e}")
+                    raise
 
     def count_nodes(self, label: str) -> int:
         """Count nodes with given label."""

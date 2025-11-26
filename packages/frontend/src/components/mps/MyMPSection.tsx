@@ -51,22 +51,26 @@ export function MyMPSection() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPendingSave, setIsPendingSave] = useState(false);
 
-  // Get preferred MP ID from localStorage first, then fall back to session
-  // This ensures immediate persistence even before session refresh
-  const [preferredMpId, setPreferredMpId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('preferredMpId');
-    }
-    return null;
-  });
+  // Initialize to null to avoid hydration mismatch, then sync from localStorage
+  const [preferredMpId, setPreferredMpId] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  // Sync session value to localStorage on initial load
+  // Hydration-safe: Load from localStorage only after client-side mount
   useEffect(() => {
-    if (profile?.preferred_mp_id && !preferredMpId) {
+    setIsClient(true);
+    const stored = localStorage.getItem('preferredMpId');
+    if (stored && !preferredMpId) {
+      setPreferredMpId(stored);
+    }
+  }, []);
+
+  // Sync session value to localStorage and state
+  useEffect(() => {
+    if (isClient && profile?.preferred_mp_id && !preferredMpId) {
       setPreferredMpId(profile.preferred_mp_id);
       localStorage.setItem('preferredMpId', profile.preferred_mp_id);
     }
-  }, [profile?.preferred_mp_id, preferredMpId]);
+  }, [isClient, profile?.preferred_mp_id, preferredMpId]);
 
   // Query to get MP directly by ID if preferred_mp_id exists
   const { data: preferredMpData, loading: preferredMpLoading } = useQuery(GET_MP, {

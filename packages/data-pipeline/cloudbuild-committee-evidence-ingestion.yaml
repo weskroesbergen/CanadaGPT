@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/committee-evidence-ingestion:latest'
+      - '-f'
+      - 'packages/data-pipeline/Dockerfile.committee-evidence-ingestion'
+      - '.'
+images:
+  - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/committee-evidence-ingestion:latest'
+timeout: 600s

@@ -1,0 +1,119 @@
+════════════════════════════════════════════════════════════════════════════════
+CANADAGPT NEO4J DATABASE ANALYSIS REPORT
+Session 45-1 Analysis with November 2025 Deep Dive
+Generated: 2025-11-25 22:11:04 ET
+════════════════════════════════════════════════════════════════════════════════
+
+EXECUTIVE SUMMARY
+────────────────────────────────────────────────────────────────────────────────
+Overall Health: ✗ NEEDS ATTENTION
+Critical Issues: 3
+Warnings: 0
+
+Key Findings:
+  ✗ CRITICAL: 19 missing November sitting days
+  ✗ CRITICAL: Statement linking rate 0.0% (target: 98%+)
+  ✗ CRITICAL: 29 orphaned statements
+
+════════════════════════════════════════════════════════════════════════════════
+1. DATA COMPLETENESS ANALYSIS
+════════════════════════════════════════════════════════════════════════════════
+
+Session 45-1 Coverage
+────────────────────────────────────────
+  Parliament: 45
+  Session: 1
+  Documents: 0 (Debates: 0, Evidence: 0)
+  Statements: 0
+  Votes: 0
+  Bills: 0
+  Meetings: 0
+
+November 2025 Coverage
+────────────────────────────────────────
+  Documents Found: 1
+  Missing Dates: 19
+
+  ⚠ 2025-11-21 - Doc 25591 - 571 statements - 94.92% linked
+
+  Missing dates:
+    ✗ 2025-11-03 (Mon)
+    ✗ 2025-11-04 (Tue)
+    ✗ 2025-11-05 (Wed)
+    ✗ 2025-11-06 (Thu)
+    ✗ 2025-11-07 (Fri)
+    ✗ 2025-11-10 (Mon)
+    ✗ 2025-11-11 (Tue)
+    ✗ 2025-11-12 (Wed)
+    ✗ 2025-11-13 (Thu)
+    ✗ 2025-11-14 (Fri)
+
+════════════════════════════════════════════════════════════════════════════════
+2. DATA QUALITY ANALYSIS
+════════════════════════════════════════════════════════════════════════════════
+
+Statement → MP Linking
+────────────────────────────────────────
+  Total Statements: 0
+  With person_db_id: 0 (0.0%)
+  Linked to MP: 0 (0.0%)
+  Orphaned: 0
+
+Vote → MP Linking
+────────────────────────────────────────
+  Total Ballots: 0
+  Linked to MP: 0 (0.0%)
+
+MP Metadata Completeness
+────────────────────────────────────────
+  Current MPs: 343
+  With hansard_db_id: 337 (98.25%)
+  With parl_mp_id: 343 (100.0%)
+
+════════════════════════════════════════════════════════════════════════════════
+3. RELATIONSHIP INTEGRITY ANALYSIS
+════════════════════════════════════════════════════════════════════════════════
+
+Orphaned Statements: 29
+Orphaned Ballots: 0
+Empty Documents: 18,291
+Silent MPs (no SPOKE_AT): 13
+
+Relationship Cardinality:
+  Avg Statements per Document: 201.66
+  Avg Ballots per Vote: 0
+
+════════════════════════════════════════════════════════════════════════════════
+4. SCHEMA HEALTH ANALYSIS
+════════════════════════════════════════════════════════════════════════════════
+
+Existing Indexes: 106
+
+  - activity_id: ['Activity'] on ['id']
+  - activity_instance_id: ['ActivityInstance'] on ['id']
+  - bill_composite: ['Bill'] on ['number', 'session']
+  - bill_introduced_date_idx: ['Bill'] on ['introduced_date']
+  - bill_search: ['Bill'] on ['title', 'title_fr', 'summary', 'summary_fr']
+  - bill_session: ['Bill'] on ['session']
+  - bill_stage: ['Bill'] on ['stage']
+  - bill_status: ['Bill'] on ['status']
+  - bill_text_docid: ['BillText'] on ['docid']
+  - bill_text_en: ['BillText'] on ['text_en']
+
+Recommended Indexes: 1
+  - statement_person_db_id: Used for MP linking in Hansard imports
+
+════════════════════════════════════════════════════════════════════════════════
+5. NOVEMBER 2025 DEEP DIVE
+════════════════════════════════════════════════════════════════════════════════
+
+Daily Analysis (1 days):
+
+  ⚠ 2025-11-21: 571 statements, 138 speakers, 94.92% linked
+
+Top Unlinked Speakers (1):
+  - The Assistant Deputy Speaker (DbId=319101): 14 statements
+
+════════════════════════════════════════════════════════════════════════════════
+END OF REPORT
+════════════════════════════════════════════════════════════════════════════════

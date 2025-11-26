@@ -4,7 +4,7 @@
 
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import { useLocale } from 'next-intl';
 import { Header } from '@/components/Header';
@@ -19,6 +19,8 @@ import { ShareButton } from '@/components/ShareButton';
 import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
 import { Tabs } from '@/components/Tabs';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
+import { useCommitteeActivity } from '@/hooks/useCommitteeActivity';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 
 export default function CommitteeDetailPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -45,6 +47,29 @@ export default function CommitteeDetailPage({ params }: { params: Promise<{ code
   const meetings = meetingsData?.committees?.[0]?.meetings || [];
   const testimony = testimonyData?.committeeTestimony || [];
   const metrics = null; // metricsData?.committeeActivityMetrics;
+
+  // Committee activity tracking
+  const { markCommitteeViewed, isTracking } = useCommitteeActivity();
+  const { preferences } = useUserPreferences();
+
+  // Get latest meeting number from sorted meetings
+  const latestMeetingNumber = meetings.length > 0
+    ? Math.max(...meetings.map((m: any) => m.number || 0))
+    : null;
+
+  // Mark as viewed on page load if preference is 'visit_committee'
+  useEffect(() => {
+    if (committee && isTracking(code) && preferences.committeeMarkReadOn === 'visit_committee') {
+      markCommitteeViewed(code, latestMeetingNumber || undefined, meetings.length);
+    }
+  }, [code, committee, isTracking, markCommitteeViewed, latestMeetingNumber, meetings.length, preferences.committeeMarkReadOn]);
+
+  // Handle tab changes - mark as viewed when meetings tab is clicked
+  const handleTabChange = (tabId: string) => {
+    if (tabId === 'meetings' && isTracking(code) && preferences.committeeMarkReadOn === 'visit_meetings_tab') {
+      markCommitteeViewed(code, latestMeetingNumber || undefined, meetings.length);
+    }
+  };
 
   if (loading) {
     return (
@@ -127,6 +152,7 @@ export default function CommitteeDetailPage({ params }: { params: Promise<{ code
         {/* Tabs for organized content */}
         <Tabs
           defaultTab="overview"
+          onTabChange={handleTabChange}
           tabs={[
             {
               id: 'overview',

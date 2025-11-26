@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ IMPORTANT: Deploying to Production
+
+**Before deploying to production**, read [DEPLOYMENT.md](DEPLOYMENT.md) for:
+- Pre-deployment checklist
+- Environment variable configuration
+- Rollback procedures
+- Post-deployment verification
+
+**Quick validation**: Run `./scripts/validate-deployment.sh` to check for common deployment issues.
+
 ## Project Overview
 
 CanadaGPT is an AI-powered Canadian government accountability platform built as a TypeScript/Python monorepo with four core packages:

@@ -27,6 +27,9 @@ export interface UserPreferences {
   emailNotifications: boolean;
   pushNotifications: boolean;
 
+  // Committee tracking preferences
+  committeeMarkReadOn: 'visit_committee' | 'visit_meetings_tab' | 'click_meeting';
+
   // Chat preferences
   has_seen_welcome?: boolean;
   custom_gordie_prompt?: string;
@@ -44,6 +47,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   statementsPerPage: 20,
   emailNotifications: true,
   pushNotifications: false,
+  committeeMarkReadOn: 'visit_meetings_tab',
   has_seen_welcome: false,
 };
 
@@ -94,6 +98,7 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
               statementsPerPage: data.statements_per_page ?? DEFAULT_PREFERENCES.statementsPerPage,
               emailNotifications: data.email_notifications ?? DEFAULT_PREFERENCES.emailNotifications,
               pushNotifications: data.push_notifications ?? DEFAULT_PREFERENCES.pushNotifications,
+              committeeMarkReadOn: data.committee_mark_read_on ?? DEFAULT_PREFERENCES.committeeMarkReadOn,
               has_seen_welcome: data.has_seen_welcome ?? DEFAULT_PREFERENCES.has_seen_welcome,
             });
           } else {
@@ -156,6 +161,7 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
       if ('statementsPerPage' in updates) dbUpdates.statements_per_page = updates.statementsPerPage;
       if ('emailNotifications' in updates) dbUpdates.email_notifications = updates.emailNotifications;
       if ('pushNotifications' in updates) dbUpdates.push_notifications = updates.pushNotifications;
+      if ('committeeMarkReadOn' in updates) dbUpdates.committee_mark_read_on = updates.committeeMarkReadOn;
       if ('has_seen_welcome' in updates) dbUpdates.has_seen_welcome = updates.has_seen_welcome;
 
       const response = await fetch('/api/user/preferences', {
@@ -201,6 +207,7 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
           statements_per_page: DEFAULT_PREFERENCES.statementsPerPage,
           email_notifications: DEFAULT_PREFERENCES.emailNotifications,
           push_notifications: DEFAULT_PREFERENCES.pushNotifications,
+          committee_mark_read_on: DEFAULT_PREFERENCES.committeeMarkReadOn,
           has_seen_welcome: DEFAULT_PREFERENCES.has_seen_welcome,
         }),
       });

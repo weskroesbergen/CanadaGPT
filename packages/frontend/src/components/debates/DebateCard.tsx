@@ -11,7 +11,7 @@ interface DebateSummary {
     date: string | number;
     session_id: string;
     document_type: string;
-    number: number;
+    number: string | number;  // Can be string like "No. 053" or number
     keywords_en?: string;
     keywords_fr?: string;
   };
@@ -33,7 +33,15 @@ export function DebateCard({ debate }: DebateCardProps) {
     let date: Date;
 
     if (typeof dateValue === 'string') {
-      date = new Date(dateValue);
+      // Parse date strings as local dates (not UTC) to avoid timezone issues
+      // "2025-11-07" should display as November 7, not November 6
+      const match = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        date = new Date(dateValue);
+      }
     } else if (typeof dateValue === 'number') {
       // Handle both milliseconds and seconds timestamps
       date = dateValue > 9999999999 ? new Date(dateValue) : new Date(dateValue * 1000);

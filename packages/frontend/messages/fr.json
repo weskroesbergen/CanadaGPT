@@ -112,6 +112,9 @@
   "mps": {
     "title": "Députés",
     "subtitle": "Parcourir les {count} députés actuels",
+    "showing": "affichant {count}",
+    "loadingMore": "Chargement...",
+    "allLoaded": "Tous les {count} députés chargés",
     "search": {
       "placeholder": "Rechercher par nom...",
       "noResults": "Aucun député trouvé correspondant à vos critères.",
@@ -137,6 +140,8 @@
       "searchByCity": "Rechercher par ville",
       "postalCodePlaceholder": "K1A 0A9",
       "cityPlaceholder": "Ottawa, ON",
+      "postalCodeHint": "Entrez le code postal de votre résidence principale pour des résultats plus précis.",
+      "geolocationNote": "La détection de la position n'est pas toujours précise. Utilisez le code postal pour de meilleurs résultats.",
       "setAsMyMP": "Définir comme mon député",
       "clearPreferredMP": "Effacer le député préféré",
       "yourMPBadge": "Votre député",

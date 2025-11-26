@@ -69,11 +69,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-text-primary transition-colors">
-                  {t('contact')}
-                </Link>
-              </li>
-              <li>
                 <Link href="/privacy" className="hover:text-text-primary transition-colors">
                   {t('privacy')}
                 </Link>

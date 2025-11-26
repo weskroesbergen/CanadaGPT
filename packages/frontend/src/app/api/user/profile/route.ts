@@ -46,14 +46,16 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Update user profile
+    // Upsert user profile (creates if not exists, updates if exists)
     const { data, error } = await (getSupabaseAdmin()
       .from('user_profiles') as any)
-      .update({
+      .upsert({
+        id: session.user.id,
         ...updates,
         updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'id',
       })
-      .eq('id', session.user.id)
       .select()
       .single();
 

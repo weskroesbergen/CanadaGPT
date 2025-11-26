@@ -112,6 +112,9 @@
   "mps": {
     "title": "Members of Parliament",
     "subtitle": "Browse all {count} current MPs",
+    "showing": "showing {count}",
+    "loadingMore": "Loading more...",
+    "allLoaded": "All {count} MPs loaded",
     "search": {
       "placeholder": "Search by name...",
       "noResults": "No MPs found matching your criteria.",
@@ -137,6 +140,8 @@
       "searchByCity": "Search by City",
       "postalCodePlaceholder": "K1A 0A9",
       "cityPlaceholder": "Ottawa, ON",
+      "postalCodeHint": "Enter the postal code from your primary residence for the most accurate results.",
+      "geolocationNote": "Location detection may not be 100% accurate. Use postal code for best results.",
       "setAsMyMP": "Set as my MP",
       "clearPreferredMP": "Clear Preferred MP",
       "yourMPBadge": "Your MP",

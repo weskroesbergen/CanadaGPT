@@ -207,6 +207,7 @@ export function useBookmarks() {
         aiPrompt: string; // PRO tier only
         isFavorite: boolean;
         notificationsEnabled: boolean;
+        metadata: Record<string, any>;
       }>
     ): Promise<{ success: boolean; error?: string }> => {
       if (!user) {

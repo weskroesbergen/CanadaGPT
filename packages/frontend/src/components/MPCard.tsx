@@ -104,6 +104,7 @@ export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) 
               width={60}
               height={96}
               className="w-[60px] h-24 rounded-lg object-contain flex-shrink-0 bg-bg-elevated"
+              loading="lazy"
               onError={() => setImageError(true)}
             />
           )}

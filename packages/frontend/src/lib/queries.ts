@@ -126,6 +126,25 @@ export const SEARCH_MPS = gql`
   ${MP_BASIC_FRAGMENT}
 `;
 
+// Optimized paginated MPs query with offset-based pagination
+export const PAGINATED_MPS = gql`
+  query PaginatedMPs($parties: [String!], $current: Boolean, $cabinetOnly: Boolean, $searchTerm: String, $limit: Int, $offset: Int) {
+    paginatedMPs(parties: $parties, current: $current, cabinetOnly: $cabinetOnly, searchTerm: $searchTerm, limit: $limit, offset: $offset) {
+      ...MPBasic
+    }
+  }
+  ${MP_BASIC_FRAGMENT}
+`;
+
+// Count MPs matching filters
+export const COUNT_MPS = gql`
+  query CountMPs($parties: [String!], $current: Boolean, $cabinetOnly: Boolean, $searchTerm: String) {
+    countMPs(parties: $parties, current: $current, cabinetOnly: $cabinetOnly, searchTerm: $searchTerm) {
+      count
+    }
+  }
+`;
+
 export const GET_CHAMBER_SEATING = gql`
   query GetChamberSeating {
     mps(where: { current: true, seat_row_NOT: null }) {
@@ -614,6 +633,9 @@ export const GET_COMMITTEES = gql`
       membersAggregate {
         count
       }
+      latestMeetingDate
+      latestMeetingNumber
+      totalMeetingsCount
     }
   }
 `;

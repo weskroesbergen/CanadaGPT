@@ -10,13 +10,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { MapPin, Loader2, AlertCircle, User, MessageSquare, Vote, FileText } from 'lucide-react';
+import { MapPin, Loader2, AlertCircle, User, MessageSquare, Vote, FileText, DollarSign, Users, Newspaper, Building2, Share2, Bookmark, HelpCircle } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { useQuery } from '@apollo/client';
 import { SEARCH_MPS, GET_MP } from '@/lib/queries';
 import { PostalCodeInput } from './PostalCodeInput';
 import { UnauthenticatedMPPrompt } from './UnauthenticatedMPPrompt';
 import { normalizePostalCode } from '@/lib/postalCodeUtils';
+import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
+import { ShareButton } from '@/components/ShareButton';
+import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
 
 interface MPData {
   id?: string;
@@ -25,8 +28,10 @@ interface MPData {
   party: string;
   email?: string;
   photo_url?: string;
+  photo_url_source?: string;
   phone?: string;
   url?: string;
+  constituency_office?: string;
   offices?: Array<{
     type: string;
     tel: string;
@@ -46,10 +51,27 @@ export function MyMPSection() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPendingSave, setIsPendingSave] = useState(false);
 
+  // Get preferred MP ID from localStorage first, then fall back to session
+  // This ensures immediate persistence even before session refresh
+  const [preferredMpId, setPreferredMpId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('preferredMpId');
+    }
+    return null;
+  });
+
+  // Sync session value to localStorage on initial load
+  useEffect(() => {
+    if (profile?.preferred_mp_id && !preferredMpId) {
+      setPreferredMpId(profile.preferred_mp_id);
+      localStorage.setItem('preferredMpId', profile.preferred_mp_id);
+    }
+  }, [profile?.preferred_mp_id, preferredMpId]);
+
   // Query to get MP directly by ID if preferred_mp_id exists
   const { data: preferredMpData, loading: preferredMpLoading } = useQuery(GET_MP, {
-    variables: { id: profile?.preferred_mp_id },
-    skip: !profile?.preferred_mp_id || !!mpData
+    variables: { id: preferredMpId },
+    skip: !preferredMpId || !!mpData
   });
 
   // Query to get the correct database ID for the MP by name
@@ -111,8 +133,10 @@ export function MyMPSection() {
         party: mp.party,
         email: mp.email,
         photo_url: mp.photo_url,
+        photo_url_source: mp.photo_url_source,
         phone: mp.phone,
-        url: mp.ourcommons_url
+        url: mp.ourcommons_url,
+        constituency_office: mp.constituency_office
       });
       // This MP is already saved, so no pending save
       setIsPendingSave(false);
@@ -121,11 +145,11 @@ export function MyMPSection() {
 
   // Auto-load MP data if user has postal code in profile (fallback if no preferred_mp_id)
   useEffect(() => {
-    if (profile?.postal_code && !mpData && !profile?.preferred_mp_id && !preferredMpLoading) {
+    if (profile?.postal_code && !mpData && !preferredMpId && !preferredMpLoading) {
       setPostalCode(profile.postal_code);
       fetchMPByPostalCode(profile.postal_code);
     }
-  }, [profile?.postal_code, profile?.preferred_mp_id, mpData, preferredMpLoading]);
+  }, [profile?.postal_code, preferredMpId, mpData, preferredMpLoading]);
 
   const fetchMPByPostalCode = async (pc: string) => {
     setLoading(true);
@@ -186,7 +210,13 @@ export function MyMPSection() {
       // Get the correct database ID if we have it
       const mpId = dbMpData?.searchMPs?.[0]?.id || mpData.id;
 
-      // Save to user profile
+      // Save to localStorage for immediate persistence
+      if (mpId) {
+        localStorage.setItem('preferredMpId', mpId);
+        setPreferredMpId(mpId);
+      }
+
+      // Save to user profile in Supabase
       await updateUserPostalCode(postalCode, mpId);
 
       // Clear pending save state
@@ -264,6 +294,13 @@ export function MyMPSection() {
     return <UnauthenticatedMPPrompt />;
   }
 
+  // Get photo URL using the utility with fallbacks
+  const photoUrl = mpData ? getMPPhotoUrl({
+    id: mpData.id,
+    photo_url: mpData.photo_url,
+    photo_url_source: mpData.photo_url_source
+  }) : null;
+
   // If MP data is loaded, show the MP card
   if (mpData && !isExpanded) {
     return (
@@ -272,11 +309,11 @@ export function MyMPSection() {
           {/* Left Column: MP Photo + Details */}
           <div className="flex items-start gap-4 flex-1">
             {/* MP Photo */}
-            {mpData.photo_url && (
+            {photoUrl && (
               <img
-                src={mpData.photo_url}
+                src={photoUrl}
                 alt={mpData.name}
-                className="w-24 h-40 rounded-lg object-contain flex-shrink-0 bg-white/50 dark:bg-gray-800/50"
+                className="w-24 h-32 rounded-lg object-cover flex-shrink-0 bg-white/50 dark:bg-gray-800/50"
               />
             )}
 
@@ -354,8 +391,26 @@ export function MyMPSection() {
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 flex-shrink-0">
+          {/* Top Right: Share, Bookmark, Change buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {mpData.id && (
+              <>
+                <ShareButton
+                  url={`/mps/${mpData.id}`}
+                  title={`${mpData.name} - Member of Parliament`}
+                  description={`${mpData.party} MP for ${mpData.riding}`}
+                />
+                <BookmarkButton
+                  bookmarkData={{
+                    itemId: mpData.id,
+                    itemType: 'mp',
+                    title: mpData.name,
+                    subtitle: `${mpData.party} - ${mpData.riding}`,
+                    url: `/mps/${mpData.id}`,
+                  }}
+                />
+              </>
+            )}
             {isPendingSave ? (
               <button
                 onClick={handleSaveMP}
@@ -375,37 +430,85 @@ export function MyMPSection() {
           </div>
         </div>
 
+        {/* Constituency Office Address */}
+        {mpData.constituency_office && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-start gap-2">
+              <Building2 className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Constituency Office</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">{mpData.constituency_office}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         {mpData.id && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-wrap gap-2">
               <Link
                 href={`/mps/${mpData.id}` as any}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors"
               >
                 <User className="w-4 h-4" />
-                View Profile
+                Profile
               </Link>
               <Link
                 href={`/mps/${mpData.id}#speeches` as any}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
               >
                 <MessageSquare className="w-4 h-4" />
                 Speeches
               </Link>
               <Link
                 href={`/mps/${mpData.id}#votes` as any}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
               >
                 <Vote className="w-4 h-4" />
                 Votes
               </Link>
               <Link
                 href={`/mps/${mpData.id}#legislation` as any}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
               >
                 <FileText className="w-4 h-4" />
                 Bills
+              </Link>
+              <Link
+                href={`/mps/${mpData.id}#questions` as any}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Questions
+              </Link>
+              <Link
+                href={`/mps/${mpData.id}#expenses` as any}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+              >
+                <DollarSign className="w-4 h-4" />
+                Expenses
+              </Link>
+              <Link
+                href={`/mps/${mpData.id}#committees` as any}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                Committees
+              </Link>
+              <Link
+                href={`/mps/${mpData.id}#lobbying` as any}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+              >
+                <Building2 className="w-4 h-4" />
+                Lobbying
+              </Link>
+              <Link
+                href={`/mps/${mpData.id}#news` as any}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 transition-colors"
+              >
+                <Newspaper className="w-4 h-4" />
+                News
               </Link>
             </div>
           </div>
@@ -424,8 +527,12 @@ export function MyMPSection() {
         </h3>
       </div>
 
-      <p className="text-gray-600 dark:text-gray-400 mb-4">
+      <p className="text-gray-600 dark:text-gray-400 mb-2">
         {t('enterPostalCode')}
+      </p>
+
+      <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+        {t('postalCodeHint')}
       </p>
 
       {/* Postal Code Input */}
@@ -461,6 +568,10 @@ export function MyMPSection() {
         <MapPin className="w-4 h-4" />
         {t('useMyLocation')}
       </button>
+
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
+        {t('geolocationNote')}
+      </p>
 
       {/* Error Message */}
       {error && !loading && (

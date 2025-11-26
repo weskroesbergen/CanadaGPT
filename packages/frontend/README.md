@@ -617,3 +617,4 @@ Key Files:
 ---
 
 **Frontend is ready for local development! Next: Implement remaining pages or deploy to Cloud Run**
+# Trigger rebuild

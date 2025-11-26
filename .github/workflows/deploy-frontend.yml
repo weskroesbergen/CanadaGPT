@@ -41,6 +41,19 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ env.REGISTRY }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@latest
+
+      - name: Build design-system
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @canadagpt/design-system build
+
       - name: Build Docker image
         run: |
           docker build \

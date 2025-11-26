@@ -24,6 +24,7 @@ import { ChatInput } from './ChatInput';
 import { ChatSuggestions } from './ChatSuggestions';
 import { QuotaDisplay } from './QuotaDisplay';
 import { ChatHelp } from './ChatHelp';
+import { ChatError } from './ChatError';
 
 export function ChatWidget() {
   const [isOpen, toggleOpen] = useChatOpen();
@@ -34,6 +35,7 @@ export function ChatWidget() {
   const { user } = useAuth();
   const { addMessage, messages, conversation, createConversation } = useChatStore();
   const [hasShownWelcome, setHasShownWelcome] = React.useState(false);
+  const [hasInitialized, setHasInitialized] = React.useState(false);
 
   // Handle pop-out to separate window
   const handlePopOut = () => {
@@ -75,6 +77,32 @@ export function ChatWidget() {
 
     showWelcome();
   }, [user, preferences, hasShownWelcome, updatePreferences]);
+
+  // Auto-open in sidebar mode on desktop (one-time initialization)
+  React.useEffect(() => {
+    if (!user || hasInitialized) return;
+
+    // Detect desktop (screen width >= 1024px)
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+
+    if (isDesktop) {
+      // Get current store state
+      const currentState = useChatStore.getState();
+
+      // Only auto-open if not already open/expanded (respect user's previous state)
+      if (!currentState.isOpen && !currentState.isExpanded) {
+        // Open chat in sidebar mode
+        if (!currentState.isOpen) {
+          toggleOpen();
+        }
+        if (!currentState.isExpanded) {
+          toggleExpanded();
+        }
+      }
+    }
+
+    setHasInitialized(true);
+  }, [user, hasInitialized, toggleOpen, toggleExpanded]);
 
   // Keyboard shortcut: Cmd/Ctrl + K
   React.useEffect(() => {
@@ -147,6 +175,9 @@ export function ChatWidget() {
             {/* Content */}
             {(
               <div className="flex flex-col h-full">
+                {/* Error display (fixed position) */}
+                <ChatError />
+
                 {/* Quota display */}
                 <div className="flex-shrink-0">
                   <QuotaDisplay />

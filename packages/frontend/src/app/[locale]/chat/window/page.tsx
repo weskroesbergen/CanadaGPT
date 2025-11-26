@@ -15,6 +15,7 @@ import { ChatInput } from '@/components/chat/ChatInput';
 import { ChatSuggestions } from '@/components/chat/ChatSuggestions';
 import { QuotaDisplay } from '@/components/chat/QuotaDisplay';
 import { ChatHelp } from '@/components/chat/ChatHelp';
+import { ChatError } from '@/components/chat/ChatError';
 import { useChatQuota } from '@/lib/stores/chatStore';
 import { useChatStore } from '@/lib/stores/chatStore';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
@@ -93,6 +94,9 @@ What would you like to know?`;
 
   return (
     <div className="h-screen bg-gray-900 flex flex-col">
+      {/* Error display (fixed position) */}
+      <ChatError />
+
       {/* Quota display */}
       <div className="flex-shrink-0">
         <QuotaDisplay />

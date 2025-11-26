@@ -1,0 +1,437 @@
+/**
+ * Mobile Card Components Styles
+ * Twitter/Instagram-inspired mobile-first design
+ */
+
+/* ============================================================================
+   Mobile Statement Card
+   ============================================================================ */
+
+.mobile-statement-card {
+  background: var(--bg-elevated, #1a1a1a);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-statement-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-statement-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.mobile-statement-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mobile-statement-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-statement-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary, #fff);
+  margin-bottom: 0.25rem;
+}
+
+.mobile-statement-date {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 13px;
+  color: var(--text-tertiary, #666);
+}
+
+.mobile-statement-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.875rem;
+}
+
+.mobile-statement-topic {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mobile-statement-topic.primary {
+  background: var(--accent-red, #dc2626);
+  color: white;
+}
+
+.mobile-statement-topic.secondary {
+  background: var(--bg-overlay, #222);
+  color: var(--text-secondary, #999);
+  border: 1px solid var(--border-subtle, #333);
+}
+
+.mobile-statement-content {
+  margin-bottom: 1rem;
+}
+
+.mobile-statement-text {
+  color: var(--text-primary, #fff);
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.mobile-statement-read-more {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0;
+  color: var(--accent-red, #dc2626);
+  font-size: 14px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-statement-read-more:active {
+  opacity: 0.7;
+}
+
+.mobile-statement-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle, #333);
+}
+
+.mobile-statement-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mobile-statement-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 12px;
+  color: var(--text-tertiary, #666);
+}
+
+.mobile-statement-badge {
+  padding: 0.25rem 0.625rem;
+  background: var(--bg-overlay, #222);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--text-tertiary, #666);
+  font-weight: 500;
+}
+
+.mobile-statement-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.mobile-statement-action {
+  min-width: 40px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-tertiary, #666);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+}
+
+.mobile-statement-action:active {
+  transform: scale(0.9);
+  background: var(--bg-overlay, #222);
+}
+
+.mobile-statement-action.active {
+  color: var(--accent-red, #dc2626);
+}
+
+/* ============================================================================
+   Mobile MP Card
+   ============================================================================ */
+
+.mobile-mp-card {
+  background: var(--bg-elevated, #1a1a1a);
+  border-radius: 16px;
+  padding: 1rem;
+  display: flex;
+  gap: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-mp-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-mp-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mobile-mp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-mp-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-primary, #fff);
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mobile-mp-details {
+  font-size: 13px;
+  color: var(--text-secondary, #999);
+  margin-bottom: 0.75rem;
+}
+
+.mobile-mp-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.mobile-mp-stat {
+  text-align: center;
+}
+
+.mobile-mp-stat-value {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--accent-red, #dc2626);
+}
+
+.mobile-mp-stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary, #666);
+  margin-top: 0.125rem;
+}
+
+/* ============================================================================
+   Mobile Debate Card
+   ============================================================================ */
+
+.mobile-debate-card {
+  background: var(--bg-elevated, #1a1a1a);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-debate-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-debate-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--bg-overlay, #222);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #999);
+  margin-bottom: 0.875rem;
+}
+
+.mobile-debate-title {
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--text-primary, #fff);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.mobile-debate-preview {
+  font-size: 14px;
+  color: var(--text-secondary, #999);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mobile-debate-meta {
+  display: flex;
+  gap: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-subtle, #333);
+}
+
+.mobile-debate-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 13px;
+  color: var(--text-tertiary, #666);
+}
+
+/* ============================================================================
+   Mobile Bill Card
+   ============================================================================ */
+
+.mobile-bill-card {
+  background: var(--bg-elevated, #1a1a1a);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-bill-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-bill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 0.875rem;
+}
+
+.mobile-bill-number {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent-red, #dc2626);
+}
+
+.mobile-bill-status {
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mobile-bill-status.passed {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.mobile-bill-status.active {
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+}
+
+.mobile-bill-status.failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.mobile-bill-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary, #fff);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.mobile-bill-progress {
+  margin-top: 1rem;
+}
+
+.mobile-bill-progress-bar {
+  height: 4px;
+  background: var(--bg-overlay, #222);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.mobile-bill-progress-fill {
+  height: 100%;
+  background: var(--accent-red, #dc2626);
+  transition: width 0.3s ease;
+}
+
+.mobile-bill-progress-label {
+  font-size: 12px;
+  color: var(--text-tertiary, #666);
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-statement-card,
+.mobile-mp-card,
+.mobile-debate-card,
+.mobile-bill-card {
+  animation: slideInUp 0.3s ease;
+}
+
+/* ============================================================================
+   Responsive Adjustments
+   ============================================================================ */
+
+@media (min-width: 640px) {
+  .mobile-statement-card,
+  .mobile-mp-card,
+  .mobile-debate-card,
+  .mobile-bill-card {
+    padding: 1.25rem;
+  }
+
+  .mobile-mp-avatar {
+    width: 96px;
+    height: 96px;
+  }
+
+  .mobile-statement-text {
+    font-size: 16px;
+  }
+}

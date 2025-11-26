@@ -1,0 +1,132 @@
+{
+  "name": "CanadaGPT - Canadian Parliamentary Data",
+  "short_name": "CanadaGPT",
+  "description": "Access Canadian federal parliamentary debates, bills, votes, and MP information with AI-powered search and voice interaction",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#dc2626",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-home.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home screen with MP search"
+    },
+    {
+      "src": "/screenshots/mobile-debate.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Debate viewer with voice notes"
+    },
+    {
+      "src": "/screenshots/mobile-mp.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "MP profile with voting history"
+    }
+  ],
+  "categories": ["government", "news", "politics", "education"],
+  "shortcuts": [
+    {
+      "name": "Search MPs",
+      "short_name": "MPs",
+      "description": "Search Members of Parliament",
+      "url": "/mps",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Latest Debates",
+      "short_name": "Debates",
+      "description": "View recent parliamentary debates",
+      "url": "/debates",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Bills",
+      "short_name": "Bills",
+      "description": "Track legislation",
+      "url": "/bills",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "microphone"
+  ],
+  "features": [
+    "voice-recognition",
+    "web-share",
+    "background-sync"
+  ],
+  "prefer_related_applications": false
+}

@@ -1,5 +1,6 @@
 /**
  * Committees list page
+ * Updated: 2025-11-26 - Fixed GraphQL URL configuration
  */
 
 'use client';

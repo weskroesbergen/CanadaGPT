@@ -107,11 +107,16 @@ export default function CommitteesPage() {
 
   // Filter and sort committees
   const filteredCommittees = useMemo(() => {
-    let filtered = committees;
+    let filtered = committees.filter(c => c.name); // Exclude committees without names
 
     // Apply chamber filter
     if (chamberFilter !== 'all') {
-      filtered = filtered.filter(c => c.chamber === chamberFilter);
+      // Handle both "Commons" and "House" as House committees
+      if (chamberFilter === 'House') {
+        filtered = filtered.filter(c => c.chamber === 'Commons' || c.chamber === 'House');
+      } else {
+        filtered = filtered.filter(c => c.chamber === chamberFilter);
+      }
     }
 
     // Apply search
@@ -145,8 +150,8 @@ export default function CommitteesPage() {
     return filtered;
   }, [committees, chamberFilter, searchTerm, sortBy, sortAsc]);
 
-  const houseChamberCount = committees.filter(c => c.chamber === 'House').length;
-  const senateChamberCount = committees.filter(c => c.chamber === 'Senate').length;
+  const houseChamberCount = committees.filter(c => c.name && (c.chamber === 'House' || c.chamber === 'Commons')).length;
+  const senateChamberCount = committees.filter(c => c.name && c.chamber === 'Senate').length;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -155,7 +160,7 @@ export default function CommitteesPage() {
       <main className="flex-1 page-container">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-text-primary mb-2">Parliamentary Committees</h1>
-          <p className="text-text-secondary">Browse {committees.length} committees studying key issues</p>
+          <p className="text-text-secondary">Browse {committees.filter(c => c.name).length} committees studying key issues</p>
         </div>
 
         {/* Search and Filters */}
@@ -187,7 +192,7 @@ export default function CommitteesPage() {
                   }`}
               >
                 <Building2 className="h-4 w-4" />
-                All ({committees.length})
+                All ({committees.filter(c => c.name).length})
               </button>
               <button
                 onClick={() => setChamberFilter('House')}

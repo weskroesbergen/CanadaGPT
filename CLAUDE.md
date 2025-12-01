@@ -288,6 +288,7 @@ mp_expenses = expenses.search_by_name("Poilievre", fiscal_year=2026, quarter=1)
 | **Votes** | Daily 7:00 AM UTC | Import vote records & ballots | `run_votes_ingestion.py`, `fedmcp_pipeline/ingest/votes_xml_import.py` |
 | **Committee Evidence** | Daily 8:00 AM UTC | Import witness testimony | `run_committee_evidence_ingestion.py`, `fedmcp_pipeline/ingest/committee_evidence_xml_import.py` |
 | **Lobbying Registry** | Weekly Sundays 2:00 AM UTC | Full refresh of lobbying data (registrations, communications, organizations, lobbyists) | `run_lobbying_ingestion.py`, `fedmcp_pipeline/ingest/lobbying.py`, `Dockerfile.lobbying-ingestion` |
+| **MP Expenses** | Daily 5:00 AM UTC | Import MP office & House Officer expenses (quarterly data) | `run_expenses_ingestion.py`, `fedmcp_pipeline/ingest/finances.py`, `Dockerfile.expenses-ingestion` |
 
 **Hansard Ingestion Details**:
 - **Data Source**: Direct XML URLs - `https://www.ourcommons.ca/Content/House/451/Debates/{sitting}/HAN{sitting}-E.XML`
@@ -326,6 +327,24 @@ mp_expenses = expenses.search_by_name("Poilievre", fiscal_year=2026, quarter=1)
   - Cleanup runs in batches: `MATCH (n:LobbyRegistration) WITH n LIMIT 10000 DETACH DELETE n`
   - Downloads cached locally in container during first run
   - All data indexed by unique `id` property
+
+**MP Expenses Ingestion**:
+- **Data Source**: OurCommons Proactive Disclosure (CSV format, quarterly updates)
+  - MP Expenses: `https://www.ourcommons.ca/proactivedisclosure/en/members/{fiscal_year}/{quarter}`
+  - House Officer Expenses: `https://www.ourcommons.ca/proactivedisclosure/en/house-officers/{fiscal_year}/{quarter}`
+- **Dual Source Import**: MP office expenses + House Officer expenses (Speaker, Leaders, Whips, etc.)
+- **MP Name Matching**: Fuzzy matching with 99.9% success rate (nickname mapping, accent removal, compound surnames)
+- **Idempotent Design**: Safe to run multiple times (uses MERGE, deterministic IDs)
+- **Resource Requirements**:
+  - Memory: 2Gi, CPU: 1, Timeout: 15 minutes
+  - Runtime: ~1-2 minutes for daily check
+- **Typical Import Volumes**:
+  - ~1,500 MP expense records per quarter (338 MPs × 4 categories)
+  - ~60 House Officer expense records per quarter (~15 officers × 4 categories)
+- **Expense Categories**: salaries, travel, hospitality, contracts
+- **Deployment**: `./scripts/deploy-expenses-ingestion.sh` (Cloud Run job + daily Cloud Scheduler)
+- **Historical Backfill**: Run locally with `--fiscal-year-start 2020 --fiscal-year-end 2023`
+- **Documentation**: See `EXPENSES_INGESTION.md` for full details
 
 **Common Operations**:
 ```bash

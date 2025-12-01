@@ -11,6 +11,7 @@ FEDMCP_PATH = Path(__file__).parent.parent.parent.parent / "fedmcp" / "src"
 sys.path.insert(0, str(FEDMCP_PATH))
 
 from fedmcp.clients.expenditure import MPExpenditureClient
+from fedmcp.clients.house_officers import HouseOfficersClient
 
 from ..utils.neo4j_client import Neo4jClient
 from ..utils.progress import logger
@@ -89,17 +90,26 @@ def extract_core_name(given_name: str, family_name: str) -> str:
     return f"{first_only} {last_first}".strip()
 
 
-def ingest_financial_data(neo4j_client: Neo4jClient, batch_size: int = 10000) -> Dict[str, int]:
+def ingest_financial_data(
+    neo4j_client: Neo4jClient,
+    fiscal_year_start: int = 2024,
+    fiscal_year_end: Optional[int] = None,
+    batch_size: int = 10000
+) -> Dict[str, int]:
     """
-    Ingest financial data: MP expenses, contracts, grants, donations.
+    Ingest financial data: MP expenses, House Officer expenses, contracts, grants, donations.
 
     Args:
         neo4j_client: Neo4j client
+        fiscal_year_start: Starting fiscal year (default: 2024)
+        fiscal_year_end: Ending fiscal year (default: current year)
         batch_size: Batch size for operations
 
     Returns:
         Dict with counts of created entities
     """
+    if fiscal_year_end is None:
+        fiscal_year_end = datetime.now().year
     logger.info("=" * 60)
     logger.info("FINANCIAL DATA INGESTION")
     logger.info("=" * 60)
@@ -172,13 +182,13 @@ def ingest_financial_data(neo4j_client: Neo4jClient, batch_size: int = 10000) ->
     logger.info(f"Mapped {len(mp_mapping):,} MP name variations to IDs")
 
     # 1. MP Expenses
-    logger.info("Fetching MP expenses...")
+    logger.info(f"Fetching MP expenses for FY {fiscal_year_start}-{fiscal_year_end}...")
     expense_client = MPExpenditureClient()
 
-    # Get expenses for recent quarters (2024-2025)
-    expenses_data = []
-    skipped_count = 0
-    for fiscal_year in [2024, 2025, 2026]:
+    # Get expenses for specified fiscal year range
+    mp_expenses_data = []
+    mp_skipped_count = 0
+    for fiscal_year in range(fiscal_year_start, fiscal_year_end + 1):
         for quarter in [1, 2, 3, 4]:
             try:
                 logger.debug(f"Fetching FY {fiscal_year} Q{quarter}...")
@@ -245,7 +255,7 @@ def ingest_financial_data(neo4j_client: Neo4jClient, batch_size: int = 10000) ->
 
                     if not mp_id:
                         logger.debug(f"Could not find MP ID for: {mp_expenses.name} (normalized: {normalized_name})")
-                        skipped_count += 1
+                        mp_skipped_count += 1
                         continue
 
                     # Create separate expense records for each category
@@ -259,28 +269,136 @@ def ingest_financial_data(neo4j_client: Neo4jClient, batch_size: int = 10000) ->
                     for category, amount, description in categories:
                         if amount > 0:  # Only create records for non-zero expenses
                             expense_props = {
-                                "id": f"exp-{mp_id}-{fiscal_year}-q{quarter}-{category}",
+                                "id": f"exp-mp-{mp_id}-{fiscal_year}-q{quarter}-{category}",
                                 "mp_id": mp_id,
                                 "fiscal_year": fiscal_year,
                                 "quarter": quarter,
                                 "category": category,
                                 "amount": amount,
                                 "description": description,
+                                "source": "mp",
                                 "updated_at": datetime.utcnow().isoformat(),
                             }
-                            expenses_data.append(expense_props)
+                            mp_expenses_data.append(expense_props)
 
             except Exception as e:
-                logger.warning(f"Could not fetch FY {fiscal_year} Q{quarter}: {e}")
+                logger.warning(f"Could not fetch MP expenses FY {fiscal_year} Q{quarter}: {e}")
                 continue
 
-    logger.info(f"Found {len(expenses_data):,} expense records ({skipped_count} MPs skipped due to name mismatch)")
+    logger.info(f"Found {len(mp_expenses_data):,} MP expense records ({mp_skipped_count} MPs skipped due to name mismatch)")
 
-    if expenses_data:
-        stats["expenses"] = neo4j_client.batch_merge_nodes("Expense", expenses_data, merge_keys=["id"], batch_size=batch_size)
-        logger.info(f"Created/updated {stats['expenses']:,} expense nodes")
+    if mp_expenses_data:
+        stats["mp_expenses"] = neo4j_client.batch_merge_nodes("Expense", mp_expenses_data, merge_keys=["id"], batch_size=batch_size)
+        logger.info(f"Created/updated {stats['mp_expenses']:,} MP expense nodes")
+    else:
+        stats["mp_expenses"] = 0
 
-        # Create INCURRED relationships between MPs and Expenses
+    # 2. House Officer Expenses
+    logger.info(f"Fetching House Officer expenses for FY {fiscal_year_start}-{fiscal_year_end}...")
+    house_officer_client = HouseOfficersClient()
+
+    # Get expenses for specified fiscal year range
+    officer_expenses_data = []
+    officer_skipped_count = 0
+    for fiscal_year in range(fiscal_year_start, fiscal_year_end + 1):
+        for quarter in [1, 2, 3, 4]:
+            try:
+                logger.debug(f"Fetching House Officer FY {fiscal_year} Q{quarter}...")
+                summary = house_officer_client.get_quarterly_summary(fiscal_year, quarter)
+
+                for officer_expenses in summary:
+                    # Skip vacant seats
+                    if officer_expenses.name == "Vacant":
+                        continue
+
+                    # Parse name from "LastName, FirstName" format to "FirstName LastName"
+                    if "," in officer_expenses.name:
+                        parts = officer_expenses.name.split(",", 1)
+                        if len(parts) == 2:
+                            last_name = parts[0].strip()
+                            first_name = parts[1].strip()
+                            full_name = f"{first_name} {last_name}"
+                        else:
+                            full_name = officer_expenses.name.strip()
+                    else:
+                        full_name = officer_expenses.name.strip()
+
+                    # Strip honorifics/titles from the name
+                    honorifics = ["Right Hon.", "Rt. Hon.", "Hon.", "Dr.", "Rev.", "Prof.", "Mr.", "Mrs.", "Ms.", "Miss"]
+                    for honorific in honorifics:
+                        full_name = full_name.replace(honorific, "").strip()
+
+                    # Normalize the name
+                    normalized_name = normalize_name(full_name)
+
+                    # Look up MP ID from normalized name
+                    mp_id = mp_mapping.get(normalized_name)
+
+                    # Try variations if not found
+                    if not mp_id and " " in normalized_name:
+                        parts = normalized_name.split()
+
+                        if len(parts) >= 2:
+                            first_last = f"{parts[0]} {parts[1]}"
+                            mp_id = mp_mapping.get(first_last)
+
+                        if not mp_id and len(parts) >= 2:
+                            core_name = f"{parts[0]} {parts[-1]}"
+                            mp_id = mp_mapping.get(core_name)
+
+                        if not mp_id and len(parts) >= 2:
+                            first_name_norm = parts[0]
+                            for nickname, formal in NICKNAME_MAPPING.items():
+                                if first_name_norm == formal:
+                                    nickname_version = f"{nickname} {parts[-1]}"
+                                    mp_id = mp_mapping.get(nickname_version)
+                                    if mp_id:
+                                        break
+
+                    if not mp_id:
+                        logger.debug(f"Could not find MP ID for House Officer: {officer_expenses.name} (normalized: {normalized_name})")
+                        officer_skipped_count += 1
+                        continue
+
+                    # Create separate expense records for each category
+                    categories = [
+                        ("salaries", officer_expenses.salaries, f"House Officer ({officer_expenses.role}) - Staff salaries"),
+                        ("travel", officer_expenses.travel, f"House Officer ({officer_expenses.role}) - Travel expenses"),
+                        ("hospitality", officer_expenses.hospitality, f"House Officer ({officer_expenses.role}) - Hospitality"),
+                        ("contracts", officer_expenses.contracts, f"House Officer ({officer_expenses.role}) - Contract services"),
+                    ]
+
+                    for category, amount, description in categories:
+                        if amount > 0:
+                            expense_props = {
+                                "id": f"exp-officer-{mp_id}-{fiscal_year}-q{quarter}-{category}",
+                                "mp_id": mp_id,
+                                "fiscal_year": fiscal_year,
+                                "quarter": quarter,
+                                "category": category,
+                                "amount": amount,
+                                "description": description,
+                                "source": "officer",
+                                "role": officer_expenses.role,
+                                "updated_at": datetime.utcnow().isoformat(),
+                            }
+                            officer_expenses_data.append(expense_props)
+
+            except Exception as e:
+                logger.warning(f"Could not fetch House Officer expenses FY {fiscal_year} Q{quarter}: {e}")
+                continue
+
+    logger.info(f"Found {len(officer_expenses_data):,} House Officer expense records ({officer_skipped_count} officers skipped due to name mismatch)")
+
+    if officer_expenses_data:
+        stats["officer_expenses"] = neo4j_client.batch_merge_nodes("Expense", officer_expenses_data, merge_keys=["id"], batch_size=batch_size)
+        logger.info(f"Created/updated {stats['officer_expenses']:,} House Officer expense nodes")
+    else:
+        stats["officer_expenses"] = 0
+
+    # Create INCURRED relationships between MPs and all Expenses
+    total_expenses = len(mp_expenses_data) + len(officer_expenses_data)
+    if total_expenses > 0:
         logger.info("Creating INCURRED relationships...")
         rel_query = """
         MATCH (e:Expense)
@@ -289,8 +407,6 @@ def ingest_financial_data(neo4j_client: Neo4jClient, batch_size: int = 10000) ->
         """
         neo4j_client.run_query(rel_query)
         logger.info("✅ Created INCURRED relationships")
-    else:
-        stats["expenses"] = 0
 
     # TODO: Contracts, grants, donations (requires additional data sources)
     stats["contracts"] = 0
@@ -299,7 +415,9 @@ def ingest_financial_data(neo4j_client: Neo4jClient, batch_size: int = 10000) ->
 
     logger.info("=" * 60)
     logger.success("✅ FINANCIAL DATA INGESTION COMPLETE")
-    logger.info(f"Expenses: {stats['expenses']:,}")
+    logger.info(f"MP Expenses: {stats.get('mp_expenses', 0):,}")
+    logger.info(f"House Officer Expenses: {stats.get('officer_expenses', 0):,}")
+    logger.info(f"Total Expenses: {stats.get('mp_expenses', 0) + stats.get('officer_expenses', 0):,}")
     logger.info(f"Contracts: {stats['contracts']:,} (TODO)")
     logger.info(f"Grants: {stats['grants']:,} (TODO)")
     logger.info(f"Donations: {stats['donations']:,} (TODO)")

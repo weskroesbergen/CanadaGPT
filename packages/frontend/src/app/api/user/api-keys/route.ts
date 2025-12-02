@@ -66,27 +66,34 @@ export async function POST(request: NextRequest) {
     const session = await auth();
 
     if (!session?.user?.id) {
+      console.error('[API Keys] No session or user ID');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const { provider, apiKey } = body;
 
+    console.log('[API Keys] Saving API key for provider:', provider, 'user:', session.user.id);
+
     // Validate provider
     if (!['anthropic', 'openai', 'canlii'].includes(provider)) {
+      console.error('[API Keys] Invalid provider:', provider);
       return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
     }
 
     // Validate API key presence
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+      console.error('[API Keys] API key validation failed');
       return NextResponse.json({ error: 'API key is required' }, { status: 400 });
     }
 
     // Encrypt the API key
+    console.log('[API Keys] Encrypting API key');
     const { encrypted, iv, tag } = encryptApiKey(apiKey);
 
     const supabase = getSupabaseClient();
 
+    console.log('[API Keys] Upserting to database');
     // Upsert the API key (insert or update if exists)
     const { data, error } = await supabase
       .from('user_api_keys')
@@ -106,9 +113,19 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error saving API key:', error);
-      return NextResponse.json({ error: 'Failed to save API key' }, { status: 500 });
+      console.error('[API Keys] Database error:', JSON.stringify(error, null, 2));
+      console.error('[API Keys] Error code:', error.code);
+      console.error('[API Keys] Error message:', error.message);
+      console.error('[API Keys] Error details:', error.details);
+      console.error('[API Keys] Error hint:', error.hint);
+      return NextResponse.json({
+        error: 'Failed to save API key',
+        details: error.message,
+        code: error.code
+      }, { status: 500 });
     }
+
+    console.log('[API Keys] Successfully saved API key');
 
     // Return success with masked key
     return NextResponse.json({
@@ -121,8 +138,12 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('POST /api/user/api-keys error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[API Keys] POST /api/user/api-keys error:', error);
+    console.error('[API Keys] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    return NextResponse.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
 

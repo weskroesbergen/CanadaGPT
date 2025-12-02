@@ -13,7 +13,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Share2 } from 'lucide-react';
 import { MapleLeafIcon } from '@canadagpt/design-system';
 import type { Message } from '@/lib/types/chat';
 import { ResultsPromptCard } from './ResultsPromptCard';
@@ -24,12 +24,40 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const [copied, setCopied] = React.useState(false);
+  const [shared, setShared] = React.useState(false);
   const [showResultsCard, setShowResultsCard] = React.useState(true);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    const shareText = message.content;
+    const shareUrl = window.location.href;
+
+    // Check if Web Share API is available (mobile/modern browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'CanadaGPT Response',
+          text: shareText,
+          url: shareUrl,
+        });
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      } catch (error) {
+        // User cancelled or share failed
+        console.log('Share cancelled or failed:', error);
+      }
+    } else {
+      // Fallback: Copy link to clipboard
+      const shareableText = `${shareText}\n\nShared from: ${shareUrl}`;
+      await navigator.clipboard.writeText(shareableText);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
   };
 
   const isUser = message.role === 'user';
@@ -153,19 +181,32 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </span>
           )}
 
-          {/* Copy Button (only visible on hover for assistant messages) */}
+          {/* Action Buttons (only visible on hover for assistant messages) */}
           {isAssistant && (
-            <button
-              onClick={handleCopy}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-700 rounded"
-              title="Copy message"
-            >
-              {copied ? (
-                <Check className="w-3.5 h-3.5 text-green-600" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-gray-400" />
-              )}
-            </button>
+            <>
+              <button
+                onClick={handleCopy}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-700 rounded"
+                title="Copy message"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 text-green-600" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-gray-400" />
+                )}
+              </button>
+              <button
+                onClick={handleShare}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-700 rounded"
+                title="Share message"
+              >
+                {shared ? (
+                  <Check className="w-3.5 h-3.5 text-green-600" />
+                ) : (
+                  <Share2 className="w-3.5 h-3.5 text-gray-400" />
+                )}
+              </button>
+            </>
           )}
         </div>
       </div>

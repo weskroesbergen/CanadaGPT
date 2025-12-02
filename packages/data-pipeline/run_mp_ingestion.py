@@ -15,7 +15,7 @@ import sys
 import os
 from fedmcp_pipeline.utils.neo4j_client import Neo4jClient
 from fedmcp_pipeline.utils.progress import logger
-from fedmcp_pipeline.ingest.parliament import ingest_mps
+from fedmcp_pipeline.ingest.parliament import ingest_mps, ingest_committee_memberships
 
 
 def main():
@@ -39,6 +39,7 @@ def main():
     neo4j = Neo4jClient(uri=neo4j_uri, user=neo4j_user, password=neo4j_password)
 
     try:
+        # Step 1: MP Ingestion
         logger.info("Running MP ingestion with OurCommons XML enhancement...")
         logger.info("This will:")
         logger.info("  - Fetch 343 MPs from OurCommons XML (1 request)")
@@ -47,12 +48,35 @@ def main():
         logger.info("  - Capture honorifics, precise term dates, and province data")
         print()
 
-        count = ingest_mps(neo4j, batch_size=100)
+        mp_count = ingest_mps(neo4j, batch_size=100)
 
         print()
-        logger.success(f"✅ Successfully ingested {count} MPs")
+        logger.success(f"✅ Successfully ingested {mp_count} MPs")
+        print()
+
+        # Step 2: Committee Membership Ingestion
+        logger.info("Running committee membership ingestion...")
+        logger.info("This will:")
+        logger.info("  - Scrape committee pages from OurCommons")
+        logger.info("  - Create SERVES_ON relationships with role information")
+        logger.info("  - Use fuzzy name matching to link MPs to committees")
+        print()
+
+        committee_stats = ingest_committee_memberships(neo4j)
+
+        print()
+        logger.success(f"✅ Successfully created {committee_stats['serves_on_created']} committee memberships")
+        if committee_stats['mp_not_found'] > 0:
+            logger.warning(f"⚠️  {committee_stats['mp_not_found']} MPs could not be matched by name")
+        print()
+
+        # Final Summary
         logger.info("=" * 80)
         logger.info("MP INGESTION CLOUD RUN JOB - COMPLETED")
+        logger.info("=" * 80)
+        logger.info(f"MPs imported: {mp_count}")
+        logger.info(f"Committee memberships: {committee_stats['serves_on_created']}")
+        logger.info(f"MPs not found: {committee_stats['mp_not_found']}")
         logger.info("=" * 80)
         print()
 

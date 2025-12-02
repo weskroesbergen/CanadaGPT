@@ -191,11 +191,18 @@ export async function POST(request: Request) {
     }
 
     // Check for BYOK keys
-    const { data: apiKeys } = await supabase
+    console.log('[Chat] Checking for user API keys for user:', user.id);
+    const { data: apiKeys, error: apiKeysError } = await supabase
       .from('user_api_keys')
       .select('*')
       .eq('user_id', user.id)
       .eq('is_active', true);
+
+    if (apiKeysError) {
+      console.error('[Chat] Error fetching API keys:', apiKeysError);
+    }
+
+    console.log('[Chat] Found API keys:', apiKeys?.map(k => k.provider) || []);
 
     const anthropicKey = apiKeys?.find((k) => k.provider === 'anthropic');
     const openaiKey = apiKeys?.find((k) => k.provider === 'openai');
@@ -207,26 +214,45 @@ export async function POST(request: Request) {
 
     if (anthropicKey) {
       // Use user's Anthropic key
-      const decryptedKey = decryptKey(
-        anthropicKey.encrypted_key,
-        anthropicKey.encryption_iv,
-        anthropicKey.encryption_tag
-      );
-      providerClient = new Anthropic({ apiKey: decryptedKey });
-      provider = 'anthropic';
-      usedBYOKey = true;
+      console.log('[Chat] Using user Anthropic key');
+      try {
+        const decryptedKey = decryptKey(
+          anthropicKey.encrypted_key,
+          anthropicKey.encryption_iv,
+          anthropicKey.encryption_tag
+        );
+        console.log('[Chat] Key decrypted successfully, length:', decryptedKey?.length);
+        providerClient = new Anthropic({ apiKey: decryptedKey });
+        provider = 'anthropic';
+        usedBYOKey = true;
+      } catch (error) {
+        console.error('[Chat] Error decrypting user Anthropic key:', error);
+        throw new Error('Failed to decrypt your API key. Please re-save it in settings.');
+      }
     } else if (openaiKey) {
       // Use user's OpenAI key
-      const decryptedKey = decryptKey(
-        openaiKey.encrypted_key,
-        openaiKey.encryption_iv,
-        openaiKey.encryption_tag
-      );
-      providerClient = new OpenAI({ apiKey: decryptedKey });
-      provider = 'openai';
-      usedBYOKey = true;
+      console.log('[Chat] Using user OpenAI key');
+      try {
+        const decryptedKey = decryptKey(
+          openaiKey.encrypted_key,
+          openaiKey.encryption_iv,
+          openaiKey.encryption_tag
+        );
+        providerClient = new OpenAI({ apiKey: decryptedKey });
+        provider = 'openai';
+        usedBYOKey = true;
+      } catch (error) {
+        console.error('[Chat] Error decrypting user OpenAI key:', error);
+        throw new Error('Failed to decrypt your API key. Please re-save it in settings.');
+      }
     } else {
       // Use platform's Anthropic key
+      console.log('[Chat] No user API key found, using platform key');
+      const platformKey = process.env.ANTHROPIC_API_KEY;
+      if (!platformKey) {
+        console.error('[Chat] Platform ANTHROPIC_API_KEY not set!');
+        throw new Error('Platform API key not configured. Please add your own API key in Settings → API Keys.');
+      }
       providerClient = getAnthropicClient();
       provider = 'anthropic';
     }

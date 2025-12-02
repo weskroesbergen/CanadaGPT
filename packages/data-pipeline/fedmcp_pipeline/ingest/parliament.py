@@ -788,22 +788,27 @@ def link_government_roles(neo4j_client: Neo4jClient) -> int:
     return count
 
 
-def ingest_committee_memberships(neo4j_client: Neo4jClient) -> int:
+def ingest_committee_memberships(neo4j_client: Neo4jClient) -> Dict[str, int]:
     """
-    Scrape committee membership from House of Commons website and create MEMBER_OF relationships.
+    Scrape committee membership from House of Commons website and create SERVES_ON relationships.
 
     This scrapes the current membership from committee pages at ourcommons.ca
     and creates relationships between MPs and Committees with role information.
+
+    Uses fuzzy name matching with normalization to improve MP linking success rate.
 
     Args:
         neo4j_client: Neo4j client instance
 
     Returns:
-        Number of relationships created
+        Dict with counts: serves_on_created, mp_not_found
     """
-    logger.info("Scraping committee memberships from House of Commons website...")
+    logger.info("=" * 60)
+    logger.info("COMMITTEE MEMBERSHIP INGESTION")
+    logger.info("=" * 60)
 
     from fedmcp.clients.committee_membership import CommitteeMembershipClient
+    import unicodedata
 
     # Get all committees from Neo4j
     query = "MATCH (c:Committee) RETURN c.code as code, c.name as name"
@@ -811,10 +816,10 @@ def ingest_committee_memberships(neo4j_client: Neo4jClient) -> int:
 
     if not committees:
         logger.warning("No committees found in database. Run ingest_committees first.")
-        return 0
+        return {"serves_on_created": 0, "mp_not_found": 0}
 
     membership_client = CommitteeMembershipClient()
-    relationships_created = 0
+    stats = {"serves_on_created": 0, "mp_not_found": 0}
     failed_committees = []
 
     for committee in committees:
@@ -822,21 +827,34 @@ def ingest_committee_memberships(neo4j_client: Neo4jClient) -> int:
         name = committee["name"]
 
         try:
-            logger.info(f"Fetching members for {code} ({name})...")
+            logger.info(f"Processing {code} ({name})...")
             members = membership_client.get_committee_members(code)
-            logger.info(f"Found {len(members)} members for {code}")
+            logger.info(f"  Found {len(members)} members")
 
             # Create relationships for each member
             for member in members:
-                # Try to match MP by name
-                # Use case-insensitive matching and handle various name formats
+                # Normalize member name
+                normalized_name = normalize_mp_name(member.name)
+
+                # Try to match MP by name with improved fuzzy matching
+                # Strategy: Try exact match first, then normalized match
                 match_query = """
                 MATCH (m:MP)
-                WHERE toLower(m.name) = toLower($member_name)
-                   OR toLower(m.name) CONTAINS toLower($member_name)
-                   OR toLower($member_name) CONTAINS toLower(m.name)
+                WHERE
+                    // Exact match on name
+                    toLower(m.name) = toLower($member_name)
+                    // Or match Given + Family
+                    OR (m.given_name IS NOT NULL AND m.family_name IS NOT NULL
+                        AND toLower(m.given_name + ' ' + m.family_name) = toLower($member_name))
+                    // Or match Family, Given (common format)
+                    OR (m.given_name IS NOT NULL AND m.family_name IS NOT NULL
+                        AND toLower(m.family_name + ', ' + m.given_name) = toLower($member_name))
+                    // Or match with normalized name
+                    OR toLower(m.name) = toLower($normalized_name)
+                    OR (m.given_name IS NOT NULL AND m.family_name IS NOT NULL
+                        AND toLower(m.given_name + ' ' + m.family_name) = toLower($normalized_name))
                 MATCH (c:Committee {code: $committee_code})
-                MERGE (m)-[r:MEMBER_OF]->(c)
+                MERGE (m)-[r:SERVES_ON]->(c)
                 SET r.role = $role,
                     r.updated_at = $updated_at
                 RETURN count(*) as created
@@ -846,6 +864,7 @@ def ingest_committee_memberships(neo4j_client: Neo4jClient) -> int:
                     match_query,
                     {
                         "member_name": member.name,
+                        "normalized_name": normalized_name,
                         "committee_code": code,
                         "role": member.role,
                         "updated_at": datetime.utcnow().isoformat(),
@@ -853,21 +872,61 @@ def ingest_committee_memberships(neo4j_client: Neo4jClient) -> int:
                 )
 
                 if result and result[0]["created"] > 0:
-                    relationships_created += result[0]["created"]
+                    stats["serves_on_created"] += result[0]["created"]
                     logger.debug(f"  ✓ Linked {member.name} as {member.role}")
                 else:
                     logger.warning(f"  ✗ Could not find MP: {member.name}")
+                    stats["mp_not_found"] += 1
 
         except Exception as e:
-            logger.error(f"Failed to fetch members for {code}: {e}")
+            logger.error(f"  Error processing {code}: {e}")
             failed_committees.append(code)
             continue
 
-    logger.success(f"✅ Created {relationships_created} committee membership relationships")
+    logger.info("=" * 60)
+    logger.success("✅ COMMITTEE MEMBERSHIP INGESTION COMPLETE")
+    logger.info(f"SERVES_ON relationships created: {stats['serves_on_created']}")
+    logger.info(f"MPs not found: {stats['mp_not_found']}")
     if failed_committees:
         logger.warning(f"Failed to fetch membership for {len(failed_committees)} committees: {', '.join(failed_committees)}")
+    logger.info("=" * 60)
 
-    return relationships_created
+    return stats
+
+
+def normalize_mp_name(name: str) -> str:
+    """
+    Normalize MP name for matching.
+
+    Handles:
+    - Accents (é → e, ç → c)
+    - Honorifics (Hon., Rt. Hon., Dr.)
+    - Extra whitespace
+
+    Pattern from finances.py.
+
+    Args:
+        name: MP name (e.g., "Hon. Dominic LeBlanc" or "Marie-Claude Bibeau")
+
+    Returns:
+        Normalized name
+    """
+    import unicodedata
+
+    # Remove accents
+    name = ''.join(
+        c for c in unicodedata.normalize('NFD', name)
+        if unicodedata.category(c) != 'Mn'
+    )
+
+    # Remove honorifics
+    for honorific in ['Hon.', 'Rt. Hon.', 'Dr.', 'Mr.', 'Mrs.', 'Ms.']:
+        name = name.replace(honorific, '')
+
+    # Trim whitespace
+    name = ' '.join(name.split())
+
+    return name
 
 
 def ingest_parliament_data(

@@ -2,6 +2,7 @@
  * Tool Executor - Execute Claude tool calls via GraphQL
  *
  * Maps Claude tool calls to GraphQL queries against Neo4j database
+ * with intelligent caching to reduce API costs.
  */
 
 import { apolloClient } from './apollo-client';
@@ -23,22 +24,34 @@ import {
   SEARCH_LOBBY_REGISTRATIONS,
   GET_RECENT_DEBATES,
 } from './queries';
+import { toolCache } from './toolCache';
 
 export interface ToolResult {
   success: boolean;
   data?: any;
   error?: string;
+  cached?: boolean; // Indicates if result came from cache
 }
 
 /**
  * Execute a tool call by name with given parameters
+ * Checks cache first, then executes and caches the result
  */
 export async function executeToolCall(
   toolName: string,
   input: Record<string, any>
 ): Promise<ToolResult> {
+  // Check cache first
+  const cachedResult = toolCache.get(toolName, input);
+  if (cachedResult) {
+    return { ...cachedResult, cached: true };
+  }
+
+  // Cache miss - execute the tool
   try {
     console.log(`[ToolExecutor] Executing tool: ${toolName}`, input);
+
+    let result: ToolResult;
 
     switch (toolName) {
       // ============================================
@@ -55,7 +68,8 @@ export async function executeToolCall(
             limit: input.limit ?? 10,
           },
         });
-        return { success: true, data: data.searchMPs };
+        result = { success: true, data: data.searchMPs };
+        break;
       }
 
       case 'get_mp': {
@@ -63,7 +77,8 @@ export async function executeToolCall(
           query: GET_MP,
           variables: { id: input.mpId },
         });
-        return { success: true, data: data.mps[0] };
+        result = { success: true, data: data.mps[0] };
+        break;
       }
 
       case 'get_mp_scorecard': {
@@ -71,7 +86,8 @@ export async function executeToolCall(
           query: GET_MP_SCORECARD,
           variables: { mpId: input.mpId },
         });
-        return { success: true, data: data.mpScorecard };
+        result = { success: true, data: data.mpScorecard };
+        break;
       }
 
       case 'get_mp_speeches': {
@@ -82,7 +98,8 @@ export async function executeToolCall(
             limit: input.limit ?? 20,
           },
         });
-        return { success: true, data: data.mps[0]?.statements };
+        result = { success: true, data: data.mps[0]?.statements };
+        break;
       }
 
       // ============================================
@@ -99,7 +116,8 @@ export async function executeToolCall(
             limit: input.limit ?? 20,
           },
         });
-        return { success: true, data: data.searchBills };
+        result = { success: true, data: data.searchBills };
+        break;
       }
 
       case 'get_bill': {
@@ -110,7 +128,8 @@ export async function executeToolCall(
             session: input.session,
           },
         });
-        return { success: true, data: data.bills[0] };
+        result = { success: true, data: data.bills[0] };
+        break;
       }
 
       case 'get_bill_lobbying': {
@@ -121,7 +140,8 @@ export async function executeToolCall(
             session: input.session,
           },
         });
-        return { success: true, data: data.billLobbying };
+        result = { success: true, data: data.billLobbying };
+        break;
       }
 
       case 'get_bill_debates': {
@@ -133,7 +153,8 @@ export async function executeToolCall(
             limit: input.limit ?? 50,
           },
         });
-        return { success: true, data: data.bills[0]?.mentioned_in };
+        result = { success: true, data: data.bills[0]?.mentioned_in };
+        break;
       }
 
       // ============================================
@@ -195,7 +216,7 @@ export async function executeToolCall(
 
           const url = `/hansard?${params.toString()}`;
 
-          return {
+          result = {
             success: true,
             data: {
               results: results,
@@ -205,9 +226,10 @@ export async function executeToolCall(
               },
             },
           };
+        } else {
+          result = { success: true, data: results };
         }
-
-        return { success: true, data: results };
+        break;
       }
 
       case 'get_recent_debates': {
@@ -217,7 +239,7 @@ export async function executeToolCall(
             limit: input.limit ?? 20,
           },
         });
-        return { success: true, data: data.recentDebates };
+        result = { success: true, data: data.recentDebates };
       }
 
       // ============================================
@@ -230,7 +252,7 @@ export async function executeToolCall(
             current: input.current ?? true,
           },
         });
-        return { success: true, data: data.committees };
+        result = { success: true, data: data.committees };
       }
 
       case 'get_committee': {
@@ -238,7 +260,7 @@ export async function executeToolCall(
           query: GET_COMMITTEE,
           variables: { code: input.committeeCode },
         });
-        return { success: true, data: data.committees[0] };
+        result = { success: true, data: data.committees[0] };
       }
 
       case 'get_committee_testimony': {
@@ -251,7 +273,7 @@ export async function executeToolCall(
             limit: input.limit ?? 50,
           },
         });
-        return { success: true, data: data.committees[0]?.testimony };
+        result = { success: true, data: data.committees[0]?.testimony };
       }
 
       // ============================================
@@ -266,7 +288,7 @@ export async function executeToolCall(
             limit: input.limit ?? 10,
           },
         });
-        return { success: true, data: data.topSpenders };
+        result = { success: true, data: data.topSpenders };
       }
 
       case 'detect_conflicts_of_interest': {
@@ -277,7 +299,7 @@ export async function executeToolCall(
             billNumber: input.billNumber,
           },
         });
-        return { success: true, data: data.conflictsOfInterest };
+        result = { success: true, data: data.conflictsOfInterest };
       }
 
       case 'search_lobby_registrations': {
@@ -290,7 +312,8 @@ export async function executeToolCall(
             limit: input.limit ?? 20,
           },
         });
-        return { success: true, data: data.searchLobbyRegistrations };
+        result = { success: true, data: data.searchLobbyRegistrations };
+        break;
       }
 
       // ============================================
@@ -309,7 +332,7 @@ export async function executeToolCall(
 
         const url = `/hansard?${params.toString()}`;
 
-        return {
+        result = {
           success: true,
           data: {
             _navigation: {
@@ -318,14 +341,23 @@ export async function executeToolCall(
             },
           },
         };
+        break;
       }
 
       default:
-        return {
+        result = {
           success: false,
           error: `Unknown tool: ${toolName}`,
         };
+        break;
     }
+
+    // Cache successful results before returning
+    if (result.success) {
+      toolCache.set(toolName, input, result);
+    }
+
+    return result;
   } catch (error) {
     console.error(`[ToolExecutor] Error executing ${toolName}:`, error);
     return {

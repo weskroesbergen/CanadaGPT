@@ -17,18 +17,21 @@ function getStripe() {
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 // Create Supabase client with service role for webhook (bypass RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
+function getSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseClient();
   try {
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
@@ -56,19 +59,19 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutSessionCompleted(session);
+        await handleCheckoutSessionCompleted(session, supabase);
         break;
       }
 
       case 'setup_intent.succeeded': {
         const setupIntent = event.data.object as Stripe.SetupIntent;
-        await handleSetupIntentSucceeded(setupIntent);
+        await handleSetupIntentSucceeded(setupIntent, supabase);
         break;
       }
 
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        await handlePaymentIntentSucceeded(paymentIntent);
+        await handlePaymentIntentSucceeded(paymentIntent, supabase);
         break;
       }
 
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: ReturnType<typeof getSupabaseClient>) {
   try {
     const userId = session.metadata?.user_id;
     const tier = session.metadata?.tier;
@@ -119,7 +122,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 }
 
-async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent) {
+async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent, supabase: ReturnType<typeof getSupabaseClient>) {
   try {
     const customerId = setupIntent.customer as string;
 
@@ -151,7 +154,7 @@ async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent) {
   }
 }
 
-async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent, supabase: ReturnType<typeof getSupabaseClient>) {
   try {
     // Check if this is a credit recharge
     if (paymentIntent.metadata?.type !== 'credit_recharge') {

@@ -152,12 +152,91 @@ def ingest_lobbying_data(neo4j_client: Neo4jClient, batch_size: int = 10000) -> 
     lobbyist_data = list(unique_lobbyists.values())
     stats["lobbyists"] = neo4j_client.batch_create_nodes("Lobbyist", lobbyist_data, batch_size)
 
+    # 5. Create Relationships
+    logger.info("Creating relationships between entities...")
+
+    # 5a. LobbyRegistration relationships
+    logger.info("  Creating LobbyRegistration → Organization (ON_BEHALF_OF)...")
+    reg_org_query = """
+    MATCH (lr:LobbyRegistration)
+    MATCH (o:Organization {name: lr.client_org_name})
+    MERGE (lr)-[:ON_BEHALF_OF]->(o)
+    """
+    neo4j_client.run_query(reg_org_query)
+
+    logger.info("  Creating Lobbyist → LobbyRegistration (REGISTERED_FOR)...")
+    reg_lobbyist_query = """
+    MATCH (lr:LobbyRegistration)
+    MATCH (l:Lobbyist {name: lr.registrant_name})
+    MERGE (l)-[:REGISTERED_FOR]->(lr)
+    """
+    neo4j_client.run_query(reg_lobbyist_query)
+
+    # 5b. LobbyCommunication relationships
+    logger.info("  Creating LobbyCommunication → Organization (COMMUNICATION_BY)...")
+    comm_org_query = """
+    MATCH (lc:LobbyCommunication)
+    MATCH (o:Organization {name: lc.client_org_name})
+    MERGE (lc)-[:COMMUNICATION_BY]->(o)
+    """
+    neo4j_client.run_query(comm_org_query)
+
+    logger.info("  Creating LobbyCommunication → Lobbyist (CONDUCTED_BY)...")
+    comm_lobbyist_query = """
+    MATCH (lc:LobbyCommunication)
+    WHERE lc.registrant_name IS NOT NULL
+    MATCH (l:Lobbyist {name: lc.registrant_name})
+    MERGE (lc)-[:CONDUCTED_BY]->(l)
+    """
+    neo4j_client.run_query(comm_lobbyist_query)
+
+    # 5c. LobbyCommunication → MP (CONTACTED) relationships
+    # This is the critical relationship for MP lobbying pages
+    # Use Cypher's built-in matching capabilities for better performance
+    logger.info("  Creating LobbyCommunication → MP (CONTACTED) relationships...")
+
+    # Strategy: Use UNWIND to process dpoh_names and match to MPs in Cypher
+    # This is much faster than Python loops with individual queries
+    contacted_query = """
+    MATCH (lc:LobbyCommunication)
+    WHERE lc.dpoh_names IS NOT NULL AND size(lc.dpoh_names) > 0
+    UNWIND lc.dpoh_names as dpoh_name
+    MATCH (m:MP)
+    WHERE
+        // Exact match on name
+        toLower(m.name) = toLower(dpoh_name)
+        // Or match Given + Family
+        OR toLower(m.given_name + ' ' + m.family_name) = toLower(dpoh_name)
+        // Or match Family, Given (common format)
+        OR toLower(m.family_name + ', ' + m.given_name) = toLower(dpoh_name)
+        // Or match first name + family (e.g., "John Smith" for "John Robert Smith")
+        OR (m.given_name IS NOT NULL AND m.family_name IS NOT NULL AND
+            toLower(split(m.given_name, ' ')[0] + ' ' + m.family_name) = toLower(dpoh_name))
+    MERGE (lc)-[:CONTACTED]->(m)
+    """
+    neo4j_client.run_query(contacted_query)
+
+    # Count how many CONTACTED relationships were created
+    count_query = """
+    MATCH ()-[r:CONTACTED]->()
+    RETURN count(r) as count
+    """
+    count_result = neo4j_client.run_query(count_query)
+    contacted_count = count_result[0]['count'] if count_result else 0
+
+    stats["contacted_relationships"] = contacted_count
+
+    logger.info(f"  ✓ Created {contacted_count:,} CONTACTED relationships")
+
     logger.info("=" * 60)
     logger.success("✅ LOBBYING DATA INGESTION COMPLETE")
     logger.info(f"Registrations: {stats['lobby_registrations']:,}")
     logger.info(f"Communications: {stats['lobby_communications']:,}")
     logger.info(f"Organizations: {stats['organizations']:,}")
     logger.info(f"Lobbyists: {stats['lobbyists']:,}")
+    logger.info(f"CONTACTED Relationships: {stats.get('contacted_relationships', 0):,}")
+    if stats.get('unmatched_dpoh_names'):
+        logger.info(f"Unmatched DPOH Names: {stats['unmatched_dpoh_names']:,}")
     logger.info("=" * 60)
 
     return stats

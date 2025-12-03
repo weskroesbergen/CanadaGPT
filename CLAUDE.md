@@ -282,7 +282,7 @@ mp_expenses = expenses.search_by_name("Poilievre", fiscal_year=2026, quarter=1)
 
 | Pipeline | Schedule | Purpose | Files |
 |----------|----------|---------|-------|
-| **MP Ingestion** | Daily 6:00 AM UTC | Import MP biographical data, ridings, parties | `run_mp_ingestion.py`, `fedmcp_pipeline/ingest/parliament.py` |
+| **MP Ingestion** | Daily 6:00 AM UTC | Import MP biographical data, ridings, parties, and committee memberships | `run_mp_ingestion.py`, `fedmcp_pipeline/ingest/parliament.py` |
 | **Hansard** | Daily 4:00 AM ET | Import House debates (7-day lookback) | `scripts/daily-hansard-import.py`, `Dockerfile.hansard-importer` |
 | **Committee Meetings** | Daily 6:00 AM ET | Discover/import scheduled meetings (7-day lookback) | `scripts/daily-committee-import.py`, `Dockerfile.committee-importer` |
 | **Votes** | Daily 7:00 AM UTC | Import vote records & ballots | `run_votes_ingestion.py`, `fedmcp_pipeline/ingest/votes_xml_import.py` |
@@ -305,6 +305,19 @@ mp_expenses = expenses.search_by_name("Poilievre", fiscal_year=2026, quarter=1)
 - **HTML Parsing**: BeautifulSoup extracts meeting ID, committee code, date, time, subject, status, webcast availability
 - **Idempotent**: Skips meetings already in database (by `ourcommons_meeting_id`)
 - **Deployment**: `./scripts/deploy-committee-importer.sh`
+
+**Committee Membership Ingestion**:
+- **Data Source**: OurCommons committee pages (HTML scraping via CommitteeMembershipClient)
+  - Scrapes: `https://www.ourcommons.ca/Committees/en/{COMMITTEE_CODE}`
+  - Captures member names and roles (Chair, Vice-Chair, Member)
+- **Relationship Created**: `(MP)-[:SERVES_ON {role}]->(Committee)`
+- **Name Matching**: Fuzzy matching with ~80% success rate
+  - Accent removal, honorific removal (Hon., Rt. Hon.)
+  - Multiple name format attempts (first-last, last-first, etc.)
+- **Expected Volume**: ~213-250 committee memberships for current parliament
+- **Note**: Cabinet ministers typically do not serve on standing committees
+- **Deployment**: Part of `./scripts/deploy-mp-ingestion.sh` (2Gi memory, 30-min timeout)
+- **Integration**: Runs after MP biographical ingestion in same job
 
 **Lobbying Registry Ingestion**:
 - **Data Source**: `https://lobbycanada.gc.ca` (Office of the Commissioner of Lobbying)

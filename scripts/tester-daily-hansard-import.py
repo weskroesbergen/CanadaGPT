@@ -16,68 +16,30 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'packages' / 'fedmcp' / 's
 from fedmcp_pipeline.utils.neo4j_client import Neo4jClient
 from fedmcp_pipeline.utils.progress import logger
 from fedmcp.clients.ourcommons import OurCommonsHansardClient
-from fedmcp_pipeline.ingest.hansard import link_statements_to_mps_by_name, extract_hansard_keywords
+from fedmcp_pipeline.ingest.hansard import link_statements_to_mps_by_name
 
 
 def parse_hansard_with_enhanced_metadata(xml_text: str, source_url: str) -> Dict[str, Any]:
-    """Parse Hansard XML with enhanced metadata and proper topic hierarchy extraction."""
-    from xml.etree import ElementTree as ET
-
+    """Parse Hansard XML with enhanced metadata extraction using OurCommonsHansardClient."""
     client = OurCommonsHansardClient()
     sitting = client.parse_sitting(xml_text, source_url=source_url)
 
     logger.info(f"Parsing Hansard No. {sitting.number}, Date: {sitting.date}")
 
-    # Parse XML to extract proper topic hierarchy (OrderOfBusiness → SubjectOfBusiness)
-    # This gives us semantic topics like "The Budget", "Bill C-21" instead of just "Debate"
-    tree = ET.fromstring(xml_text)
-
-    # Build intervention_id to topic mapping
-    intervention_topics = {}  # intervention_id -> (h1_en, h2_en)
-
-    # Navigate XML hierarchy: OrderOfBusiness → SubjectOfBusiness → Interventions
-    for order in tree.findall(".//OrderOfBusiness"):
-        # Get h1_en: OrderOfBusinessTitle (e.g., "Government Orders", "Oral Questions")
-        order_title_el = order.find("OrderOfBusinessTitle")
-        h1_en = "".join(order_title_el.itertext()).strip() if order_title_el is not None else "Hansard"
-
-        # Get all SubjectOfBusiness under this order
-        subjects = order.findall(".//SubjectOfBusiness")
-
-        for subject in subjects:
-            # Get h2_en: SubjectOfBusinessTitle (e.g., "The Budget", "Bill C-21", "Agriculture")
-            subject_title_el = subject.find("SubjectOfBusinessTitle")
-            h2_en = "".join(subject_title_el.itertext()).strip() if subject_title_el is not None else None
-
-            # Get all interventions under this subject
-            content = subject.find("SubjectOfBusinessContent")
-            if content is not None:
-                for intervention in content.findall(".//Intervention"):
-                    intervention_id = intervention.get("id")
-                    if intervention_id:
-                        intervention_topics[intervention_id] = (h1_en, h2_en)
-
-    logger.info(f"Extracted {len(intervention_topics)} intervention topic mappings from XML hierarchy")
-
     # Extract speeches with enhanced metadata from all sections
     speeches = []
     for section in sitting.sections:
-        for speech in section.speeches:
-            # Get topics from our mapping, fallback to section title
-            if speech.intervention_id and speech.intervention_id in intervention_topics:
-                h1_en, h2_en = intervention_topics[speech.intervention_id]
-            else:
-                # Fallback if intervention not found in hierarchy
-                h1_en = section.title
-                h2_en = speech.intervention_type or section.title
+        # Use section title as h1_en
+        h1_en = section.title
 
+        for speech in section.speeches:
             speeches.append({
                 # Basic fields
                 "speaker_name": speech.speaker_name,
                 "timecode": speech.timecode,
                 "text": speech.text,
                 "h1_en": h1_en,
-                "h2_en": h2_en,  # Now contains semantic topic titles from SubjectOfBusinessTitle!
+                "h2_en": None,  # Not extracted in current structure
                 # Enhanced metadata fields
                 "person_db_id": speech.person_db_id,
                 "role_type_code": speech.role_type_code,
@@ -91,7 +53,7 @@ def parse_hansard_with_enhanced_metadata(xml_text: str, source_url: str) -> Dict
                 "riding": speech.riding,
             })
 
-    logger.info(f"Extracted {len(speeches)} speeches with enhanced metadata and semantic topics")
+    logger.info(f"Extracted {len(speeches)} speeches with enhanced metadata")
 
     return {
         "number": sitting.number,
@@ -118,11 +80,12 @@ def import_hansard_to_neo4j(neo4j: Neo4jClient, hansard_data: Dict[str, Any], is
     document_data = {
         "id": document_id,
         "date": iso_date,
+        "session_id": "45-1",
         "document_type": "D",
         "public": True,
         "source": "ourcommons_xml_enhanced",
-        "number": int(sitting_number),
-        "updated_at": datetime.now().isoformat(),
+        "number": f"No. {sitting_number}",
+        "updated_at": datetime.utcnow().isoformat(),
     }
 
     # Add enhanced document metadata
@@ -136,8 +99,6 @@ def import_hansard_to_neo4j(neo4j: Neo4jClient, hansard_data: Dict[str, Any], is
         document_data["parliament_number"] = hansard_data["parliament_number"]
     if hansard_data.get("session_number") is not None:
         document_data["session_number"] = hansard_data["session_number"]
-    if hansard_data.get("parliament_number") and hansard_data.get("session_number"): # Dynamically updates the session_id
-        document_data["session_id"] = f"{hansard_data['parliament_number']}-{hansard_data['session_number']}" 
     if hansard_data.get("volume"):
         document_data["volume"] = hansard_data["volume"]
 
@@ -184,8 +145,6 @@ def import_hansard_to_neo4j(neo4j: Neo4jClient, hansard_data: Dict[str, Any], is
         # Add enhanced metadata fields
         if speech.get("person_db_id") is not None:
             statement["person_db_id"] = speech["person_db_id"]
-            # Set politician_id for speaker_count queries (same as person_db_id)
-            statement["politician_id"] = speech["person_db_id"]
             mp_link_data.append({
                 "statement_id": statement_id,
                 "person_db_id": speech["person_db_id"]
@@ -352,8 +311,8 @@ def check_and_import_recent_debates(neo4j: Neo4jClient, lookback_days: int = 7, 
     """)
 
     if result and result[0]['num']:
-        # Number is stored as integer (e.g., 53)
-        latest_sitting = int(result[0]['num'])
+        # Extract sitting number from "No. 053"
+        latest_sitting = int(result[0]['num'].replace('No. ', '').strip())
         # Search backward and forward: from (latest - 15) to (latest + 15)
         search_range = range(max(1, latest_sitting - 15), latest_sitting + 16)
     else:
@@ -459,21 +418,6 @@ def main():
             lookback_days=args.lookback_days,
             target_month=args.month
         )
-
-        # Extract keywords for newly imported documents
-        if imported > 0:
-            logger.info("")
-            logger.info("Extracting keywords for newly imported documents...")
-            try:
-                keywords_count = extract_hansard_keywords(
-                    neo4j_client=neo4j,
-                    top_n=20  # Extract top 20 keywords per document
-                )
-                logger.success(f"✅ Extracted keywords for {keywords_count} document(s)")
-            except Exception as e:
-                logger.warning(f"⚠️  Keyword extraction failed: {str(e)}")
-                # Don't fail the whole job if keyword extraction fails
-                pass
 
         logger.info("=" * 80)
         if imported > 0:

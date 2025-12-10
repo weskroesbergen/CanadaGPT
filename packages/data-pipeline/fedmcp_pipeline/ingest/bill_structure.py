@@ -732,13 +732,14 @@ def ingest_bill_structure(
     Returns:
         Dictionary with counts for each node type created
     """
-    bill_id = f"{parliament}-{session}:{bill_number.upper()}"
+    session_str = f"{parliament}-{session}"
+    bill_id = f"{session_str}:{bill_number.upper()}"
     logger.info(f"Ingesting bill structure for {bill_id}...")
 
-    # First check if bill exists in Neo4j
+    # First check if bill exists in Neo4j (match by number and session, not id)
     check_result = neo4j_client.run_query(
-        "MATCH (b:Bill {id: $id}) RETURN b.id",
-        {"id": f"{parliament}-{session}:{bill_number.upper()}"}
+        "MATCH (b:Bill {number: $number, session: $session}) RETURN b.number",
+        {"number": bill_number.upper(), "session": session_str}
     )
 
     if not check_result:
@@ -842,8 +843,12 @@ def ingest_bills_from_list(
         parliament = int(parts[0])
         session = int(parts[1])
 
-        # Determine if government bill (starts with C- for private member, G- or no prefix for government)
-        is_government = bill_number.upper().startswith("G-") or not bill_number.upper().startswith("C-")
+        # Check if government bill from database
+        bill_info = neo4j_client.run_query(
+            "MATCH (b:Bill {number: $number, session: $session}) RETURN b.is_government_bill as is_gov",
+            {"number": bill_number.upper(), "session": session_str}
+        )
+        is_government = bill_info[0]["is_gov"] if bill_info and bill_info[0].get("is_gov") is not None else False
 
         bill_result = ingest_bill_structure(
             neo4j_client,

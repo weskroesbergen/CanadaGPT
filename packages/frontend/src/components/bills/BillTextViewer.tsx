@@ -105,7 +105,6 @@ interface BillAmendmentEvent {
 }
 
 interface BillStructure {
-  id: string;
   number: string;
   session: string;
   title: string;

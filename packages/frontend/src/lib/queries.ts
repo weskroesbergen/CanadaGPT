@@ -511,7 +511,6 @@ export const GET_BILL_LOBBYING = gql`
 export const GET_BILL_STRUCTURE = gql`
   query GetBillStructure($number: String!, $session: String!) {
     bills(where: { number: $number, session: $session }) {
-      id
       number
       session
       title

@@ -229,8 +229,8 @@ def ingest_bill_versions(
         bv.xml_url = v.xml_url,
         bv.pdf_url = v.pdf_url,
         bv.updated_at = datetime(v.updated_at)
-    WITH bv, v
-    MATCH (b:Bill {id: v.bill_id})
+    WITH bv, v, split(v.bill_id, ':') AS parts
+    MATCH (b:Bill {session: parts[0], number: parts[1]})
     MERGE (b)-[:HAS_VERSION]->(bv)
     RETURN count(bv) as created
     """
@@ -298,8 +298,8 @@ def ingest_amendment_events(
         bae.report_number = e.report_number,
         bae.number_of_amendments = e.number_of_amendments,
         bae.updated_at = datetime(e.updated_at)
-    WITH bae, e
-    MATCH (b:Bill {id: e.bill_id})
+    WITH bae, e, split(e.bill_id, ':') AS parts
+    MATCH (b:Bill {session: parts[0], number: parts[1]})
     MERGE (b)-[:HAS_AMENDMENT_EVENT]->(bae)
     RETURN count(bae) as created
     """
@@ -353,8 +353,8 @@ def ingest_bill_parts(
         bp.anchor_id = p.anchor_id,
         bp.sequence = p.sequence,
         bp.updated_at = datetime(p.updated_at)
-    WITH bp, p
-    MATCH (b:Bill {id: p.bill_id})
+    WITH bp, p, split(p.bill_id, ':') AS parts
+    MATCH (b:Bill {session: parts[0], number: parts[1]})
     MERGE (b)-[:HAS_PART]->(bp)
     RETURN count(bp) as created
     """
@@ -454,10 +454,13 @@ def ingest_bill_sections(
     neo4j_client.run_query(cypher_part_rel, {"sections": sections_data})
 
     # Create relationships for loose sections (Bill -> Section)
+    # Note: Bill nodes don't have an 'id' property - they're matched by session + number
+    # bill_id format is "45-1:C-2", so we split on ':' to get session and number
     cypher_bill_rel = """
     UNWIND $sections AS s
     MATCH (bs:BillSection {id: s.id})
-    MATCH (b:Bill {id: s.bill_id})
+    WITH bs, s, split(s.bill_id, ':') AS parts
+    MATCH (b:Bill {session: parts[0], number: parts[1]})
     WHERE s.part_id IS NULL
     MERGE (b)-[:HAS_SECTION]->(bs)
     """
@@ -694,8 +697,8 @@ def ingest_bill_definitions(
         bd.definition_fr = d.definition_fr,
         bd.sequence = d.sequence,
         bd.updated_at = datetime(d.updated_at)
-    WITH bd, d
-    MATCH (b:Bill {id: d.bill_id})
+    WITH bd, d, split(d.bill_id, ':') AS parts
+    MATCH (b:Bill {session: parts[0], number: parts[1]})
     MERGE (b)-[:HAS_DEFINITION]->(bd)
     RETURN count(bd) as created
     """

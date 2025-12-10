@@ -1083,7 +1083,10 @@ export const typeDefs = `#graphql
   # }
 
   type BillLobbyingActivity {
-    bill: Bill!
+    bill_number: String!
+    bill_session: String!
+    bill_title: String
+    bill_status: String
     organizations_lobbying: Int!
     total_lobbying_events: Int!
     organizations: [OrganizationLobbyingSummary!]!
@@ -1552,7 +1555,10 @@ export const typeDefs = `#graphql
              collect(DISTINCT {name: org.name, industry: org.industry, lobbying_count: lobbying_count}) as organizations
         WHERE size(organizations) > 0 OR organizations_lobbying = 0
         RETURN {
-          bill: bill,
+          bill_number: bill.number,
+          bill_session: bill.session,
+          bill_title: bill.title,
+          bill_status: bill.status,
           organizations_lobbying: COALESCE(organizations_lobbying, 0),
           total_lobbying_events: COALESCE(total_lobbying_events, 0),
           organizations: CASE WHEN organizations_lobbying > 0 THEN organizations ELSE [] END

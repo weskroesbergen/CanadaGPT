@@ -491,11 +491,10 @@ export const GET_BILL = gql`
 export const GET_BILL_LOBBYING = gql`
   query GetBillLobbying($billNumber: String!, $session: String!) {
     billLobbying(billNumber: $billNumber, session: $session) {
-      bill {
-        number
-        title
-        status
-      }
+      bill_number
+      bill_session
+      bill_title
+      bill_status
       organizations_lobbying
       total_lobbying_events
       organizations {

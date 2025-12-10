@@ -2,10 +2,8 @@
 
 import React, {
   useState,
-  useCallback,
   useRef,
   useEffect,
-  useMemo,
 } from 'react';
 import {
   FileText,
@@ -17,7 +15,9 @@ import {
   Search,
   ChevronRight,
   X,
+  Loader2,
 } from 'lucide-react';
+import { useMentionSearch } from '@/hooks/useMentionSearch';
 
 /**
  * Entity types that can be mentioned
@@ -128,256 +128,7 @@ const getEntityTypeColor = (type: MentionEntityType): string => {
   return colors[type];
 };
 
-/**
- * Parse mention query to extract type prefix and search term
- * Examples:
- *   "@bill:c-234" -> { type: "bill", search: "c-234" }
- *   "@mp:poili" -> { type: "mp", search: "poili" }
- *   "@poili" -> { type: null, search: "poili" }
- */
-function parseQuery(query: string): {
-  type: MentionEntityType | null;
-  search: string;
-} {
-  // Remove @ prefix if present
-  const cleanQuery = query.startsWith('@') ? query.slice(1) : query;
-
-  // Check for type prefix (e.g., "bill:", "mp:")
-  const colonIndex = cleanQuery.indexOf(':');
-  if (colonIndex > 0) {
-    const potentialType = cleanQuery.slice(0, colonIndex).toLowerCase();
-    const validTypes: MentionEntityType[] = [
-      'bill',
-      'mp',
-      'committee',
-      'vote',
-      'debate',
-      'petition',
-    ];
-
-    if (validTypes.includes(potentialType as MentionEntityType)) {
-      return {
-        type: potentialType as MentionEntityType,
-        search: cleanQuery.slice(colonIndex + 1),
-      };
-    }
-  }
-
-  return { type: null, search: cleanQuery };
-}
-
-/**
- * Generate mock suggestions (to be replaced with real API calls)
- * In production, this would fetch from GraphQL or a search API
- */
-function generateMockSuggestions(
-  query: string,
-  locale: string,
-  allowedTypes?: MentionEntityType[]
-): MentionSuggestion[] {
-  const { type, search } = parseQuery(query);
-  const suggestions: MentionSuggestion[] = [];
-
-  const lowerSearch = search.toLowerCase();
-
-  // Filter by allowed types if specified
-  const typesToSearch =
-    type !== null
-      ? [type]
-      : allowedTypes || ['bill', 'mp', 'committee', 'vote', 'debate', 'petition'];
-
-  // Bill suggestions
-  if (typesToSearch.includes('bill')) {
-    const bills = [
-      { id: 'c-234', title: 'Budget Implementation Act', session: '45-1' },
-      { id: 'c-21', title: 'Online Harms Act', session: '45-1' },
-      { id: 's-12', title: 'Strengthening Environmental Act', session: '45-1' },
-      { id: 'c-3', title: 'Citizenship Act Amendments', session: '45-1' },
-      { id: 'c-56', title: 'Affordable Housing Act', session: '45-1' },
-    ];
-
-    bills
-      .filter(
-        (b) =>
-          b.id.toLowerCase().includes(lowerSearch) ||
-          b.title.toLowerCase().includes(lowerSearch)
-      )
-      .forEach((bill) => {
-        suggestions.push({
-          type: 'bill',
-          id: bill.id,
-          label: `Bill ${bill.id.toUpperCase()}`,
-          secondary: bill.title,
-          mentionString: `@bill:${bill.id}`,
-          url: `/bills/${bill.session}/${bill.id}`,
-          metadata: { session: bill.session },
-        });
-      });
-  }
-
-  // MP suggestions
-  if (typesToSearch.includes('mp')) {
-    const mps = [
-      {
-        id: 'pierre-poilievre',
-        name: 'Pierre Poilievre',
-        riding: 'Carleton',
-        party: 'Conservative',
-      },
-      {
-        id: 'mark-carney',
-        name: 'Mark Carney',
-        riding: 'Toronto Centre',
-        party: 'Liberal',
-      },
-      {
-        id: 'jagmeet-singh',
-        name: 'Jagmeet Singh',
-        riding: 'Burnaby South',
-        party: 'NDP',
-      },
-      {
-        id: 'elizabeth-may',
-        name: 'Elizabeth May',
-        riding: 'Saanich-Gulf Islands',
-        party: 'Green',
-      },
-      {
-        id: 'yves-francois-blanchet',
-        name: 'Yves-Francois Blanchet',
-        riding: 'Beloeil-Chambly',
-        party: 'Bloc',
-      },
-    ];
-
-    mps
-      .filter(
-        (mp) =>
-          mp.name.toLowerCase().includes(lowerSearch) ||
-          mp.riding.toLowerCase().includes(lowerSearch) ||
-          mp.id.toLowerCase().includes(lowerSearch)
-      )
-      .forEach((mp) => {
-        suggestions.push({
-          type: 'mp',
-          id: mp.id,
-          label: mp.name,
-          secondary: `${mp.riding} - ${mp.party}`,
-          mentionString: `@mp:${mp.id}`,
-          url: `/mps/${mp.id}`,
-          metadata: { party: mp.party },
-        });
-      });
-  }
-
-  // Committee suggestions
-  if (typesToSearch.includes('committee')) {
-    const committees = [
-      { code: 'FINA', name: 'Finance' },
-      { code: 'ETHI', name: 'Ethics and Privacy' },
-      { code: 'ENVI', name: 'Environment and Sustainable Development' },
-      { code: 'HESA', name: 'Health' },
-      { code: 'JUST', name: 'Justice and Human Rights' },
-    ];
-
-    committees
-      .filter(
-        (c) =>
-          c.code.toLowerCase().includes(lowerSearch) ||
-          c.name.toLowerCase().includes(lowerSearch)
-      )
-      .forEach((committee) => {
-        suggestions.push({
-          type: 'committee',
-          id: committee.code,
-          label: committee.code,
-          secondary: committee.name,
-          mentionString: `@committee:${committee.code.toLowerCase()}`,
-          url: `/committees/${committee.code.toLowerCase()}`,
-        });
-      });
-  }
-
-  // Vote suggestions
-  if (typesToSearch.includes('vote')) {
-    const votes = [
-      { id: '45-1-234', subject: 'Bill C-234 Third Reading', result: 'Passed' },
-      { id: '45-1-233', subject: 'Opposition Motion', result: 'Negatived' },
-      { id: '45-1-232', subject: 'Budget Vote', result: 'Passed' },
-    ];
-
-    votes
-      .filter(
-        (v) =>
-          v.id.includes(lowerSearch) ||
-          v.subject.toLowerCase().includes(lowerSearch)
-      )
-      .forEach((vote) => {
-        suggestions.push({
-          type: 'vote',
-          id: vote.id,
-          label: `Vote #${vote.id.split('-')[2]}`,
-          secondary: `${vote.subject} - ${vote.result}`,
-          mentionString: `@vote:${vote.id}`,
-          url: `/votes/${vote.id}`,
-        });
-      });
-  }
-
-  // Debate suggestions
-  if (typesToSearch.includes('debate')) {
-    const debates = [
-      { date: '2025-12-09', subject: 'Question Period', time: '14:00' },
-      { date: '2025-12-08', subject: 'Government Orders', time: '10:00' },
-      { date: '2025-12-07', subject: 'Private Members Business', time: '11:00' },
-    ];
-
-    debates
-      .filter(
-        (d) =>
-          d.date.includes(lowerSearch) ||
-          d.subject.toLowerCase().includes(lowerSearch)
-      )
-      .forEach((debate) => {
-        suggestions.push({
-          type: 'debate',
-          id: debate.date,
-          label: debate.date,
-          secondary: `${debate.subject} at ${debate.time}`,
-          mentionString: `@debate:${debate.date}:${debate.time.replace(':', '-')}`,
-          url: `/debates/${debate.date}`,
-        });
-      });
-  }
-
-  // Petition suggestions
-  if (typesToSearch.includes('petition')) {
-    const petitions = [
-      { id: 'e-4823', title: 'Climate Action Now', signatures: 125000 },
-      { id: 'e-4756', title: 'Healthcare Funding', signatures: 89000 },
-      { id: 'e-4698', title: 'Housing Affordability', signatures: 156000 },
-    ];
-
-    petitions
-      .filter(
-        (p) =>
-          p.id.includes(lowerSearch) ||
-          p.title.toLowerCase().includes(lowerSearch)
-      )
-      .forEach((petition) => {
-        suggestions.push({
-          type: 'petition',
-          id: petition.id,
-          label: petition.id.toUpperCase(),
-          secondary: `${petition.title} (${petition.signatures.toLocaleString()} signatures)`,
-          mentionString: `@petition:${petition.id}`,
-          url: `/petitions/${petition.id}`,
-        });
-      });
-  }
-
-  return suggestions;
-}
+// Query parsing is now handled in useMentionSearch hook
 
 /**
  * Suggestion item component
@@ -512,17 +263,18 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
   const availableTypes: MentionEntityType[] =
     allowedTypes || ['bill', 'mp', 'committee', 'vote', 'debate', 'petition'];
 
-  // Generate suggestions based on query
-  const suggestions = useMemo(() => {
-    if (!isVisible || query.length < 1) return [];
+  // Determine types to search based on filter
+  const typesToSearch = activeTypeFilter
+    ? [activeTypeFilter]
+    : availableTypes;
 
-    const typesToSearch = activeTypeFilter
-      ? [activeTypeFilter]
-      : availableTypes;
-    const results = generateMockSuggestions(query, locale, typesToSearch);
-
-    return results.slice(0, maxSuggestions);
-  }, [query, isVisible, activeTypeFilter, availableTypes, locale, maxSuggestions]);
+  // Use the real search hook
+  const { suggestions, loading } = useMentionSearch({
+    query: isVisible && query.length >= 1 ? query : '',
+    types: typesToSearch,
+    locale,
+    maxResults: maxSuggestions,
+  });
 
   // Reset selection when suggestions change
   useEffect(() => {
@@ -663,7 +415,14 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
 
       {/* Suggestions list */}
       <div className="max-h-64 overflow-y-auto">
-        {suggestions.length === 0 ? (
+        {loading ? (
+          <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+            <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin opacity-50" />
+            <p className="text-sm">
+              {locale === 'fr' ? 'Recherche...' : 'Searching...'}
+            </p>
+          </div>
+        ) : suggestions.length === 0 ? (
           <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
             <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">

@@ -5,9 +5,10 @@
 
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import { useTranslations, useLocale } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Loading } from '@/components/Loading';
@@ -18,13 +19,17 @@ import NextLink from 'next/link';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { FileText, Users, ThumbsUp, ThumbsDown, Building, Calendar, CheckCircle, UserCheck, MessageSquare } from 'lucide-react';
+import { FileText, Users, ThumbsUp, ThumbsDown, Building, Calendar, CheckCircle, UserCheck, MessageSquare, BookOpen, LayoutGrid } from 'lucide-react';
 import { BillDiscussions } from '@/components/forum';
 import { useBilingualContent } from '@/hooks/useBilingual';
 import { usePageThreading } from '@/contexts/UserPreferencesContext';
 import { ThreadToggle, ConversationThread } from '@/components/hansard';
 import { ShareButton } from '@/components/ShareButton';
 import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
+import { BillSplitView, BillDiscussionPanel } from '@/components/bills';
+import { parseHighlightParam } from '@/lib/highlights';
+
+type ViewTab = 'overview' | 'fulltext';
 
 export default function BillDetailPage({
   params,
@@ -35,6 +40,27 @@ export default function BillDetailPage({
   const t = useTranslations('bill');
   const locale = useLocale();
   const dateLocale = locale === 'fr' ? fr : enUS;
+  const searchParams = useSearchParams();
+
+  // View tab state (overview vs full text)
+  const [activeTab, setActiveTab] = useState<ViewTab>('overview');
+
+  // Section discussion state
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+
+  // Parse highlight from URL
+  const highlightParam = searchParams.get('hl');
+  const highlight = highlightParam ? parseHighlightParam(highlightParam) : null;
+
+  // If URL has highlight, switch to fulltext tab
+  useEffect(() => {
+    if (highlight) {
+      setActiveTab('fulltext');
+      if (highlight.section) {
+        setSelectedSection(highlight.section);
+      }
+    }
+  }, [highlight]);
 
   const { data, loading, error } = useQuery(GET_BILL, {
     variables: {
@@ -192,6 +218,63 @@ export default function BillDetailPage({
           </div>
         </div>
 
+        {/* View Tabs */}
+        <div className="mb-6 flex gap-2 border-b border-border-subtle">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === 'overview'
+                ? 'border-accent-red text-accent-red'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            {locale === 'fr' ? 'Aperçu' : 'Overview'}
+          </button>
+          <button
+            onClick={() => setActiveTab('fulltext')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === 'fulltext'
+                ? 'border-accent-red text-accent-red'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            <BookOpen className="h-4 w-4" />
+            {locale === 'fr' ? 'Texte intégral' : 'Full Text'}
+          </button>
+        </div>
+
+        {/* Full Text View with Split Panel */}
+        {activeTab === 'fulltext' && (
+          <div className="mb-6">
+            <BillSplitView
+              billNumber={bill.number}
+              session={bill.session}
+              locale={locale}
+              initialSection={selectedSection || undefined}
+              discussionsEnabled={true}
+              onSectionSelect={(sectionAnchorId) => setSelectedSection(sectionAnchorId)}
+              discussionPanel={
+                <BillDiscussionPanel
+                  billNumber={bill.number}
+                  session={bill.session}
+                  billTitle={bilingualBill.title}
+                  locale={locale}
+                  selectedSection={selectedSection ? {
+                    anchorId: `bill:${bill.session}:${bill.number}:${selectedSection}`,
+                    sectionRef: selectedSection,
+                  } : null}
+                  onClearSection={() => setSelectedSection(null)}
+                  onSectionMention={(sectionRef) => setSelectedSection(sectionRef)}
+                />
+              }
+            />
+          </div>
+        )}
+
+        {/* Overview Tab Content */}
+        {activeTab === 'overview' && (
+          <>
         {/* Summary */}
         {bilingualBill.summary && (
           <Card className="mb-6">
@@ -629,6 +712,8 @@ export default function BillDetailPage({
             billTitle={bill.title}
           />
         </Card>
+          </>
+        )}
       </main>
 
       <Footer />

@@ -507,6 +507,121 @@ export const GET_BILL_LOBBYING = gql`
   }
 `;
 
+// Bill structure - hierarchical text
+export const GET_BILL_STRUCTURE = gql`
+  query GetBillStructure($number: String!, $session: String!) {
+    bills(where: { number: $number, session: $session }) {
+      id
+      number
+      session
+      title
+      # Bill versions
+      versions {
+        id
+        version_number
+        stage
+        publication_type_name
+        publication_date
+        has_amendments
+        xml_url
+        pdf_url
+      }
+      # Amendment events
+      amendmentEvents {
+        id
+        event_type
+        description_en
+        description_fr
+        event_date
+        chamber
+        stage
+        committee_code
+        committee_name
+        report_number
+        number_of_amendments
+      }
+      # Bill parts (top-level divisions)
+      parts(options: { sort: [{ sequence: ASC }] }) {
+        id
+        number
+        title_en
+        title_fr
+        anchor_id
+        sequence
+        sections(options: { sort: [{ sequence: ASC }] }) {
+          id
+          number
+          marginal_note_en
+          marginal_note_fr
+          text_en
+          text_fr
+          anchor_id
+          sequence
+          subsections(options: { sort: [{ sequence: ASC }] }) {
+            id
+            number
+            text_en
+            text_fr
+            anchor_id
+            sequence
+            paragraphs(options: { sort: [{ sequence: ASC }] }) {
+              id
+              letter
+              text_en
+              text_fr
+              anchor_id
+              sequence
+              subparagraphs(options: { sort: [{ sequence: ASC }] }) {
+                id
+                numeral
+                text_en
+                text_fr
+                anchor_id
+                sequence
+              }
+            }
+          }
+        }
+      }
+      # Sections not in parts
+      sections(options: { sort: [{ sequence: ASC }] }) {
+        id
+        number
+        marginal_note_en
+        marginal_note_fr
+        text_en
+        text_fr
+        anchor_id
+        sequence
+        subsections(options: { sort: [{ sequence: ASC }] }) {
+          id
+          number
+          text_en
+          text_fr
+          anchor_id
+          sequence
+          paragraphs(options: { sort: [{ sequence: ASC }] }) {
+            id
+            letter
+            text_en
+            text_fr
+            anchor_id
+            sequence
+            subparagraphs(options: { sort: [{ sequence: ASC }] }) {
+              id
+              numeral
+              text_en
+              text_fr
+              anchor_id
+              sequence
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 // ============================================
 // Dashboard Queries
 // ============================================

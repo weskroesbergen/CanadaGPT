@@ -52,6 +52,9 @@ export interface ForumPost {
   bill_number: string | null;
   bill_session: string | null;
 
+  // Additional entity metadata (e.g., section_ref for bill section discussions)
+  entity_metadata: Record<string, unknown> | null;
+
   // Content
   title: string | null;
   content: string;
@@ -146,6 +149,7 @@ export interface CreatePostInput {
   parent_post_id?: string; // For replies
   thread_root_id?: string; // For threading
   depth?: number; // Thread depth
+  entity_metadata?: Record<string, unknown>; // Additional metadata (e.g., section_ref)
 }
 
 export interface UpdatePostInput {

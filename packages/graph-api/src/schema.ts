@@ -251,6 +251,144 @@ export const typeDefs = `#graphql
     citedIn: [Case!]! @relationship(type: "CITED_IN", direction: OUT)
     fromSession: Session @relationship(type: "FROM_SESSION", direction: OUT)
     fromParliament: Parliament @relationship(type: "FROM_PARLIAMENT", direction: OUT)
+
+    # Bill structure (parsed from LEGISinfo XML)
+    parts: [BillPart!]! @relationship(type: "HAS_PART", direction: OUT)
+    sections: [BillSection!]! @relationship(type: "HAS_SECTION", direction: OUT)
+    versions: [BillVersion!]! @relationship(type: "HAS_VERSION", direction: OUT)
+    amendmentEvents: [BillAmendmentEvent!]! @relationship(type: "HAS_AMENDMENT_EVENT", direction: OUT)
+  }
+
+  # ============================================
+  # Bill Structure (Hierarchical Text)
+  # ============================================
+
+  type BillVersion @node {
+    id: ID! @unique
+    bill_id: String!
+    version_number: Int!
+    stage: String!  # "first-reading", "committee", "third-reading", "royal-assent"
+    publication_type_name: String  # "First Reading", "As amended by committee"
+    publication_date: DateTime
+    has_amendments: Boolean!
+    xml_url: String
+    pdf_url: String
+    updated_at: DateTime!
+
+    # Relationships
+    bill: Bill @relationship(type: "HAS_VERSION", direction: IN)
+  }
+
+  type BillAmendmentEvent @node {
+    id: ID! @unique
+    bill_id: String!
+    event_type: String!  # "committee_report_with_amendments", "senate_amendment"
+    description_en: String!
+    description_fr: String
+    event_date: DateTime
+    chamber: String!  # "House" or "Senate"
+    stage: String!  # "Consideration in committee", "Report stage"
+    committee_code: String
+    committee_name: String
+    report_id: Int
+    report_number: Int
+    number_of_amendments: Int
+    updated_at: DateTime!
+
+    # Relationships
+    bill: Bill @relationship(type: "HAS_AMENDMENT_EVENT", direction: IN)
+  }
+
+  type BillPart @node {
+    id: ID! @unique
+    bill_id: String!
+    number: Int!
+    title_en: String
+    title_fr: String
+    anchor_id: String! @unique  # bill:45-1:c-234:part-1
+    sequence: Int!
+    updated_at: DateTime!
+
+    # Relationships
+    bill: Bill @relationship(type: "HAS_PART", direction: IN)
+    sections: [BillSection!]! @relationship(type: "HAS_SECTION", direction: OUT)
+  }
+
+  type BillSection @node {
+    id: ID! @unique
+    bill_id: String!
+    number: String!  # Can be "1", "2", or "2.1" for standalone subsections
+    marginal_note_en: String  # Section title/description
+    marginal_note_fr: String
+    text_en: String  # Direct section text (not in subsections)
+    text_fr: String
+    anchor_id: String! @unique  # bill:45-1:c-234:s2
+    sequence: Int!
+    updated_at: DateTime!
+
+    # Relationships (can be in a Part or directly in Bill)
+    part: BillPart @relationship(type: "HAS_SECTION", direction: IN)
+    bill: Bill @relationship(type: "HAS_SECTION", direction: IN)
+    subsections: [BillSubsection!]! @relationship(type: "HAS_SUBSECTION", direction: OUT)
+  }
+
+  type BillSubsection @node {
+    id: ID! @unique
+    section_id: String!
+    number: String!  # "(1)", "(2)" - stored without parentheses
+    text_en: String
+    text_fr: String
+    anchor_id: String! @unique  # bill:45-1:c-234:s2.1
+    sequence: Int!
+    updated_at: DateTime!
+
+    # Relationships
+    section: BillSection @relationship(type: "HAS_SUBSECTION", direction: IN)
+    paragraphs: [BillParagraph!]! @relationship(type: "HAS_PARAGRAPH", direction: OUT)
+  }
+
+  type BillParagraph @node {
+    id: ID! @unique
+    subsection_id: String!
+    letter: String!  # "a", "b", "c" - stored without parentheses
+    text_en: String
+    text_fr: String
+    anchor_id: String! @unique  # bill:45-1:c-234:s2.1.a
+    sequence: Int!
+    updated_at: DateTime!
+
+    # Relationships
+    subsection: BillSubsection @relationship(type: "HAS_PARAGRAPH", direction: IN)
+    subparagraphs: [BillSubparagraph!]! @relationship(type: "HAS_SUBPARAGRAPH", direction: OUT)
+  }
+
+  type BillSubparagraph @node {
+    id: ID! @unique
+    paragraph_id: String!
+    numeral: String!  # "i", "ii", "iii" - Roman numerals
+    text_en: String
+    text_fr: String
+    anchor_id: String! @unique  # bill:45-1:c-234:s2.1.a.i
+    sequence: Int!
+    updated_at: DateTime!
+
+    # Relationships
+    paragraph: BillParagraph @relationship(type: "HAS_SUBPARAGRAPH", direction: IN)
+  }
+
+  type BillDefinition @node {
+    id: ID! @unique
+    bill_id: String!
+    term_en: String!
+    term_fr: String
+    definition_en: String!
+    definition_fr: String
+    section_id: String  # Which section contains this definition
+    updated_at: DateTime!
+
+    # Relationships
+    bill: Bill @relationship(type: "HAS_DEFINITION", direction: IN)
+    section: BillSection @relationship(type: "DEFINES", direction: IN)
   }
 
   type Vote @node {

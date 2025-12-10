@@ -362,6 +362,7 @@ export async function createPost(
     if (input.category_id) postData.category_id = input.category_id;
     if (input.bill_number) postData.bill_number = input.bill_number;
     if (input.bill_session) postData.bill_session = input.bill_session;
+    if (input.entity_metadata) postData.entity_metadata = input.entity_metadata;
 
     const { data, error } = await supabase
       .from('forum_posts')

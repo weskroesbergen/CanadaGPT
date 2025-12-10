@@ -15,6 +15,20 @@ from .political_contributions import PoliticalContributionsClient, PoliticalCont
 from .departmental_expenses import DepartmentalExpensesClient, DepartmentalTravel, DepartmentalHospitality
 from .news import NewsClient
 from .roles import GovernmentRolesClient, Minister, ParliamentarySecretary
+from .bill_text_xml import (
+    BillTextXMLClient,
+    ParsedBill,
+    BillVersion,
+    BillStage,
+    BillPart,
+    BillSection,
+    BillSubsection,
+    BillParagraph,
+    BillSubparagraph,
+    BillDefinition,
+    BillAmendmentEvent,
+    to_dict as bill_to_dict,
+)
 
 __all__ = [
     "OpenParliamentClient",
@@ -48,4 +62,17 @@ __all__ = [
     "GovernmentRolesClient",
     "Minister",
     "ParliamentarySecretary",
+    # Bill text XML parsing
+    "BillTextXMLClient",
+    "ParsedBill",
+    "BillVersion",
+    "BillStage",
+    "BillPart",
+    "BillSection",
+    "BillSubsection",
+    "BillParagraph",
+    "BillSubparagraph",
+    "BillDefinition",
+    "BillAmendmentEvent",
+    "bill_to_dict",
 ]

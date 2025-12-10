@@ -20,6 +20,8 @@ interface CreatePostFormProps {
   onSuccess?: () => void;
   placeholder?: string;
   submitButtonText?: string;
+  /** Additional entity metadata (e.g., section_ref for bill section discussions) */
+  entityMetadata?: Record<string, unknown>;
 }
 
 export function CreatePostForm({
@@ -35,6 +37,7 @@ export function CreatePostForm({
   onSuccess,
   placeholder = 'Write your post...',
   submitButtonText = 'Post',
+  entityMetadata,
 }: CreatePostFormProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
@@ -90,6 +93,7 @@ export function CreatePostForm({
         depth,
         title: requiresTitle ? title.trim() : undefined,
         content: content.trim(),
+        entity_metadata: entityMetadata,
       });
 
       if (result.success) {

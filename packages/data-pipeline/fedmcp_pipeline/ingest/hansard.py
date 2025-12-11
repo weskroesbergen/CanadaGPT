@@ -819,7 +819,8 @@ def extract_hansard_keywords(
     neo4j_client: Neo4jClient,
     session_id: Optional[str] = None,
     limit: Optional[int] = None,
-    top_n: int = 20
+    top_n: int = 20,
+    skip_existing: bool = True
 ) -> int:
     """
     Extract and populate keywords for Hansard documents using TF-IDF.
@@ -831,6 +832,7 @@ def extract_hansard_keywords(
         session_id: Optional specific session to process (e.g., "45-1")
         limit: Optional limit for number of documents to process
         top_n: Number of keywords to extract per document
+        skip_existing: If True, skip documents that already have keywords (default: True)
 
     Returns:
         Number of documents updated with keywords
@@ -876,9 +878,27 @@ def extract_hansard_keywords(
             continue
 
         doc_ids = [doc['doc_id'] for doc in documents]
-        logger.info(f"  Processing {len(doc_ids)} documents in session {session}")
 
-        # Get all statement text for corpus
+        # Identify which documents need keyword extraction
+        if skip_existing:
+            needs_keywords_query = """
+                MATCH (d:Document {session_id: $session_id})
+                WHERE d.public = true AND (d.keywords_en IS NULL OR d.keywords_en = [])
+                RETURN d.id as doc_id
+            """
+            needs_keywords_result = neo4j_client.run_query(needs_keywords_query, {"session_id": session})
+            docs_needing_keywords = {doc['doc_id'] for doc in needs_keywords_result}
+
+            if not docs_needing_keywords:
+                logger.info(f"  All {len(doc_ids)} documents already have keywords, skipping session")
+                continue
+
+            logger.info(f"  {len(docs_needing_keywords)} of {len(doc_ids)} documents need keywords")
+        else:
+            docs_needing_keywords = set(doc_ids)
+            logger.info(f"  Processing {len(doc_ids)} documents in session {session}")
+
+        # Get all statement text for corpus (use ALL docs for TF-IDF quality)
         corpus_query = """
             MATCH (d:Document)<-[:PART_OF]-(s:Statement)
             WHERE d.id IN $doc_ids
@@ -910,14 +930,22 @@ def extract_hansard_keywords(
 
         logger.info(f"  Corpus: {len(corpus_en)} EN docs, {len(corpus_fr)} FR docs")
 
-        # Extract keywords for each document
+        # Filter to only documents that need keywords
+        docs_to_process = {doc_id: texts for doc_id, texts in doc_texts.items()
+                          if doc_id in docs_needing_keywords}
+
+        if not docs_to_process:
+            logger.info(f"  No documents need keyword extraction")
+            continue
+
+        # Extract keywords for documents that need them
         tracker = ProgressTracker(
-            total=len(doc_texts),
+            total=len(docs_to_process),
             desc=f"Extracting keywords ({session})"
         )
 
-        for doc_id, texts in doc_texts.items():
-            # Extract keywords
+        for doc_id, texts in docs_to_process.items():
+            # Extract keywords (using full corpus for TF-IDF quality)
             keywords_en, keywords_fr = extract_document_keywords(
                 texts['text_en'],
                 texts['text_fr'],

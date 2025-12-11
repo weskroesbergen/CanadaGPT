@@ -352,8 +352,12 @@ def check_and_import_recent_debates(neo4j: Neo4jClient, lookback_days: int = 7, 
     """)
 
     if result and result[0]['num']:
-        # Number is stored as integer (e.g., 53)
-        latest_sitting = int(result[0]['num'])
+        # Handle both old format ("No. 069") and new format (69)
+        num_val = result[0]['num']
+        if isinstance(num_val, str):
+            latest_sitting = int(num_val.replace('No. ', '').strip())
+        else:
+            latest_sitting = int(num_val)
         # Search backward and forward: from (latest - 15) to (latest + 15)
         search_range = range(max(1, latest_sitting - 15), latest_sitting + 16)
     else:

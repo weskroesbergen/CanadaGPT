@@ -208,10 +208,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       console.log('[chatStore] Setting loading state');
       set({ isLoading: true, error: null });
 
+      // Get the current conversation (may have just been created)
+      const currentConversation = get().conversation;
+      if (!currentConversation) {
+        console.error('[chatStore] No conversation available');
+        set({ error: 'No conversation available', isLoading: false });
+        return;
+      }
+
       // Add user message to UI immediately
       const userMessage: Message = {
         id: crypto.randomUUID(),
-        conversation_id: state.conversation!.id,
+        conversation_id: currentConversation.id,
         role: 'user',
         content,
         used_byo_key: false,
@@ -243,7 +251,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          conversation_id: state.conversation!.id,
+          conversation_id: currentConversation.id,
           message: content,
           context: {
             type: state.contextType,
@@ -271,7 +279,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       console.log('[chatStore] Creating assistant message placeholder');
       let assistantMessage: Message = {
         id: crypto.randomUUID(),
-        conversation_id: state.conversation!.id,
+        conversation_id: currentConversation.id,
         role: 'assistant',
         content: '',
         used_byo_key: false,

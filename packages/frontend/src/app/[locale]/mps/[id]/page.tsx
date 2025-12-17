@@ -38,6 +38,7 @@ import { usePageThreading } from '@/contexts/UserPreferencesContext';
 import { ThreadToggle, ConversationThread } from '@/components/hansard';
 import { ShareButton } from '@/components/ShareButton';
 import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
+import { EntityVoteButtons } from '@/components/votes/EntityVoteButtons';
 
 export default function MPDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -213,8 +214,14 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
       <main className="flex-1 page-container">
         {/* MP Header */}
         <div className="mb-8 relative">
-          {/* Bookmark and Share Buttons - Top Right */}
+          {/* Voting, Bookmark and Share Buttons - Top Right */}
           <div className="absolute top-0 right-0 flex gap-2">
+            <EntityVoteButtons
+              entityType="mp"
+              entityId={id}
+              size="md"
+              showVotersList={true}
+            />
             <BookmarkButton
               bookmarkData={{
                 itemType: 'mp',

@@ -27,6 +27,52 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const [shared, setShared] = React.useState(false);
   const [showResultsCard, setShowResultsCard] = React.useState(true);
 
+  // Typing animation for assistant messages
+  const [displayedContent, setDisplayedContent] = React.useState('');
+  const [isTyping, setIsTyping] = React.useState(false);
+  const hasAnimated = React.useRef(false);
+  const lastContentRef = React.useRef('');
+
+  React.useEffect(() => {
+    // Only animate assistant messages and only once per unique content
+    if (message.role !== 'assistant') {
+      setDisplayedContent(message.content);
+      return;
+    }
+
+    // If we've already animated this exact content, just show it
+    if (hasAnimated.current && lastContentRef.current === message.content) {
+      setDisplayedContent(message.content);
+      return;
+    }
+
+    // New content to animate
+    hasAnimated.current = true;
+    lastContentRef.current = message.content;
+    setIsTyping(true);
+    setDisplayedContent('');
+
+    let currentIndex = 0;
+    const content = message.content;
+
+    // Type out characters slowly for better readability
+    // Process multiple characters per tick for smoother animation
+    const charsPerTick = 3; // Show 3 characters at a time
+    const tickDelay = 80; // 80ms between ticks = ~37 characters per second (slow and readable)
+
+    const interval = setInterval(() => {
+      if (currentIndex < content.length) {
+        currentIndex = Math.min(currentIndex + charsPerTick, content.length);
+        setDisplayedContent(content.slice(0, currentIndex));
+      } else {
+        setIsTyping(false);
+        clearInterval(interval);
+      }
+    }, tickDelay);
+
+    return () => clearInterval(interval);
+  }, [message.content, message.role]);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content);
     setCopied(true);
@@ -144,8 +190,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   ),
                 }}
               >
-                {message.content}
+                {displayedContent}
               </ReactMarkdown>
+              {isTyping && <span className="inline-block w-1 h-4 bg-gray-400 ml-1 animate-pulse" />}
             </div>
           ) : (
             <p className="text-sm whitespace-pre-wrap text-white">{message.content}</p>

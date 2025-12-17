@@ -466,6 +466,10 @@ export const GET_BILL = gql`
       # Statute info
       statute_year
       statute_chapter
+      # Full narrative text
+      full_text_en
+      full_text_fr
+      full_text_updated_at
       # Committees
       referredTo {
         code
@@ -501,6 +505,15 @@ export const GET_BILL_LOBBYING = gql`
         name
         industry
         lobbying_count
+      }
+      communications {
+        id
+        date
+        subject
+        lobbyist_names
+        government_officials
+        organization_name
+        organization_industry
       }
     }
   }
@@ -1572,6 +1585,65 @@ export const SEARCH_WRITTEN_QUESTIONS = gql`
         id
         date
         document_type
+      }
+    }
+  }
+`;
+
+// Bill Committee Evidence - Get committee meetings and testimony
+export const GET_BILL_COMMITTEE_EVIDENCE = gql`
+  query GetBillCommitteeEvidence($billNumber: String!, $session: String!) {
+    bills(where: { number: $billNumber, session: $session }) {
+      number
+      session
+
+      # Committees that this bill was referred to
+      referredTo {
+        code
+        name
+
+        # Meetings held by this committee (filter for relevance to the bill in component)
+        meetings(options: { sort: [{ date: DESC }], limit: 50 }) {
+          id
+          ourcommons_meeting_id
+          date
+          subject
+          number
+          status
+          webcast
+
+          # Evidence from this meeting
+          evidence {
+            id
+            committee_code
+            meeting_number
+            date
+            publication_status
+            source_xml_url
+
+            # All testimonies from this evidence (filter for bill mentions in component)
+            testimonies(options: { limit: 100 }) {
+              id
+              speaker_name
+              organization
+              role
+              text
+              is_witness
+              timestamp_hour
+              timestamp_minute
+
+              # Link to MP if the speaker is an MP
+              speaker {
+                id
+                name
+                party
+                riding
+                photo_url
+                photo_url_source
+              }
+            }
+          }
+        }
       }
     }
   }

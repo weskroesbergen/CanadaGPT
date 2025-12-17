@@ -14,6 +14,7 @@ declare module 'next-auth' {
       email: string;
       name?: string | null;
       image?: string | null;
+      username?: string | null;
       subscriptionTier: string;
       monthlyUsage: number;
       createdAt?: string;
@@ -25,6 +26,9 @@ declare module 'next-auth' {
       preferredMpId?: string | null;
       postalCode?: string | null;
       showMyMpSection?: boolean;
+      isAdmin?: boolean;
+      partyAffiliation?: string | null;
+      partyAffiliationVisibility?: string;
     };
   }
 
@@ -39,6 +43,7 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     id?: string;
+    username?: string | null;
     subscriptionTier?: string;
     monthlyUsage?: number;
     createdAt?: string;
@@ -50,5 +55,8 @@ declare module 'next-auth/jwt' {
     preferredMpId?: string | null;
     postalCode?: string | null;
     showMyMpSection?: boolean;
+    isAdmin?: boolean;
+    partyAffiliation?: string | null;
+    partyAffiliationVisibility?: string;
   }
 }

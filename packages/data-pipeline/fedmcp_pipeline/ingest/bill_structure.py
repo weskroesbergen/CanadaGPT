@@ -65,6 +65,7 @@ from fedmcp.clients.bill_text_xml import (
 
 from ..utils.neo4j_client import Neo4jClient
 from ..utils.progress import logger, ProgressTracker
+from .bill_full_text_extractor import extract_continuous_text, validate_extracted_text
 
 
 def create_bill_structure_schema(neo4j_client: Neo4jClient) -> None:
@@ -709,6 +710,59 @@ def ingest_bill_definitions(
     return created
 
 
+def ingest_bill_full_text(
+    neo4j_client: Neo4jClient,
+    bill: ParsedBill,
+    language: str = 'en',
+) -> bool:
+    """Extract and store full narrative text for a bill.
+
+    Args:
+        neo4j_client: Neo4j client instance
+        bill: Parsed bill structure
+        language: 'en' for English or 'fr' for French
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Extract continuous text
+        logger.info(f"  Extracting full text ({language})...")
+        full_text = extract_continuous_text(bill, language=language)
+
+        # Validate quality
+        if not validate_extracted_text(full_text, bill):
+            logger.warning(f"  ⚠️  Text validation failed for {language}")
+            return False
+
+        logger.info(f"  Extracted {len(full_text):,} characters")
+
+        # Update Bill node
+        field_name = f"full_text_{language}"
+        cypher = f"""
+        MATCH (b:Bill {{session: $session, number: $number}})
+        SET b.{field_name} = $full_text,
+            b.full_text_updated_at = datetime()
+        RETURN b.number as updated
+        """
+
+        result = neo4j_client.run_query(cypher, {
+            "session": bill.session_str,
+            "number": bill.bill_number,
+            "full_text": full_text
+        })
+
+        if result:
+            logger.info(f"  ✅ Stored full text ({language}) for {bill.bill_number}")
+            return True
+        else:
+            logger.warning(f"  ⚠️  Failed to update Bill node with full text ({language})")
+            return False
+    except Exception as e:
+        logger.error(f"  ❌ Failed to extract full text ({language}): {e}")
+        return False
+
+
 def ingest_bill_structure(
     neo4j_client: Neo4jClient,
     parliament: int,
@@ -718,7 +772,8 @@ def ingest_bill_structure(
     version: int = 1,
     is_government: bool = False,
     include_all_versions: bool = True,
-) -> Dict[str, int]:
+    include_full_text: bool = True,
+) -> Dict[str, Any]:
     """Ingest complete bill structure from Parliament.ca XML.
 
     This is the main entry point for ingesting a single bill's structure.
@@ -731,9 +786,10 @@ def ingest_bill_structure(
         version: Version number to parse (1=first reading, etc.)
         is_government: True for government bills
         include_all_versions: If True, fetch and store all available versions
+        include_full_text: If True, extract and store full narrative text (en + fr)
 
     Returns:
-        Dictionary with counts for each node type created
+        Dictionary with counts for each node type created and full text extraction status
     """
     session_str = f"{parliament}-{session}"
     bill_id = f"{session_str}:{bill_number.upper()}"
@@ -787,7 +843,35 @@ def ingest_bill_structure(
     results["subparagraphs"] = ingest_bill_subparagraphs(neo4j_client, bill)
     results["definitions"] = ingest_bill_definitions(neo4j_client, bill)
 
-    total = sum(v for k, v in results.items() if k != "bill" and k != "error")
+    # Extract and store full narrative text (if requested)
+    if include_full_text:
+        logger.info(f"Extracting full narrative text...")
+
+        # English text
+        success_en = ingest_bill_full_text(neo4j_client, bill, language='en')
+        results['full_text_en_extracted'] = success_en
+
+        # French text (fetch French XML separately)
+        try:
+            logger.info(f"  Fetching French version...")
+            bill_fr = client.parse_bill(
+                parliament=parliament,
+                session=session,
+                bill_number=bill_number,
+                version=version,
+                is_government=is_government,
+                language='F',  # French XML
+            )
+            success_fr = ingest_bill_full_text(neo4j_client, bill_fr, language='fr')
+            results['full_text_fr_extracted'] = success_fr
+        except Exception as e:
+            logger.warning(f"  ⚠️  French text extraction failed: {e}")
+            results['full_text_fr_extracted'] = False
+    else:
+        results['full_text_en_extracted'] = None
+        results['full_text_fr_extracted'] = None
+
+    total = sum(v for k, v in results.items() if k != "bill" and k != "error" and isinstance(v, int))
     logger.info(f"✅ Ingested {total} total nodes for {bill_id}")
 
     return results

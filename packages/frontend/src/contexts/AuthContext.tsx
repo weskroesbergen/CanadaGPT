@@ -7,7 +7,7 @@
 
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 
 interface UserProfile {
@@ -15,6 +15,7 @@ interface UserProfile {
   email: string;
   full_name?: string | null;
   display_name?: string | null;
+  username?: string | null;
   avatar_url?: string | null;
   subscription_tier?: string;
   monthly_usage?: number;
@@ -26,6 +27,9 @@ interface UserProfile {
   uses_own_key?: boolean;
   credit_balance?: number;
   show_my_mp_section?: boolean;
+  is_admin?: boolean;
+  party_affiliation?: string | null;
+  party_affiliation_visibility?: string;
 }
 
 interface AuthContextType {
@@ -40,29 +44,55 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const loading = status === 'loading';
 
   // Map NextAuth session to user profile format
-  const user: UserProfile | null = session?.user
-    ? {
-        id: session.user.id,
-        email: session.user.email!,
-        full_name: session.user.name,
-        display_name: session.user.name,
-        avatar_url: session.user.image,
-        subscription_tier: session.user.subscriptionTier,
-        monthly_usage: session.user.monthlyUsage,
-        created_at: session.user.createdAt,
-        usage_reset_date: session.user.usageResetDate,
-        postal_code: session.user.postalCode,
-        preferred_mp_id: session.user.preferredMpId,
-        is_beta_tester: session.user.isBetaTester,
-        uses_own_key: session.user.usesOwnKey,
-        credit_balance: session.user.creditBalance,
-        show_my_mp_section: session.user.showMyMpSection,
-      }
-    : null;
+  // Memoize to prevent unnecessary re-renders when session data hasn't actually changed
+  const user: UserProfile | null = useMemo(() => {
+    if (!session?.user) return null;
+
+    return {
+      id: session.user.id,
+      email: session.user.email!,
+      full_name: session.user.name,
+      display_name: session.user.name,
+      username: session.user.username,
+      avatar_url: session.user.image,
+      subscription_tier: session.user.subscriptionTier,
+      monthly_usage: session.user.monthlyUsage,
+      created_at: session.user.createdAt,
+      usage_reset_date: session.user.usageResetDate,
+      postal_code: session.user.postalCode,
+      preferred_mp_id: session.user.preferredMpId,
+      is_beta_tester: session.user.isBetaTester,
+      uses_own_key: session.user.usesOwnKey,
+      credit_balance: session.user.creditBalance,
+      show_my_mp_section: session.user.showMyMpSection,
+      is_admin: session.user.isAdmin,
+      party_affiliation: session.user.partyAffiliation,
+      party_affiliation_visibility: session.user.partyAffiliationVisibility,
+    };
+  }, [
+    session?.user?.id,
+    session?.user?.email,
+    session?.user?.name,
+    session?.user?.username,
+    session?.user?.image,
+    session?.user?.subscriptionTier,
+    session?.user?.monthlyUsage,
+    session?.user?.createdAt,
+    session?.user?.usageResetDate,
+    session?.user?.postalCode,
+    session?.user?.preferredMpId,
+    session?.user?.isBetaTester,
+    session?.user?.usesOwnKey,
+    session?.user?.creditBalance,
+    session?.user?.showMyMpSection,
+    session?.user?.isAdmin,
+    session?.user?.partyAffiliation,
+    session?.user?.partyAffiliationVisibility,
+  ]);
 
   // Sign out using NextAuth
   const signOut = async () => {
@@ -77,11 +107,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Refresh profile data (re-fetch session)
+  // Refresh profile data without page reload
   const refreshProfile = async () => {
-    // NextAuth v5 automatically refreshes session
-    // Can trigger manual refresh if needed
-    window.location.reload();
+    try {
+      // Trigger session refresh via NextAuth's built-in update mechanism
+      // This re-runs jwt callback which fetches fresh profile data from database
+      await updateSession();
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+      // Fallback to reload only if update fails
+      window.location.reload();
+    }
   };
 
   const value = {

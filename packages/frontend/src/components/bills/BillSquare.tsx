@@ -12,6 +12,7 @@ import type { BillGanttData } from '@/lib/billGanttUtils';
 import { ShareButton } from '@/components/ShareButton';
 import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
 import { PartyLogo } from '@/components/PartyLogo';
+import { EntityVoteButtons } from '@/components/votes/EntityVoteButtons';
 
 interface BillPosition {
   column: number; // Stage column position (%)
@@ -118,14 +119,13 @@ export function BillSquare({ bill, gridPosition, swimlane }: BillSquareProps) {
       </div>
 
       {/* Expanded view on hover - positioned outside container */}
-      <div
-        className="
-          absolute left-1/2 top-0 -translate-x-1/2
-          opacity-0 group-hover:opacity-100
-          transition-opacity duration-200
-        "
-        style={{ pointerEvents: isHovered ? 'auto' : 'none' }}
-      >
+      {isHovered && (
+        <div
+          className="
+            absolute left-1/2 top-0 -translate-x-1/2
+            animate-in fade-in-0 zoom-in-95 duration-200
+          "
+        >
         <div
           className={`
             w-64 rounded-md
@@ -139,6 +139,11 @@ export function BillSquare({ bill, gridPosition, swimlane }: BillSquareProps) {
         >
           {/* Action buttons in top-right corner */}
           <div className="absolute top-2 right-2 flex gap-2">
+            <EntityVoteButtons
+              entityType="bill"
+              entityId={`${bill.session}-${bill.number}`}
+              size="sm"
+            />
             <BookmarkButton
               bookmarkData={{
                 itemType: 'bill',
@@ -209,7 +214,8 @@ export function BillSquare({ bill, gridPosition, swimlane }: BillSquareProps) {
             View Details →
           </Link>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

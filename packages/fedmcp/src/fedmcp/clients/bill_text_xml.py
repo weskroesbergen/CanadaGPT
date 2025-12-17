@@ -335,6 +335,7 @@ class BillTextXMLClient:
         version: int = 1,
         *,
         is_government: bool = False,
+        language: str = "E",
     ) -> ParsedBill:
         """Fetch and parse a bill into structured data.
 
@@ -344,6 +345,7 @@ class BillTextXMLClient:
             bill_number: Bill code (e.g., "C-234")
             version: Version number (1=first reading, etc.)
             is_government: True for government bills
+            language: Language code - "E" for English or "F" for French
 
         Returns:
             ParsedBill with full structured content
@@ -355,7 +357,7 @@ class BillTextXMLClient:
 
         xml_url = (
             f"{self.base_url}/Content/Bills/{parl_str}/{bill_type}/"
-            f"{bill_upper}/{bill_upper}_{version}/{bill_upper}_E.xml"
+            f"{bill_upper}/{bill_upper}_{version}/{bill_upper}_{language}.xml"
         )
 
         xml_content = self.fetch_xml(xml_url)

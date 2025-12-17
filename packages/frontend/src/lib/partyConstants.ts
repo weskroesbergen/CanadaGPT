@@ -193,3 +193,67 @@ export function getPartyStyles(partyName: string | null | undefined, active: boo
     borderColor: party.color,
   };
 }
+
+/**
+ * User-selectable party affiliations
+ * Includes all parliamentary parties plus inclusive options
+ */
+export const USER_PARTY_AFFILIATIONS = [
+  'Liberal Party of Canada',
+  'Conservative Party of Canada',
+  'New Democratic Party',
+  'Bloc Québécois',
+  'Green Party of Canada',
+  'Independent',
+  'Undecided',
+  'Prefer not to say',
+  'No affiliation',
+] as const;
+
+export type UserPartyAffiliation = typeof USER_PARTY_AFFILIATIONS[number] | null;
+
+/**
+ * Get party info for user affiliation (handles special cases)
+ * Special cases like "Undecided" render with gray color scheme
+ */
+export function getPartyInfoForAffiliation(affiliation: string | null | undefined): PartyInfo | null {
+  if (!affiliation) return null;
+
+  // Map special cases to gray display
+  const specialCases: Record<string, Partial<PartyInfo>> = {
+    'Undecided': {
+      name: 'Undecided',
+      slug: 'undecided',
+      color: '#9CA3AF', // gray-400
+      darkColor: '#6B7280',
+      lightColor: '#F3F4F6',
+      textColor: '#FFFFFF',
+      fullName: 'Undecided',
+    },
+    'Prefer not to say': {
+      name: 'Prefer not to say',
+      slug: 'prefer-not-to-say',
+      color: '#9CA3AF',
+      darkColor: '#6B7280',
+      lightColor: '#F3F4F6',
+      textColor: '#FFFFFF',
+      fullName: 'Prefer not to say',
+    },
+    'No affiliation': {
+      name: 'No affiliation',
+      slug: 'no-affiliation',
+      color: '#9CA3AF',
+      darkColor: '#6B7280',
+      lightColor: '#F3F4F6',
+      textColor: '#FFFFFF',
+      fullName: 'No affiliation',
+    },
+  };
+
+  if (specialCases[affiliation]) {
+    return specialCases[affiliation] as PartyInfo;
+  }
+
+  // Use existing getPartyInfo for parliamentary parties
+  return getPartyInfo(affiliation);
+}

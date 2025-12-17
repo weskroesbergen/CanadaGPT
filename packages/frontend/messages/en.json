@@ -38,6 +38,19 @@
     "english": "English",
     "french": "French"
   },
+  "votes": {
+    "yea": "Yea",
+    "nay": "Nay",
+    "removeYea": "Remove Yea vote",
+    "removeNay": "Remove Nay vote",
+    "signInToVote": "Sign in to vote",
+    "whoVoted": "Who voted",
+    "yeas": "Yeas",
+    "nays": "Nays",
+    "allVotes": "All votes",
+    "netScore": "Net score",
+    "voteError": "Failed to submit vote. Please try again."
+  },
   "nav": {
     "siteTitle": "CanadaGPT",
     "tagline": "Government Accountability",
@@ -179,6 +192,34 @@
       "yourRiding": "Your Riding",
       "yourMP": "Your MP",
       "noPostalCode": "No postal code set"
+    },
+    "partyAffiliation": {
+      "title": "Party Affiliation",
+      "label": "Party Affiliation",
+      "placeholder": "Select a party...",
+      "description": "Select your political party affiliation. This information can be displayed on your profile and used for personalized content.",
+      "preview": "Preview",
+      "visibility": {
+        "label": "Who can see your party affiliation?",
+        "public": "Public",
+        "publicDescription": "Everyone can see your party affiliation",
+        "followers": "Followers Only",
+        "followersDescription": "Only users who follow you can see your party affiliation",
+        "private": "Private",
+        "privateDescription": "Only you can see your party affiliation"
+      },
+      "save": "Save",
+      "clear": "Clear",
+      "success": "Party affiliation updated successfully!",
+      "clearSuccess": "Party affiliation cleared successfully!",
+      "error": "Failed to update party affiliation",
+      "about": {
+        "title": "About Party Affiliation",
+        "optional": "Your party affiliation is completely optional",
+        "personalization": "This helps us personalize your experience and show relevant content",
+        "changeable": "You can change or remove your affiliation at any time",
+        "privacy": "Privacy settings control who can see this information on your profile"
+      }
     }
   },
   "bills": {
@@ -285,6 +326,7 @@
     "noVotes": "No votes recorded yet",
     "noDebates": "No debates recorded yet",
     "noLobbying": "No lobbying activity recorded",
+    "noCommittees": "No committee referrals yet",
     "awaitingSecondReading": "Awaiting Second Reading",
     "awaitingDescription": "No votes have occurred yet. This bill is scheduled for second reading debate.",
     "privateMemberNote": "As a Private Member's Bill, it is waiting in the Order of Precedence queue for its turn to be debated and voted on.",

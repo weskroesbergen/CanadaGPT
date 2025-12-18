@@ -208,12 +208,12 @@ export function VotersModal({
                     {voter.avatar_url ? (
                       <img
                         src={voter.avatar_url}
-                        alt={voter.display_name}
+                        alt={voter.display_name || 'User'}
                         className="w-10 h-10 rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-accent-red/10 flex items-center justify-center text-accent-red font-semibold">
-                        {voter.display_name.charAt(0).toUpperCase()}
+                        {(voter.display_name || voter.username || '?').charAt(0).toUpperCase()}
                       </div>
                     )}
                   </div>
@@ -221,7 +221,7 @@ export function VotersModal({
                   {/* User Info */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-text-primary truncate">
-                      {voter.display_name}
+                      {voter.display_name || voter.username || 'Anonymous'}
                     </div>
                     <div className="text-xs text-text-tertiary">
                       {formatDistanceToNow(new Date(voter.voted_at), {

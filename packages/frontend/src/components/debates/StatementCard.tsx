@@ -54,6 +54,10 @@ interface StatementCardProps {
   statement: Statement;
   documentId: string;
   isReply?: boolean;
+  /** Initial vote data (from batch fetch) */
+  initialUpvotes?: number;
+  initialDownvotes?: number;
+  initialUserVote?: 'upvote' | 'downvote' | null;
 }
 
 // Neutral color mapping (for Speaker of the House)
@@ -127,7 +131,14 @@ const getStatementTypeBadge = (type?: string | null) => {
   }
 };
 
-export function StatementCard({ statement, documentId, isReply = false }: StatementCardProps) {
+export function StatementCard({
+  statement,
+  documentId,
+  isReply = false,
+  initialUpvotes,
+  initialDownvotes,
+  initialUserVote,
+}: StatementCardProps) {
   const locale = useLocale();
   const [imageError, setImageError] = useState(false);
 
@@ -200,6 +211,9 @@ export function StatementCard({ statement, documentId, isReply = false }: Statem
           entityType="statement"
           entityId={statement.id}
           size="sm"
+          initialUpvotes={initialUpvotes}
+          initialDownvotes={initialDownvotes}
+          initialUserVote={initialUserVote}
         />
         <BookmarkButton bookmarkData={bookmarkData} size="sm" />
         <ShareButton url={shareUrl} title={shareTitle} description={shareDescription} size="sm" />

@@ -13,6 +13,7 @@ import { ConversationThread } from '@/components/hansard/ConversationThread';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Calendar, Copy, Hash } from 'lucide-react';
+import { useEntityVotes } from '@/hooks/useEntityVotes';
 
 export default function DebateDetailPage() {
   const params = useParams();
@@ -31,6 +32,15 @@ export default function DebateDetailPage() {
   });
 
   const debateDetail = data?.debateWithStatements;
+
+  // Get all statement IDs for batch vote fetching
+  const statementIds = useMemo(() => {
+    if (!debateDetail?.statements) return [];
+    return debateDetail.statements.map((s: any) => s.id).filter(Boolean);
+  }, [debateDetail]);
+
+  // Batch fetch votes for all statements (single request instead of N requests)
+  const { getVoteData } = useEntityVotes('statement', statementIds);
 
   // Memoize sections (unique h1 values)
   const sections = useMemo(() => {
@@ -171,11 +181,15 @@ export default function DebateDetailPage() {
                   />
                 );
               } else {
+                const voteData = getVoteData(thread.root.id);
                 return (
                   <StatementCard
                     key={thread.root.id || idx}
                     statement={thread.root}
                     documentId={documentId}
+                    initialUpvotes={voteData.initialUpvotes}
+                    initialDownvotes={voteData.initialDownvotes}
+                    initialUserVote={voteData.initialUserVote}
                   />
                 );
               }

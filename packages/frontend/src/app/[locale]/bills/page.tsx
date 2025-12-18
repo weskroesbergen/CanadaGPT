@@ -337,8 +337,14 @@ export default function BillsPage() {
                 >
                   <PrintableCard>
                     <Card className="hover:border-accent-red transition-colors cursor-pointer relative">
-                      {/* Action Buttons - Top Right */}
-                      <div className="absolute top-3 right-3 z-10 flex gap-2">
+                      {/* Action Buttons - Top Right - Stop clicks from navigating to bill detail */}
+                      <div
+                        className="absolute top-3 right-3 z-10 flex gap-2"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      >
                         <EntityVoteButtons
                           entityType="bill"
                           entityId={`${bill.session}-${bill.number}`}

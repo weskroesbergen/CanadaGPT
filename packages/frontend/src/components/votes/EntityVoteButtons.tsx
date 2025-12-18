@@ -15,14 +15,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@canadagpt/design-system';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { VotersModal } from './VotersModal';
-import { Tooltip } from '@/components/ui/Tooltip';
 
 export type VoteType = 'upvote' | 'downvote';
 export type EntityType = 'bill' | 'mp' | 'statement';
@@ -71,6 +70,13 @@ export function EntityVoteButtons({
   const [userVote, setUserVote] = useState<VoteType | null>(initialUserVote);
   const [isVoting, setIsVoting] = useState(false);
   const [showVotersModal, setShowVotersModal] = useState(false);
+
+  // Sync state when props change (e.g., after batch vote data loads)
+  useEffect(() => {
+    setUpvotes(initialUpvotes ?? 0);
+    setDownvotes(initialDownvotes ?? 0);
+    setUserVote(initialUserVote ?? null);
+  }, [initialUpvotes, initialDownvotes, initialUserVote]);
 
   // Calculate net score
   const netScore = upvotes - downvotes;
@@ -244,7 +250,11 @@ export function EntityVoteButtons({
       <div className={containerClass}>
         {/* Yea Button */}
         <button
-          onClick={() => handleVote('upvote')}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleVote('upvote');
+          }}
           disabled={isVoting}
           className={cn(
             buttonBaseClass,
@@ -280,7 +290,11 @@ export function EntityVoteButtons({
 
         {/* Nay Button */}
         <button
-          onClick={() => handleVote('downvote')}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleVote('downvote');
+          }}
           disabled={isVoting}
           className={cn(
             buttonBaseClass,
@@ -304,7 +318,11 @@ export function EntityVoteButtons({
         {/* Optional "Who voted" button */}
         {showVotersList && (upvotes > 0 || downvotes > 0) && (
           <button
-            onClick={() => setShowVotersModal(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowVotersModal(true);
+            }}
             className={cn(
               buttonBaseClass,
               'border-border text-text-secondary hover:border-accent-red hover:text-accent-red'

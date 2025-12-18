@@ -39,6 +39,7 @@ import { ThreadToggle, ConversationThread } from '@/components/hansard';
 import { ShareButton } from '@/components/ShareButton';
 import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
 import { EntityVoteButtons } from '@/components/votes/EntityVoteButtons';
+import { useEntityVotes } from '@/hooks/useEntityVotes';
 
 export default function MPDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -130,6 +131,10 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
     variables: { mpId: id, limit: 20 },
   });
 
+  // Fetch vote data for this MP
+  const { getVoteData } = useEntityVotes('mp', [id]);
+  const voteData = getVoteData(id);
+
   const [speechFilter, setSpeechFilter] = useState<string>('all'); // 'all', 'D' (Debates), 'E' (Committee)
   const [questionFilter, setQuestionFilter] = useState<string>('all'); // 'all', 'answered', 'unanswered'
   const [expandedSpeeches, setExpandedSpeeches] = useState<Set<string>>(new Set());
@@ -219,6 +224,9 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
             <EntityVoteButtons
               entityType="mp"
               entityId={id}
+              initialUpvotes={voteData.initialUpvotes}
+              initialDownvotes={voteData.initialDownvotes}
+              initialUserVote={voteData.initialUserVote}
               size="md"
               showVotersList={true}
             />

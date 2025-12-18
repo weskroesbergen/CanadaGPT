@@ -30,6 +30,7 @@ import { EntityVoteButtons } from '@/components/votes/EntityVoteButtons';
 import { BillSplitView, BillDiscussionPanel, BillAISummary, BillProgressTimeline, BillActivityStats, BillTopComments, BillActiveDiscussions, BillLobbyingTimeline, CommentButton } from '@/components/bills';
 import { parseHighlightParam } from '@/lib/highlights';
 import { getPosts } from '@/actions/forum';
+import { useEntityVotes } from '@/hooks/useEntityVotes';
 
 type ViewTab = 'overview' | 'votes' | 'lobbying' | 'debates' | 'committees' | 'fulltext';
 
@@ -103,6 +104,11 @@ export default function BillDetailPage({
       session: resolvedParams.session,
     },
   });
+
+  // Fetch vote data for this bill
+  const billId = `${resolvedParams.session}-${resolvedParams.number}`;
+  const { getVoteData } = useEntityVotes('bill', [billId]);
+  const voteData = getVoteData(billId);
 
   // Threading state
   const { enabled: threadedViewEnabled, setEnabled: setThreadedViewEnabled } = usePageThreading();
@@ -234,6 +240,9 @@ export default function BillDetailPage({
               <EntityVoteButtons
                 entityType="bill"
                 entityId={`${bill.session}-${bill.number}`}
+                initialUpvotes={voteData.initialUpvotes}
+                initialDownvotes={voteData.initialDownvotes}
+                initialUserVote={voteData.initialUserVote}
                 size="md"
                 showVotersList={true}
               />

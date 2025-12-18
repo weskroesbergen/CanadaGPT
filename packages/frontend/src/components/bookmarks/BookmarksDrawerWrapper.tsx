@@ -27,14 +27,14 @@ export function BookmarksDrawerWrapper() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault();
         if (user) {
-          setOpen(!isOpen);
+          toggleOpen();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, setOpen, user]);
+  }, [toggleOpen, user]);
 
   // Don't render if not authenticated
   if (!user) {

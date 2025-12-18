@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
@@ -28,12 +28,6 @@ export function useRealtimeNotifications() {
 
   useEffect(() => {
     if (!user) return;
-
-    // Create Supabase client for browser
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
 
     // Subscribe to new replies on user's posts
     const replyChannel = supabase

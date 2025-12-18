@@ -114,6 +114,13 @@ export async function getPosts(
       case 'top':
         query = query.order('upvotes_count', { ascending: false });
         break;
+      case 'controversial':
+        // Sort by engagement score: high downvotes first, then high upvotes
+        // This captures comments with both strong opposition AND support
+        query = query
+          .order('downvotes_count', { ascending: false })
+          .order('upvotes_count', { ascending: false });
+        break;
       case 'recent':
       default:
         query = query.order('created_at', { ascending: false });

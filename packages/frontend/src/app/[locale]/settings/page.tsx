@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { supabase } from '@/lib/supabase';
@@ -14,11 +14,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Key, CheckCircle, XCircle, Loader2, User, Search } from 'lucide-react';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { useQuery } from '@apollo/client';
 import { SEARCH_MPS } from '@/lib/queries';
+import { SubstackProfileSettings } from '@/components/substack';
+import { USER_PARTY_AFFILIATIONS, getPartyInfoForAffiliation } from '@/lib/partyConstants';
+import { PartyLogo } from '@/components/PartyLogo';
 
-type SettingsSection = 'profile' | 'account' | 'preferences' | 'usage' | 'subscription' | 'connected' | 'api-keys' | 'gordie' | 'my-mp';
+type SettingsSection = 'profile' | 'account' | 'party-affiliation' | 'preferences' | 'usage' | 'subscription' | 'connected' | 'api-keys' | 'gordie' | 'my-mp' | 'substack';
 
 // Helper function to safely format dates
 function formatDate(dateString: string | undefined, options?: Intl.DateTimeFormatOptions): string {
@@ -40,6 +43,7 @@ function formatDate(dateString: string | undefined, options?: Intl.DateTimeForma
 
 export default function SettingsPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
+  const { update: updateSession } = useSession();
   const { preferences, updatePreferences, loading: preferencesLoading } = useUserPreferences();
   const router = useRouter();
   const params = useParams();
@@ -83,6 +87,38 @@ export default function SettingsPage() {
   const [mpLoading, setMpLoading] = useState(false);
   const [mpSuccess, setMpSuccess] = useState('');
   const [mpError, setMpError] = useState('');
+
+  // Party affiliation state
+  const [partyAffiliation, setPartyAffiliation] = useState('');
+  const [partyAffiliationVisibility, setPartyAffiliationVisibility] = useState('public');
+  const [partyLoading, setPartyLoading] = useState(false);
+  const [partySuccess, setPartySuccess] = useState('');
+  const [partyError, setPartyError] = useState('');
+
+  // Avatar upload state
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarSuccess, setAvatarSuccess] = useState('');
+  const [avatarError, setAvatarError] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize party affiliation state from profile (only once when profile loads)
+  const [partyInitialized, setPartyInitialized] = useState(false);
+  useEffect(() => {
+    if (profile && !partyInitialized) {
+      setPartyAffiliation(profile.party_affiliation || '');
+      setPartyAffiliationVisibility(profile.party_affiliation_visibility || 'public');
+      setPartyInitialized(true);
+    }
+  }, [profile, partyInitialized]);
+
+  // Reset party state when navigating away from party-affiliation section
+  useEffect(() => {
+    if (activeSection !== 'party-affiliation') {
+      setPartyInitialized(false);
+      setPartySuccess('');
+      setPartyError('');
+    }
+  }, [activeSection]);
 
   // Query to search for MPs
   const { data: mpSearchData, loading: mpSearchLoading } = useQuery(SEARCH_MPS, {
@@ -192,6 +228,98 @@ export default function SettingsPage() {
       setPasswordError(err.message || 'Failed to update password');
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarUploading(true);
+    setAvatarError('');
+    setAvatarSuccess('');
+
+    try {
+      // Client-side validation
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        setAvatarError('Invalid file type. Please upload JPG, PNG, WebP, or GIF.');
+        setAvatarUploading(false);
+        return;
+      }
+
+      const maxSize = 2 * 1024 * 1024; // 2 MB
+      if (file.size > maxSize) {
+        setAvatarError('File too large. Maximum size is 2 MB.');
+        setAvatarUploading(false);
+        return;
+      }
+
+      // Upload to API
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/user/upload-avatar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      // Success
+      setAvatarSuccess('Profile picture uploaded successfully!');
+      setImageError(false);
+
+      // Refresh auth context to update avatar across app
+      await refreshProfile();
+
+      // Clear file input
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+    } catch (err: any) {
+      console.error('Avatar upload error:', err);
+      setAvatarError(err.message || 'Failed to upload avatar');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!confirm('Are you sure you want to remove your profile picture?')) {
+      return;
+    }
+
+    setAvatarUploading(true);
+    setAvatarError('');
+    setAvatarSuccess('');
+
+    try {
+      const response = await fetch('/api/user/delete-avatar', {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Delete failed');
+      }
+
+      // Success
+      setAvatarSuccess('Profile picture removed successfully!');
+      setImageError(true); // Force fallback to initials
+
+      // Refresh auth context
+      await refreshProfile();
+    } catch (err: any) {
+      console.error('Avatar delete error:', err);
+      setAvatarError(err.message || 'Failed to delete avatar');
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -339,6 +467,79 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpdatePartyAffiliation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPartyLoading(true);
+    setPartyError('');
+    setPartySuccess('');
+
+    try {
+      const response = await fetch('/api/user/update-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          party_affiliation: partyAffiliation || null,
+          party_affiliation_visibility: partyAffiliationVisibility
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update party affiliation');
+      }
+
+      // Update was successful
+      setPartySuccess('Party affiliation updated successfully!');
+
+      // Immediately update the session with new values
+      await updateSession({
+        partyAffiliation: partyAffiliation || null,
+        partyAffiliationVisibility: partyAffiliationVisibility
+      });
+    } catch (err: any) {
+      console.error('Party affiliation update error:', err);
+      setPartyError(err.message || 'Failed to update party affiliation');
+    } finally {
+      setPartyLoading(false);
+    }
+  };
+
+  const handleClearPartyAffiliation = async () => {
+    setPartyLoading(true);
+    setPartyError('');
+    setPartySuccess('');
+
+    try {
+      const response = await fetch('/api/user/update-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          party_affiliation: null
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to clear party affiliation');
+      }
+
+      setPartyAffiliation('');
+      setPartySuccess('Party affiliation cleared successfully!');
+
+      // Immediately update the session with cleared value
+      await updateSession({
+        partyAffiliation: null,
+        partyAffiliationVisibility: 'public'
+      });
+    } catch (err: any) {
+      setPartyError(err.message || 'Failed to clear party affiliation');
+    } finally {
+      setPartyLoading(false);
+    }
+  };
+
   const tierColors: Record<string, string> = {
     FREE: 'bg-gray-100 text-gray-800 border-gray-300',
     BASIC: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -375,7 +576,9 @@ export default function SettingsPage() {
   const navItems = [
     { id: 'profile' as const, label: 'Profile' },
     { id: 'account' as const, label: 'Account' },
+    { id: 'party-affiliation' as const, label: 'Party Affiliation' },
     { id: 'my-mp' as const, label: 'My MP' },
+    { id: 'substack' as const, label: 'Substack Integration' },
     { id: 'preferences' as const, label: 'Preferences' },
     { id: 'usage' as const, label: 'Usage & Limits' },
     { id: 'subscription' as const, label: 'Subscription' },
@@ -547,6 +750,89 @@ export default function SettingsPage() {
                   </button>
                 </form>
 
+                {/* Avatar Upload Section */}
+                <div className="space-y-4 mb-8 pb-8 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">Profile Picture</h3>
+
+                  <div className="flex items-start gap-4">
+                    {/* Current Avatar Preview */}
+                    <div className="flex-shrink-0">
+                      {profile?.avatar_url && !imageError ? (
+                        <Image
+                          src={profile.avatar_url}
+                          alt="Profile picture"
+                          width={80}
+                          height={80}
+                          className="rounded-full object-cover"
+                          onError={() => setImageError(true)}
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-semibold">
+                          {profile?.display_name?.[0]?.toUpperCase() || profile?.full_name?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload Controls */}
+                    <div className="flex-1">
+                      {/* File Input (hidden) */}
+                      <input
+                        type="file"
+                        ref={avatarInputRef}
+                        onChange={handleAvatarSelect}
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                      />
+
+                      {/* Upload/Change Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          // Small delay to ensure proper focus handling on macOS
+                          setTimeout(() => {
+                            avatarInputRef.current?.click();
+                          }, 0);
+                        }}
+                        disabled={avatarUploading}
+                        className="px-4 py-2 bg-accent-red text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {avatarUploading ? 'Uploading...' : profile?.avatar_url ? 'Change Picture' : 'Upload Picture'}
+                      </button>
+
+                      {/* Remove Button (if avatar exists) */}
+                      {profile?.avatar_url && !imageError && (
+                        <button
+                          onClick={handleAvatarDelete}
+                          disabled={avatarUploading}
+                          className="ml-2 px-4 py-2 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Remove Picture
+                        </button>
+                      )}
+
+                      {/* Helper Text */}
+                      <p className="mt-2 text-xs text-gray-500">
+                        JPG, PNG, WebP or GIF. Max 2 MB.
+                      </p>
+
+                      {/* Upload Status Messages */}
+                      {avatarSuccess && (
+                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                          <p className="text-sm text-green-800">{avatarSuccess}</p>
+                        </div>
+                      )}
+
+                      {avatarError && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                          <p className="text-sm text-red-800">{avatarError}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Password Change */}
                 <form onSubmit={handleUpdatePassword} className="space-y-4">
                   <h3 className="text-lg font-medium text-gray-900">Change Password</h3>
@@ -599,6 +885,156 @@ export default function SettingsPage() {
                     {passwordLoading ? 'Updating...' : 'Update Password'}
                   </button>
                 </form>
+              </div>
+            )}
+
+            {/* Party Affiliation Section */}
+            {activeSection === 'party-affiliation' && (
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Party Affiliation</h2>
+                <p className="text-gray-600 mb-6">
+                  Select your political party affiliation. This information can be displayed on your profile and used for personalized content.
+                </p>
+
+                <form onSubmit={handleUpdatePartyAffiliation} className="space-y-6">
+                  {/* Success/Error Messages */}
+                  {partySuccess && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                      <p className="text-green-800 text-sm">{partySuccess}</p>
+                    </div>
+                  )}
+                  {partyError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-red-800 text-sm">{partyError}</p>
+                    </div>
+                  )}
+
+                  {/* Party Selection Dropdown */}
+                  <div>
+                    <label htmlFor="partyAffiliation" className="block text-sm font-medium text-gray-700 mb-2">
+                      Party Affiliation
+                    </label>
+                    <select
+                      id="partyAffiliation"
+                      value={partyAffiliation}
+                      onChange={(e) => setPartyAffiliation(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select a party...</option>
+                      {/* Parliamentary Parties */}
+                      <option value="Liberal Party of Canada">Liberal Party of Canada</option>
+                      <option value="Conservative Party of Canada">Conservative Party of Canada</option>
+                      <option value="New Democratic Party">New Democratic Party</option>
+                      <option value="Bloc Québécois">Bloc Québécois</option>
+                      <option value="Green Party of Canada">Green Party of Canada</option>
+                      <option value="Independent">Independent</option>
+                      {/* Separator */}
+                      <option disabled>────────────</option>
+                      {/* Inclusive Options */}
+                      <option value="Undecided">Undecided</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                      <option value="No affiliation">No affiliation</option>
+                    </select>
+                  </div>
+
+                  {/* Party Preview Badge */}
+                  {partyAffiliation && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Preview
+                      </label>
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                        <PartyLogo party={partyAffiliation} size="sm" />
+                        <span className="text-gray-900 font-medium">{partyAffiliation}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Visibility Settings */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Who can see your party affiliation?
+                    </label>
+                    <div className="space-y-3">
+                      <label className="flex items-start gap-3 p-3 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="public"
+                          checked={partyAffiliationVisibility === 'public'}
+                          onChange={(e) => setPartyAffiliationVisibility(e.target.value)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <p className="font-medium text-gray-900">Public</p>
+                          <p className="text-sm text-gray-600">Everyone can see your party affiliation</p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start gap-3 p-3 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="followers"
+                          checked={partyAffiliationVisibility === 'followers'}
+                          onChange={(e) => setPartyAffiliationVisibility(e.target.value)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <p className="font-medium text-gray-900">Followers Only</p>
+                          <p className="text-sm text-gray-600">Only users who follow you can see your party affiliation</p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start gap-3 p-3 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="private"
+                          checked={partyAffiliationVisibility === 'private'}
+                          onChange={(e) => setPartyAffiliationVisibility(e.target.value)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <p className="font-medium text-gray-900">Private</p>
+                          <p className="text-sm text-gray-600">Only you can see your party affiliation</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={partyLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {partyLoading ? 'Saving...' : 'Save'}
+                    </button>
+                    {partyAffiliation && (
+                      <button
+                        type="button"
+                        onClick={handleClearPartyAffiliation}
+                        disabled={partyLoading}
+                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </form>
+
+                {/* Informational Notice */}
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <h3 className="text-sm font-medium text-blue-900 mb-2">About Party Affiliation</h3>
+                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Your party affiliation is completely optional</li>
+                    <li>This helps us personalize your experience and show relevant content</li>
+                    <li>You can change or remove your affiliation at any time</li>
+                    <li>Privacy settings control who can see this information on your profile</li>
+                  </ul>
+                </div>
               </div>
             )}
 
@@ -1187,6 +1623,11 @@ export default function SettingsPage() {
                   </ul>
                 </div>
               </div>
+            )}
+
+            {/* Substack Integration Section */}
+            {activeSection === 'substack' && (
+              <SubstackProfileSettings />
             )}
           </main>
         </div>

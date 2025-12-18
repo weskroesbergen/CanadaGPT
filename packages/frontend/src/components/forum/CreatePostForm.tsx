@@ -1,11 +1,43 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { MarkdownEditor } from './MarkdownEditor';
 import { createPost } from '@/actions/forum';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PostType } from '@/types/forum';
+
+// Helper function to auto-generate titles for bill comments
+function generateBillCommentTitle(
+  postType: PostType,
+  billNumber?: string,
+  billSession?: string,
+  entityMetadata?: Record<string, unknown>
+): string {
+  if (postType === 'bill_comment') {
+    const sectionRef = entityMetadata?.section_ref as string | undefined;
+    if (sectionRef && billNumber) {
+      // Extract readable section label (e.g., "s2.1.a" → "Section 2.1.a")
+      const label = sectionRef.startsWith('s')
+        ? `Section ${sectionRef.slice(1)}`
+        : sectionRef;
+      return `Comment on Bill ${billSession}/${billNumber} - ${label}`;
+    }
+    return `Comment on Bill ${billSession}/${billNumber}`;
+  }
+  return 'Untitled Post';
+}
+
+// Helper function to get readable section label from section_ref
+function getSectionLabel(sectionRef: string): string {
+  if (sectionRef.startsWith('s')) {
+    return `Section ${sectionRef.slice(1)}`;
+  }
+  if (sectionRef.startsWith('part-')) {
+    return `Part ${sectionRef.replace('part-', '')}`;
+  }
+  return sectionRef;
+}
 
 interface CreatePostFormProps {
   postType: PostType;
@@ -46,7 +78,7 @@ export function CreatePostForm({
   const [error, setError] = useState<string | null>(null);
 
   const isReply = !!parentPostId;
-  const requiresTitle = !isReply && postType === 'discussion';
+  const requiresTitle = depth === 0; // All top-level posts need title
 
   if (!isOpen) return null;
 
@@ -58,19 +90,14 @@ export function CreatePostForm({
       return;
     }
 
-    // Validation
-    if (requiresTitle && !title.trim()) {
+    // Validation - title required only for discussion posts (bill_comment titles are auto-generated)
+    if (requiresTitle && postType === 'discussion' && !title.trim()) {
       setError('Title is required');
       return;
     }
 
     if (!content.trim()) {
       setError('Content is required');
-      return;
-    }
-
-    if (content.length < 10) {
-      setError('Post must be at least 10 characters');
       return;
     }
 
@@ -91,7 +118,9 @@ export function CreatePostForm({
         parent_post_id: parentPostId,
         thread_root_id: threadRootId,
         depth,
-        title: requiresTitle ? title.trim() : undefined,
+        title: requiresTitle
+          ? (title.trim() || generateBillCommentTitle(postType, billNumber, billSession, entityMetadata))
+          : undefined,
         content: content.trim(),
         entity_metadata: entityMetadata,
       });
@@ -156,10 +185,22 @@ export function CreatePostForm({
             </button>
           </div>
 
+          {/* Section context banner */}
+          {entityMetadata?.section_ref && (
+            <div className="px-6 py-3 bg-blue-500/10 border-b border-blue-500/20">
+              <div className="flex items-center gap-2 text-sm">
+                <FileText className="h-4 w-4 text-blue-400" />
+                <span className="text-blue-300">
+                  Commenting on: <strong>{getSectionLabel(entityMetadata.section_ref as string)}</strong>
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6">
-            {/* Title field (for top-level discussion posts) */}
-            {requiresTitle && (
+            {/* Title field - only show for discussion posts (bill_comment titles are auto-generated) */}
+            {requiresTitle && postType === 'discussion' && (
               <div className="mb-4">
                 <label
                   htmlFor="post-title"
@@ -207,7 +248,6 @@ export function CreatePostForm({
               value={content}
               onChange={setContent}
               placeholder={placeholder}
-              minLength={10}
               maxLength={10000}
               rows={isReply ? 6 : 12}
               label={`Content *`}
@@ -217,7 +257,7 @@ export function CreatePostForm({
             {/* Error message */}
             {error && (
               <div className="mt-4 p-3 bg-red-500/10 border border-red-500 rounded-lg">
-                <p className="text-red-500 text-sm">{error}</p>
+                <p className="text-red-400 font-medium text-sm">{error}</p>
               </div>
             )}
 
@@ -253,7 +293,7 @@ export function CreatePostForm({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || (requiresTitle && !title.trim()) || !content.trim()}
+                disabled={isSubmitting || (requiresTitle && postType === 'discussion' && !title.trim()) || !content.trim()}
                 className="
                   flex-1 px-4 py-2 rounded-lg
                   bg-accent-red text-white font-medium

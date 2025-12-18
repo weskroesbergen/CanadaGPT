@@ -16,6 +16,7 @@ import { ShareButton } from '@/components/ShareButton';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
 import { processHansardLinks } from '@/lib/utils/hansardLinkProcessor';
 import { detectMotionOutcome, getMotionBadgeColors } from '@/lib/utils/motionDetector';
+import { EntityVoteButtons } from '@/components/votes/EntityVoteButtons';
 
 interface Statement {
   id: string;
@@ -195,6 +196,11 @@ export function StatementCard({ statement, documentId, isReply = false }: Statem
     >
       {/* Action Buttons - Top Right */}
       <div className="absolute top-3 right-3 z-20 flex gap-2">
+        <EntityVoteButtons
+          entityType="statement"
+          entityId={statement.id}
+          size="sm"
+        />
         <BookmarkButton bookmarkData={bookmarkData} size="sm" />
         <ShareButton url={shareUrl} title={shareTitle} description={shareDescription} size="sm" />
       </div>

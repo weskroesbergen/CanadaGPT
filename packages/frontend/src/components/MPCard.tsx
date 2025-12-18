@@ -25,6 +25,7 @@ import { ShareButton } from './ShareButton';
 import { PrintableCard } from './PrintableCard';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
 import { BookmarkButton } from './bookmarks/BookmarkButton';
+import { EntityVoteButtons } from './votes/EntityVoteButtons';
 
 export interface MPCardData {
   id: string;
@@ -38,9 +39,20 @@ export interface MPCardProps {
   mp: MPCardData;
   linkToParty?: boolean;
   className?: string;
+  // Optional vote data for batch loading optimization
+  initialUpvotes?: number;
+  initialDownvotes?: number;
+  initialUserVote?: 'upvote' | 'downvote' | null;
 }
 
-export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) {
+export function MPCard({
+  mp,
+  linkToParty = true,
+  className = '',
+  initialUpvotes,
+  initialDownvotes,
+  initialUserVote,
+}: MPCardProps) {
   const t = useTranslations('mps.card');
   const locale = useLocale();
   const partyName = usePartyName(mp.party);
@@ -58,8 +70,17 @@ export function MPCard({ mp, linkToParty = true, className = '' }: MPCardProps) 
     <Link href={`/mps/${mp.id}` as any}>
       <PrintableCard>
         <Card className={`hover:border-accent-red transition-colors cursor-pointer h-full relative ${className}`}>
-          {/* Top Right Corner: Bookmark + Share Button */}
+          {/* Top Right Corner: Vote, Bookmark + Share Button */}
           <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+            {/* Vote Buttons */}
+            <EntityVoteButtons
+              entityType="mp"
+              entityId={mp.id}
+              size="sm"
+              initialUpvotes={initialUpvotes}
+              initialDownvotes={initialDownvotes}
+              initialUserVote={initialUserVote}
+            />
             {/* Bookmark Button */}
             <BookmarkButton
               bookmarkData={{

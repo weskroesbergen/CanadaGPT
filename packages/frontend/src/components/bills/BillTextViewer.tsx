@@ -16,6 +16,8 @@ import { useQuery } from '@apollo/client';
 import { useLocale } from 'next-intl';
 import { GET_BILL_STRUCTURE } from '@/lib/queries';
 import { Loading } from '@/components/Loading';
+import { TextHighlighter } from './TextHighlighter';
+import { DiscussionHeatBar, DiscussionActivityIndicator } from './DiscussionActivityIndicator';
 import {
   ChevronDown,
   ChevronRight,
@@ -128,6 +130,10 @@ interface BillTextViewerProps {
   highlightAnchor?: string;
   showVersionSelector?: boolean;
   showAmendments?: boolean;
+  /** Discussion counts per section anchor (from Supabase) */
+  discussionCounts?: Record<string, number>;
+  /** Whether to show the discussion heatmap on the left margin */
+  showHeatmap?: boolean;
 }
 
 // Helper to convert anchor_id to URL hash
@@ -143,12 +149,16 @@ function SectionView({
   locale,
   onSectionClick,
   highlightAnchor,
+  discussionCount = 0,
+  showHeatmap = false,
   level = 0,
 }: {
   section: BillSection;
   locale: string;
   onSectionClick?: (anchorId: string) => void;
   highlightAnchor?: string;
+  discussionCount?: number;
+  showHeatmap?: boolean;
   level?: number;
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -176,81 +186,134 @@ function SectionView({
     <div
       ref={sectionRef}
       id={hash}
-      className={`mb-4 rounded-lg transition-colors ${
+      data-section-id={hash}
+      className={`mb-4 rounded-lg transition-colors flex ${
         isHighlighted ? 'bg-accent-red/10 ring-2 ring-accent-red/30' : ''
       }`}
     >
-      {/* Section header */}
-      <div
-        className="flex items-start gap-3 p-3 hover:bg-bg-elevated/50 rounded-lg cursor-pointer group"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <button className="mt-1 text-text-tertiary hover:text-accent-red">
-          {expanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
+      {/* Main section content */}
+      <div className="flex-1">
+        {/* Section header */}
+        <div
+          className="flex items-start gap-3 p-3 hover:bg-bg-elevated/50 rounded-lg cursor-pointer group"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <button className="mt-1 text-text-tertiary hover:text-accent-red">
+            {expanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
 
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-mono font-bold text-accent-red">
-              {section.number}.
-            </span>
-            {marginalNote && (
-              <span className="text-sm font-semibold text-text-primary">
-                {marginalNote}
+          <div className="flex-1">
+            {marginalNote ? (
+              // With title: show number and title on same line, text below
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-accent-red">
+                    {section.number}.
+                  </span>
+                  <span className="text-sm font-semibold text-text-primary">
+                    {marginalNote}
+                  </span>
+                </div>
+                {text && expanded && (
+                  <>
+                    <p className="mt-2 text-text-secondary leading-relaxed">
+                      {text}
+                    </p>
+                    {/* Show note if section ends with ':' but has no subsections */}
+                    {text.trim().endsWith(':') && section.subsections.length === 0 && (
+                      <p className="mt-2 text-xs italic text-text-tertiary">
+                        (Content not yet available - see full bill text)
+                      </p>
+                    )}
+                  </>
+                )}
+              </>
+            ) : text ? (
+              // No title but has text: show number and text inline
+              <div className="flex items-start gap-2">
+                <span className="font-mono font-bold text-accent-red flex-shrink-0">
+                  {section.number}.
+                </span>
+                {expanded && (
+                  <div className="flex-1">
+                    <p className="text-text-secondary leading-relaxed">
+                      {text}
+                    </p>
+                    {/* Show note if section ends with ':' but has no subsections */}
+                    {text.trim().endsWith(':') && section.subsections.length === 0 && (
+                      <p className="mt-2 text-xs italic text-text-tertiary">
+                        (Content not yet available - see full bill text)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              // No title and no text (only subsections): just show the number
+              <span className="font-mono font-bold text-accent-red">
+                {section.number}.
               </span>
             )}
           </div>
 
-          {text && expanded && (
-            <p className="mt-2 text-text-secondary leading-relaxed">
-              {text}
-            </p>
-          )}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopyLink();
-            }}
-            className="p-1 text-text-tertiary hover:text-accent-red"
-            title="Copy link"
-          >
-            <LinkIcon className="h-4 w-4" />
-          </button>
-          {onSectionClick && (
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onSectionClick(section.anchor_id);
+                handleCopyLink();
               }}
               className="p-1 text-text-tertiary hover:text-accent-red"
-              title="Discuss section"
+              title="Copy link"
             >
-              <MessageSquare className="h-4 w-4" />
+              <LinkIcon className="h-4 w-4" />
             </button>
-          )}
+            {onSectionClick && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSectionClick(section.anchor_id);
+                }}
+                className="p-1 text-text-tertiary hover:text-accent-red"
+                title="Discuss section"
+              >
+                <MessageSquare className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Subsections */}
+        {expanded && section.subsections.length > 0 && (
+          <div className="ml-8 border-l-2 border-border-subtle pl-4">
+            {section.subsections.map((subsection) => (
+              <SubsectionView
+                key={subsection.id}
+                subsection={subsection}
+                locale={locale}
+                onSectionClick={onSectionClick}
+                highlightAnchor={highlightAnchor}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Subsections */}
-      {expanded && section.subsections.length > 0 && (
-        <div className="ml-8 border-l-2 border-border-subtle pl-4">
-          {section.subsections.map((subsection) => (
-            <SubsectionView
-              key={subsection.id}
-              subsection={subsection}
-              locale={locale}
-              onSectionClick={onSectionClick}
-              highlightAnchor={highlightAnchor}
-            />
-          ))}
+      {/* Right-side heatmap indicator */}
+      {showHeatmap && (
+        <div className="flex-shrink-0 w-6 flex justify-center py-3">
+          <DiscussionActivityIndicator
+            commentCount={discussionCount}
+            showBadge={true}
+            showBar={false}
+            onClick={onSectionClick ? () => onSectionClick(section.anchor_id) : undefined}
+            locale={locale}
+            size="sm"
+          />
         </div>
       )}
     </div>
@@ -272,10 +335,16 @@ function SubsectionView({
   const isHighlighted = highlightAnchor === hash;
   const text = locale === 'fr' && subsection.text_fr ? subsection.text_fr : subsection.text_en;
 
+  const handleCopyLink = useCallback(() => {
+    const url = `${window.location.pathname}#${hash}`;
+    navigator.clipboard.writeText(window.location.origin + url);
+  }, [hash]);
+
   return (
     <div
       id={hash}
-      className={`mb-3 p-2 rounded ${
+      data-section-id={hash}
+      className={`mb-3 p-2 rounded group hover:bg-bg-elevated/30 ${
         isHighlighted ? 'bg-accent-red/10 ring-1 ring-accent-red/30' : ''
       }`}
     >
@@ -296,10 +365,31 @@ function SubsectionView({
                   key={para.id}
                   paragraph={para}
                   locale={locale}
+                  onSectionClick={onSectionClick}
                   highlightAnchor={highlightAnchor}
                 />
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <button
+            onClick={handleCopyLink}
+            className="p-1 text-text-tertiary hover:text-accent-red"
+            title="Copy link"
+          >
+            <LinkIcon className="h-3.5 w-3.5" />
+          </button>
+          {onSectionClick && (
+            <button
+              onClick={() => onSectionClick(subsection.anchor_id)}
+              className="p-1 text-text-tertiary hover:text-accent-red"
+              title="Discuss subsection"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+            </button>
           )}
         </div>
       </div>
@@ -310,21 +400,29 @@ function SubsectionView({
 function ParagraphView({
   paragraph,
   locale,
+  onSectionClick,
   highlightAnchor,
 }: {
   paragraph: BillParagraph;
   locale: string;
+  onSectionClick?: (anchorId: string) => void;
   highlightAnchor?: string;
 }) {
   const hash = anchorToHash(paragraph.anchor_id);
   const isHighlighted = highlightAnchor === hash;
   const text = locale === 'fr' && paragraph.text_fr ? paragraph.text_fr : paragraph.text_en;
 
+  const handleCopyLink = useCallback(() => {
+    const url = `${window.location.pathname}#${hash}`;
+    navigator.clipboard.writeText(window.location.origin + url);
+  }, [hash]);
+
   return (
     <div
       id={hash}
-      className={`mb-2 flex items-start gap-2 ${
-        isHighlighted ? 'bg-accent-red/10 rounded px-2 py-1' : ''
+      data-section-id={hash}
+      className={`mb-2 flex items-start gap-2 group hover:bg-bg-elevated/20 rounded px-1 py-0.5 ${
+        isHighlighted ? 'bg-accent-red/10 px-2 py-1' : ''
       }`}
     >
       <span className="font-mono text-xs text-text-tertiary">
@@ -343,10 +441,31 @@ function ParagraphView({
                 key={subpara.id}
                 subparagraph={subpara}
                 locale={locale}
+                onSectionClick={onSectionClick}
                 highlightAnchor={highlightAnchor}
               />
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <button
+          onClick={handleCopyLink}
+          className="p-0.5 text-text-tertiary hover:text-accent-red"
+          title="Copy link"
+        >
+          <LinkIcon className="h-3 w-3" />
+        </button>
+        {onSectionClick && (
+          <button
+            onClick={() => onSectionClick(paragraph.anchor_id)}
+            className="p-0.5 text-text-tertiary hover:text-accent-red"
+            title="Discuss paragraph"
+          >
+            <MessageSquare className="h-3 w-3" />
+          </button>
         )}
       </div>
     </div>
@@ -356,10 +475,12 @@ function ParagraphView({
 function SubparagraphView({
   subparagraph,
   locale,
+  onSectionClick,
   highlightAnchor,
 }: {
   subparagraph: BillSubparagraph;
   locale: string;
+  onSectionClick?: (anchorId: string) => void;
   highlightAnchor?: string;
 }) {
   const hash = anchorToHash(subparagraph.anchor_id);
@@ -368,17 +489,43 @@ function SubparagraphView({
     ? subparagraph.text_fr
     : subparagraph.text_en;
 
+  const handleCopyLink = useCallback(() => {
+    const url = `${window.location.pathname}#${hash}`;
+    navigator.clipboard.writeText(window.location.origin + url);
+  }, [hash]);
+
   return (
     <div
       id={hash}
-      className={`mb-1 flex items-start gap-2 ${
-        isHighlighted ? 'bg-accent-red/10 rounded px-2 py-0.5' : ''
+      data-section-id={hash}
+      className={`mb-1 flex items-start gap-2 group hover:bg-bg-elevated/20 rounded px-1 py-0.5 ${
+        isHighlighted ? 'bg-accent-red/10 px-2 py-0.5' : ''
       }`}
     >
       <span className="font-mono text-xs text-text-tertiary">
         ({subparagraph.numeral})
       </span>
-      <p className="text-sm text-text-secondary">{text}</p>
+      <p className="text-sm text-text-secondary flex-1">{text}</p>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <button
+          onClick={handleCopyLink}
+          className="p-0.5 text-text-tertiary hover:text-accent-red"
+          title="Copy link"
+        >
+          <LinkIcon className="h-3 w-3" />
+        </button>
+        {onSectionClick && (
+          <button
+            onClick={() => onSectionClick(subparagraph.anchor_id)}
+            className="p-0.5 text-text-tertiary hover:text-accent-red"
+            title="Discuss subparagraph"
+          >
+            <MessageSquare className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -404,7 +551,7 @@ function PartView({
       {/* Part header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 p-4 bg-bg-elevated rounded-lg hover:bg-bg-elevated/80 transition-colors"
+        className="w-full flex items-center gap-3 p-4 bg-bg-elevated hover:bg-bg-elevated/80 transition-colors"
       >
         {expanded ? (
           <ChevronDown className="h-5 w-5 text-accent-red" />
@@ -571,9 +718,19 @@ export function BillTextViewer({
   const highlightValue = highlightedSection || highlightAnchor;
   const [selectedVersion, setSelectedVersion] = useState(1);
 
+  // Container ref for text selection/highlighting
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const { data, loading, error } = useQuery(GET_BILL_STRUCTURE, {
     variables: { number: billNumber, session },
   });
+
+  // Handle text selection for discuss action - must be before any early returns
+  const handleTextDiscuss = useCallback((selection: { sectionAnchorId: string }) => {
+    if (sectionClickHandler) {
+      sectionClickHandler(selection.sectionAnchorId);
+    }
+  }, [sectionClickHandler]);
 
   // Handle URL hash for deep linking
   useEffect(() => {
@@ -638,22 +795,18 @@ export function BillTextViewer({
   }
 
   return (
-    <div className="bill-text-viewer">
-      {/* Header with version selector */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <FileText className="h-5 w-5 text-accent-red" />
-          Bill Text
-        </h3>
+    <div ref={containerRef} className="bill-text-viewer relative">
+      {/* Text selection highlighter for sharing */}
+      <TextHighlighter
+        containerRef={containerRef as React.RefObject<HTMLElement>}
+        locale={locale}
+        billNumber={billNumber}
+        session={session}
+        onDiscuss={handleTextDiscuss}
+        discussionsEnabled={!!sectionClickHandler}
+      />
 
-        {showVersionSelector && bill.versions && bill.versions.length > 1 && (
-          <VersionSelector
-            versions={bill.versions}
-            selectedVersion={selectedVersion}
-            onSelect={setSelectedVersion}
-          />
-        )}
-      </div>
+      {/* Version selector moved to sticky header in BillSplitView */}
 
       {/* Amendment events */}
       {showAmendments && bill.amendmentEvents && (

@@ -94,8 +94,8 @@ const ShareMenu: React.FC<{
     <div
       className="
         fixed z-50
-        bg-white dark:bg-gray-800
-        border border-gray-200 dark:border-gray-700
+        bg-bg-elevated
+        border border-border-subtle
         rounded-lg shadow-lg
         overflow-hidden
         animate-in fade-in slide-in-from-bottom-2 duration-200
@@ -107,8 +107,8 @@ const ShareMenu: React.FC<{
       }}
     >
       {/* Selected text preview */}
-      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400 italic line-clamp-2 max-w-xs">
+      <div className="px-3 py-2 bg-bg-overlay border-b border-border-subtle">
+        <p className="text-xs text-text-tertiary italic line-clamp-2 max-w-xs">
           "{displayText}"
         </p>
       </div>
@@ -120,18 +120,18 @@ const ShareMenu: React.FC<{
           onClick={onCopyLink}
           className="
             flex items-center gap-2 px-4 py-3
-            text-sm text-gray-700 dark:text-gray-300
-            hover:bg-gray-100 dark:hover:bg-gray-700
+            text-sm text-text-secondary
+            hover:bg-bg-secondary
             transition-colors
-            border-r border-gray-200 dark:border-gray-700
+            border-r border-border-subtle
           "
           title={locale === 'fr' ? 'Copier le lien' : 'Copy link'}
         >
           {linkCopied ? (
             <>
               <Check className="h-4 w-4 text-green-500" />
-              <span className="text-green-600 dark:text-green-400">
-                {locale === 'fr' ? 'Copie!' : 'Copied!'}
+              <span className="text-green-400">
+                {locale === 'fr' ? 'Copié!' : 'Copied!'}
               </span>
             </>
           ) : (
@@ -148,10 +148,10 @@ const ShareMenu: React.FC<{
             onClick={onDiscuss}
             className="
               flex items-center gap-2 px-4 py-3
-              text-sm text-gray-700 dark:text-gray-300
-              hover:bg-gray-100 dark:hover:bg-gray-700
+              text-sm text-text-secondary
+              hover:bg-bg-secondary
               transition-colors
-              border-r border-gray-200 dark:border-gray-700
+              border-r border-border-subtle
             "
             title={locale === 'fr' ? 'Discuter' : 'Discuss'}
           >
@@ -165,10 +165,10 @@ const ShareMenu: React.FC<{
           onClick={onTwitterShare}
           className="
             flex items-center gap-2 px-4 py-3
-            text-sm text-gray-700 dark:text-gray-300
-            hover:bg-gray-100 dark:hover:bg-gray-700
+            text-sm text-text-secondary
+            hover:bg-bg-secondary
             transition-colors
-            border-r border-gray-200 dark:border-gray-700
+            border-r border-border-subtle
           "
           title={locale === 'fr' ? 'Partager sur X' : 'Share on X'}
         >
@@ -181,9 +181,9 @@ const ShareMenu: React.FC<{
           onClick={onClose}
           className="
             p-3
-            text-gray-400 dark:text-gray-500
-            hover:bg-gray-100 dark:hover:bg-gray-700
-            hover:text-gray-600 dark:hover:text-gray-300
+            text-text-tertiary
+            hover:bg-bg-secondary
+            hover:text-text-primary
             transition-colors
           "
           title={locale === 'fr' ? 'Fermer' : 'Close'}

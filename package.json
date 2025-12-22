@@ -31,5 +31,11 @@
     "url": "https://github.com/yourusername/FedMCP.git"
   },
   "author": "Matthew Dufresne",
-  "license": "MIT"
+  "license": "MIT",
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.7",
+      "@types/react-dom": "19.2.3"
+    }
+  }
 }

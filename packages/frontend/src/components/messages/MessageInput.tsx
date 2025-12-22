@@ -38,7 +38,7 @@ export function MessageInput({ onSend, onTyping, disabled }: MessageInputProps) 
     handleKeyDown: handleMentionKeyDown,
     insertMention,
     setSelectedIndex,
-  } = useMentionAutocomplete(textareaRef);
+  } = useMentionAutocomplete(textareaRef as React.RefObject<HTMLTextAreaElement>);
 
   // Handle mention detection when content changes
   useEffect(() => {

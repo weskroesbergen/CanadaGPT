@@ -24,8 +24,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 3. Set avatar_url to null in database
-    const { error: updateError } = await supabase
-      .from('user_profiles')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase
+      .from('user_profiles') as any)
       .update({ avatar_url: null, updated_at: new Date().toISOString() })
       .eq('id', userId);
 

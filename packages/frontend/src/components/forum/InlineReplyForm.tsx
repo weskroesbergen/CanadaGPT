@@ -48,14 +48,14 @@ export function InlineReplyForm({
     try {
       const result = await createPost({
         post_type: parentPost.post_type,
-        category_id: parentPost.category_id,
-        bill_number: parentPost.bill_number,
-        bill_session: parentPost.bill_session,
+        category_id: parentPost.category_id ?? undefined,
+        bill_number: parentPost.bill_number ?? undefined,
+        bill_session: parentPost.bill_session ?? undefined,
         parent_post_id: parentPost.id,
         thread_root_id: parentPost.thread_root_id || parentPost.id,
         depth: parentPost.depth + 1,
         content: content.trim(),
-        entity_metadata: parentPost.entity_metadata,
+        entity_metadata: parentPost.entity_metadata ?? undefined,
       });
 
       if (result.success) {

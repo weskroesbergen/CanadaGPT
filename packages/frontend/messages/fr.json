@@ -38,6 +38,19 @@
     "english": "Anglais",
     "french": "Français"
   },
+  "votes": {
+    "yea": "Pour",
+    "nay": "Contre",
+    "removeYea": "Retirer le vote pour",
+    "removeNay": "Retirer le vote contre",
+    "signInToVote": "Connectez-vous pour voter",
+    "whoVoted": "Qui a voté",
+    "yeas": "Pour",
+    "nays": "Contre",
+    "allVotes": "Tous les votes",
+    "netScore": "Score net",
+    "voteError": "Échec de l'envoi du vote. Veuillez réessayer."
+  },
   "nav": {
     "siteTitle": "CanadaGPT",
     "tagline": "Transparence publique",
@@ -179,6 +192,34 @@
       "yourRiding": "Votre circonscription",
       "yourMP": "Votre député",
       "noPostalCode": "Aucun code postal défini"
+    },
+    "partyAffiliation": {
+      "title": "Affiliation politique",
+      "label": "Affiliation politique",
+      "placeholder": "Sélectionner un parti...",
+      "description": "Sélectionnez votre affiliation à un parti politique. Cette information peut être affichée sur votre profil et utilisée pour personnaliser le contenu.",
+      "preview": "Aperçu",
+      "visibility": {
+        "label": "Qui peut voir votre affiliation politique?",
+        "public": "Public",
+        "publicDescription": "Tout le monde peut voir votre affiliation politique",
+        "followers": "Abonnés seulement",
+        "followersDescription": "Seuls les utilisateurs qui vous suivent peuvent voir votre affiliation politique",
+        "private": "Privé",
+        "privateDescription": "Vous seul pouvez voir votre affiliation politique"
+      },
+      "save": "Enregistrer",
+      "clear": "Effacer",
+      "success": "Affiliation politique mise à jour avec succès!",
+      "clearSuccess": "Affiliation politique effacée avec succès!",
+      "error": "Échec de la mise à jour de l'affiliation politique",
+      "about": {
+        "title": "À propos de l'affiliation politique",
+        "optional": "Votre affiliation politique est complètement facultative",
+        "personalization": "Cela nous aide à personnaliser votre expérience et à afficher du contenu pertinent",
+        "changeable": "Vous pouvez modifier ou supprimer votre affiliation à tout moment",
+        "privacy": "Les paramètres de confidentialité contrôlent qui peut voir cette information sur votre profil"
+      }
     }
   },
   "bills": {
@@ -284,6 +325,7 @@
     "noVotes": "Aucun vote enregistré pour le moment",
     "noDebates": "Aucun débat enregistré pour le moment",
     "noLobbying": "Aucune activité de lobbying enregistrée",
+    "noCommittees": "Aucun renvoi en comité pour le moment",
     "awaitingSecondReading": "En attente de la deuxième lecture",
     "awaitingDescription": "Aucun vote n'a encore eu lieu. Ce projet de loi est prévu pour le débat de deuxième lecture.",
     "privateMemberNote": "En tant que projet de loi d'initiative parlementaire, il attend dans l'ordre de priorité pour être débattu et voté.",

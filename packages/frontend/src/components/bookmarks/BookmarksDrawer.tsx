@@ -111,11 +111,14 @@ export function BookmarksDrawer({ isOpen, onClose }: BookmarksDrawerProps) {
       const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_favorite: !bookmark.is_favorite }),
+        body: JSON.stringify({ isFavorite: !bookmark.is_favorite }),
       });
 
       if (response.ok) {
         await refetch();
+      } else {
+        const error = await response.json();
+        console.error('Failed to toggle favorite:', error);
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error);

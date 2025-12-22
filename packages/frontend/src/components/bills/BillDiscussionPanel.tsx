@@ -37,6 +37,8 @@ interface BillDiscussionPanelProps {
   onSectionMention?: (sectionRef: string) => void;
   /** Whether to show compact header */
   compactHeader?: boolean;
+  /** Callback to get the function that opens create modal */
+  onCreateModalTrigger?: (openModal: () => void) => void;
 }
 
 type SortOption = 'recent' | 'top';
@@ -190,6 +192,35 @@ const EmptyState: React.FC<{
 };
 
 /**
+ * Comment Button for sticky header
+ */
+export const CommentButton: React.FC<{ onClick: () => void; locale: string }> = ({ onClick, locale }) => {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <button
+      onClick={onClick}
+      className="
+        flex items-center gap-1.5
+        px-3 py-1.5
+        text-sm font-medium
+        bg-blue-600 hover:bg-blue-700
+        text-white
+        rounded-lg
+        transition-colors
+      "
+    >
+      <Plus className="h-4 w-4" />
+      <span className="hidden sm:inline">
+        {locale === 'fr' ? 'Commenter' : 'Comment'}
+      </span>
+    </button>
+  );
+};
+
+/**
  * BillDiscussionPanel - Section-level discussions for bills
  *
  * Features:
@@ -208,6 +239,7 @@ export const BillDiscussionPanel: React.FC<BillDiscussionPanelProps> = ({
   onClearSection,
   onSectionMention,
   compactHeader = false,
+  onCreateModalTrigger,
 }) => {
   const { user } = useAuth();
   const [initialPosts, setInitialPosts] = useState<ForumPost[]>([]);
@@ -219,6 +251,13 @@ export const BillDiscussionPanel: React.FC<BillDiscussionPanelProps> = ({
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const limit = 10;
+
+  // Expose create modal trigger to parent
+  React.useEffect(() => {
+    if (onCreateModalTrigger) {
+      onCreateModalTrigger(() => setIsCreateModalOpen(true));
+    }
+  }, [onCreateModalTrigger]);
 
   // Determine the current discussion scope
   const sectionRef = selectedSection?.sectionRef || null;
@@ -333,42 +372,7 @@ export const BillDiscussionPanel: React.FC<BillDiscussionPanelProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className={`
-        flex-shrink-0 px-4 py-3
-        border-b border-gray-200 dark:border-gray-700
-        ${compactHeader ? '' : 'bg-white dark:bg-gray-800'}
-      `}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${compactHeader ? 'text-sm' : ''}`}>
-              {locale === 'fr' ? 'Discussion' : 'Discussion'}
-            </h3>
-            <DiscussionCount count={filteredPosts.length} loading={isLoading} />
-          </div>
-
-          {user && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="
-                flex items-center gap-1.5
-                px-3 py-1.5
-                text-sm font-medium
-                bg-blue-600 hover:bg-blue-700
-                text-white
-                rounded-lg
-                transition-colors
-              "
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {locale === 'fr' ? 'Commenter' : 'Comment'}
-              </span>
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Header moved to sticky header in BillSplitView */}
 
       {/* Section scope indicator */}
       {selectedSection && (

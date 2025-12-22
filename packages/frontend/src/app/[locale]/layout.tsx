@@ -22,6 +22,7 @@ import { ContentWrapper } from '@/components/ContentWrapper';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GoogleTagManager, GoogleTagManagerNoScript } from '@/components/GoogleTagManager';
 import { StructuredData } from '@/components/StructuredData';
+import { Toaster } from '@/components/ui/toaster';
 import { locales } from '@/i18n/config';
 import '../globals.css';
 
@@ -148,6 +149,7 @@ export default async function LocaleLayout({ children, params }: Props) {
               </AuthProvider>
             </SessionProvider>
           </NextIntlClientProvider>
+          <Toaster />
         </ErrorBoundary>
       </body>
     </html>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Real-time hook for vote updates
@@ -25,12 +25,6 @@ export function useRealtimeVotes(
 
   useEffect(() => {
     if (!enabled) return;
-
-    // Create Supabase client for browser
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
 
     // Subscribe to vote changes for this specific post
     const channel = supabase

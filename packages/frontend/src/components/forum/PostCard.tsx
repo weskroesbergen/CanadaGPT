@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MessageSquare, Flag, Edit, Trash2, Lock, Pin } from 'lucide-react';
 import { VoteButtons } from './VoteButtons';
+import { InlineReplyForm } from './InlineReplyForm';
 import type { ForumPost } from '@/types/forum';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '../ShareButton';
@@ -38,6 +39,7 @@ export function PostCard({
   const [isExpanded, setIsExpanded] = useState(variant === 'full');
   const [localUpvotes, setLocalUpvotes] = useState(post.upvotes_count);
   const [localDownvotes, setLocalDownvotes] = useState(post.downvotes_count);
+  const [showInlineReply, setShowInlineReply] = useState(false);
 
   const isAuthor = user?.id === post.author_id;
   const canEdit = isAuthor && !post.is_deleted && !post.is_locked;
@@ -213,13 +215,20 @@ export function PostCard({
           {!post.is_deleted && (
             <div className="flex items-center gap-4 text-sm">
               {/* Reply button */}
-              {showReplyButton && onReply && !post.is_locked && (
+              {showReplyButton && !post.is_locked && (
                 <button
-                  onClick={() => onReply(post)}
+                  onClick={() => {
+                    // Top-level posts (depth=0) use modal, nested posts use inline
+                    if (post.depth === 0) {
+                      onReply?.(post);
+                    } else {
+                      setShowInlineReply(!showInlineReply);
+                    }
+                  }}
                   className="flex items-center gap-1.5 text-text-secondary hover:text-accent-red transition-colors"
                 >
                   <MessageSquare size={16} />
-                  <span>Reply</span>
+                  <span>{showInlineReply ? 'Cancel' : 'Reply'}</span>
                   {post.reply_count > 0 && (
                     <span className="text-text-tertiary">({post.reply_count})</span>
                   )}
@@ -262,6 +271,21 @@ export function PostCard({
                   <span>Report</span>
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Inline reply form */}
+          {showInlineReply && (
+            <div className="mt-4">
+              <InlineReplyForm
+                parentPost={post}
+                onSuccess={() => {
+                  setShowInlineReply(false);
+                  // Trigger refetch or optimistic update
+                  window.location.reload(); // TODO: Replace with proper refetch
+                }}
+                onCancel={() => setShowInlineReply(false)}
+              />
             </div>
           )}
         </div>

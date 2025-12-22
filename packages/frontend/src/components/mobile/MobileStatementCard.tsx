@@ -7,10 +7,11 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Hash, Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { Calendar, Hash, MessageCircle, Share2, Bookmark } from 'lucide-react';
 import { useSimpleSwipe } from '@/hooks/useSwipeGesture';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
 import { PartyLogo } from '@/components/PartyLogo';
+import { EntityVoteButtons } from '@/components/votes/EntityVoteButtons';
 
 interface MobileStatementCardProps {
   statement: {
@@ -46,7 +47,6 @@ export function MobileStatementCard({
 }: MobileStatementCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(showFullContent);
-  const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   // Swipe gesture handlers
@@ -173,13 +173,12 @@ export function MobileStatementCard({
         </div>
 
         <div className="mobile-statement-buttons">
-          <button
-            onClick={() => setIsLiked(!isLiked)}
-            className={`mobile-statement-action ${isLiked ? 'active' : ''}`}
-            aria-label="Like"
-          >
-            <Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
-          </button>
+          <EntityVoteButtons
+            entityType="statement"
+            entityId={statement.id}
+            size="sm"
+            layout="horizontal"
+          />
 
           <button
             className="mobile-statement-action"

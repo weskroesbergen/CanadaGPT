@@ -23,6 +23,8 @@ import { BookmarkButton } from '@/components/bookmarks/BookmarkButton';
 import { PartyLogo } from '@/components/PartyLogo';
 import { PrintableCard } from '@/components/PrintableCard';
 import { BillGanttWidget } from '@/components/bills/BillGanttWidget';
+import { EntityVoteButtons } from '@/components/votes/EntityVoteButtons';
+import { useEntityVotes } from '@/hooks/useEntityVotes';
 
 export default function BillsPage() {
   const t = useTranslations('bills');
@@ -103,6 +105,48 @@ export default function BillsPage() {
     if (statusStr.includes('first reading')) return 2;
     return 1; // Unknown/other statuses
   };
+
+  // Filter and sort bills at the top level (before any conditional rendering)
+  const filteredBills = data?.searchBills
+    ?.filter((bill: any) => bill.title || bill.title_fr) // Only show bills with titles (complete data)
+    .filter((bill: any) => {
+      const status = (bill.status || '').toLowerCase();
+      const hasRoyalAssent = status.includes('royal assent');
+      const isCurrentSession = bill.session === CURRENT_SESSION;
+      const isPrivateMembersBill = bill.bill_type === "Private Member's Bill";
+
+      // Private Members' Bills toggle: if ON, only show private members' bills
+      if (privateMembersBillsOnly && !isPrivateMembersBill) {
+        return false;
+      }
+
+      // Royal Assent toggle: if ON, ALWAYS include royal assent bills (additive)
+      if (royalAssentOnly && hasRoyalAssent) {
+        return true;
+      }
+
+      // Order Paper toggle: if ON, include current session non-royal-assent bills
+      if (orderPaperOnly && isCurrentSession && !hasRoyalAssent) {
+        return true;
+      }
+
+      // Failed Legislation toggle: if ON, include previous session bills without royal assent
+      if (failedLegislationOnly && !isCurrentSession && !hasRoyalAssent) {
+        return true;
+      }
+
+      return false;
+    })
+    .sort((a: any, b: any) => {
+      // Sort by stage (late-stage bills first)
+      const aOrder = getStageOrder(a.status);
+      const bOrder = getStageOrder(b.status);
+      return bOrder - aOrder; // Higher order number appears first
+    }) || [];
+
+  // Batch load vote data for all bills (hook called at top level)
+  const billIds = filteredBills.map((bill: any) => `${bill.session}-${bill.number}`);
+  const { getVoteData } = useEntityVotes('bill', billIds);
 
   const statuses = ['Royal assent received', 'Awaiting royal assent', 'At third reading in the Senate', 'At second reading in the Senate', 'At second reading in the House of Commons', 'At consideration in committee in the House of Commons', 'At consideration in committee in the Senate', 'At report stage in the House of Commons'];
   const sessions = ['45-1', '44-1', '43-2', '43-1', '42-1', '41-2', '41-1'];
@@ -275,160 +319,136 @@ export default function BillsPage() {
           </Card>
         ) : (
           <div>
-            {data?.searchBills
-              ?.filter((bill: any) => bill.title || bill.title_fr) // Only show bills with titles (complete data)
-              .filter((bill: any) => {
-                const status = (bill.status || '').toLowerCase();
-                const hasRoyalAssent = status.includes('royal assent');
-                const isCurrentSession = bill.session === CURRENT_SESSION;
-                const isPrivateMembersBill = bill.bill_type === "Private Member's Bill";
+            {filteredBills.map((bill: any, index: number) => {
+              const bilingualBill = getBilingualContent(bill, locale);
 
-                // Private Members' Bills toggle: if ON, only show private members' bills
-                if (privateMembersBillsOnly && !isPrivateMembersBill) {
-                  return false;
-                }
+              // Share data
+              const shareUrl = `/${locale}/bills/${bill.session}/${bill.number}`;
+              const shareTitle = `${t('card.billLabel')} ${bill.number} - ${bilingualBill.title}`;
+              const shareDescription = bilingualBill.summary
+                ? bilingualBill.summary.replace(/<[^>]*>/g, '').substring(0, 150) + (bilingualBill.summary.length > 150 ? '...' : '')
+                : bilingualBill.title;
 
-                // Royal Assent toggle: if ON, ALWAYS include royal assent bills (additive)
-                if (royalAssentOnly && hasRoyalAssent) {
-                  return true;
-                }
-
-                // Order Paper toggle: if ON, include current session non-royal-assent bills
-                if (orderPaperOnly && isCurrentSession && !hasRoyalAssent) {
-                  return true;
-                }
-
-                // Failed Legislation toggle: if ON, include previous session bills without royal assent
-                if (failedLegislationOnly && !isCurrentSession && !hasRoyalAssent) {
-                  return true;
-                }
-
-                return false;
-              })
-              .sort((a: any, b: any) => {
-                // Sort by stage (late-stage bills first)
-                const aOrder = getStageOrder(a.status);
-                const bOrder = getStageOrder(b.status);
-                return bOrder - aOrder; // Higher order number appears first
-              })
-              .map((bill: any, index: number) => {
-                const bilingualBill = getBilingualContent(bill, locale);
-
-                // Share data
-                const shareUrl = `/${locale}/bills/${bill.session}/${bill.number}`;
-                const shareTitle = `${t('card.billLabel')} ${bill.number} - ${bilingualBill.title}`;
-                const shareDescription = bilingualBill.summary
-                  ? bilingualBill.summary.replace(/<[^>]*>/g, '').substring(0, 150) + (bilingualBill.summary.length > 150 ? '...' : '')
-                  : bilingualBill.title;
-
-                return (
-              <Link
-                key={`${bill.session}-${bill.number}-${index}`}
-                href={`/bills/${bill.session}/${bill.number}` as any}
-                className="block mb-8"
-              >
-                <PrintableCard>
-                  <Card className="hover:border-accent-red transition-colors cursor-pointer relative">
-                    {/* Action Buttons - Top Right */}
-                    <div className="absolute top-3 right-3 z-10 flex gap-2">
-                      <BookmarkButton
-                        bookmarkData={{
-                          itemType: 'bill',
-                          itemId: `${bill.session}-${bill.number}`,
-                          title: `${t('card.billLabel')} ${bill.number}`,
-                          subtitle: bilingualBill.title,
-                          url: `/${locale}/bills/${bill.session}/${bill.number}`,
-                          metadata: {
-                            session: bill.session,
-                            bill_type: bilingualBill.bill_type,
-                            status: bilingualBill.status,
-                            sponsor: bill.sponsor?.name,
-                            party: bill.sponsor?.party,
-                            is_government_bill: bill.is_government_bill,
-                          },
+              return (
+                <Link
+                  key={`${bill.session}-${bill.number}-${index}`}
+                  href={`/bills/${bill.session}/${bill.number}` as any}
+                  className="block mb-8"
+                >
+                  <PrintableCard>
+                    <Card className="hover:border-accent-red transition-colors cursor-pointer relative">
+                      {/* Action Buttons - Top Right - Stop clicks from navigating to bill detail */}
+                      <div
+                        className="absolute top-3 right-3 z-10 flex gap-2"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                         }}
-                        size="sm"
-                      />
-                      <ShareButton
-                        url={shareUrl}
-                        title={shareTitle}
-                        description={shareDescription}
-                        size="sm"
-                      />
-                    </div>
-
-                    <div className="flex items-start justify-between pr-8">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h3 className="text-xl font-semibold text-text-primary">
-                          {t('card.billLabel')} {bill.number}
-                        </h3>
-                        <span className="text-xs text-text-tertiary">
-                          {bill.session}
-                        </span>
-                        {bilingualBill.bill_type && (
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            bill.is_government_bill
-                              ? 'bg-blue-500/20 text-blue-400'
-                              : bilingualBill.bill_type?.includes('Senate') || bilingualBill.bill_type?.includes('Sénat')
-                              ? 'bg-purple-500/20 text-purple-400'
-                              : 'bg-green-500/20 text-green-400'
-                          }`}>
-                            {bilingualBill.bill_type}
-                          </span>
-                        )}
-                        {bilingualBill.originating_chamber && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400 font-medium">
-                            {bilingualBill.originating_chamber}
-                          </span>
-                        )}
-                        {bilingualBill.status && (
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            bilingualBill.status === 'Passed' || bilingualBill.status === 'Royal Assent' || bilingualBill.status === 'Adopté' || bilingualBill.status?.includes('Sanction royale')
-                              ? 'bg-green-500/20 text-green-400'
-                              : bilingualBill.status?.includes('Reading') || bilingualBill.status?.includes('lecture')
-                              ? 'bg-blue-500/20 text-blue-400'
-                              : 'bg-yellow-500/20 text-yellow-400'
-                          }`}>
-                            {bilingualBill.status}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-text-primary font-medium mb-2">{bilingualBill.title}</p>
-                      {bilingualBill.summary && (
-                        <div
-                          className="text-text-secondary text-sm mb-3 line-clamp-2"
-                          dangerouslySetInnerHTML={{
-                            __html: bilingualBill.summary.length > 150 ? `${bilingualBill.summary.slice(0, 150)}...` : bilingualBill.summary
-                          }}
+                      >
+                        <EntityVoteButtons
+                          entityType="bill"
+                          entityId={`${bill.session}-${bill.number}`}
+                          {...getVoteData(`${bill.session}-${bill.number}`)}
+                          size="sm"
                         />
-                      )}
-                      <div className="flex items-center gap-4 text-sm text-text-secondary flex-wrap">
-                        {bill.sponsor && (
-                          <div className="flex items-center gap-2">
-                            {bill.sponsor.party && (
-                              <PartyLogo
-                                party={bill.sponsor.party}
-                                size="sm"
-                                linkTo={undefined}
-                              />
-                            )}
-                            <span>
-                              {t('card.sponsor')}: <span className="text-text-primary">{bill.sponsor.name}</span> ({bill.sponsor.party})
-                            </span>
-                          </div>
-                        )}
-                        {bill.introduced_date && (
-                          <span>
-                            {t('card.introduced')}: {format(new Date(bill.introduced_date), 'PPP', { locale: dateLocale })}
-                          </span>
-                        )}
+                        <BookmarkButton
+                          bookmarkData={{
+                            itemType: 'bill',
+                            itemId: `${bill.session}-${bill.number}`,
+                            title: `${t('card.billLabel')} ${bill.number}`,
+                            subtitle: bilingualBill.title,
+                            url: `/${locale}/bills/${bill.session}/${bill.number}`,
+                            metadata: {
+                              session: bill.session,
+                              bill_type: bilingualBill.bill_type,
+                              status: bilingualBill.status,
+                              sponsor: bill.sponsor?.name,
+                              party: bill.sponsor?.party,
+                              is_government_bill: bill.is_government_bill,
+                            },
+                          }}
+                          size="sm"
+                        />
+                        <ShareButton
+                          url={shareUrl}
+                          title={shareTitle}
+                          description={shareDescription}
+                          size="sm"
+                        />
                       </div>
-                    </div>
-                    </div>
-                  </Card>
-                </PrintableCard>
-              </Link>
+
+                      <div className="flex items-start justify-between pr-8">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h3 className="text-xl font-semibold text-text-primary">
+                              {t('card.billLabel')} {bill.number}
+                            </h3>
+                            <span className="text-xs text-text-tertiary">
+                              {bill.session}
+                            </span>
+                            {bilingualBill.bill_type && (
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                bill.is_government_bill
+                                  ? 'bg-blue-500/20 text-blue-400'
+                                  : bilingualBill.bill_type?.includes('Senate') || bilingualBill.bill_type?.includes('Sénat')
+                                  ? 'bg-purple-500/20 text-purple-400'
+                                  : 'bg-green-500/20 text-green-400'
+                              }`}>
+                                {bilingualBill.bill_type}
+                              </span>
+                            )}
+                            {bilingualBill.originating_chamber && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400 font-medium">
+                                {bilingualBill.originating_chamber}
+                              </span>
+                            )}
+                            {bilingualBill.status && (
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                bilingualBill.status === 'Passed' || bilingualBill.status === 'Royal Assent' || bilingualBill.status === 'Adopté' || bilingualBill.status?.includes('Sanction royale')
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : bilingualBill.status?.includes('Reading') || bilingualBill.status?.includes('lecture')
+                                  ? 'bg-blue-500/20 text-blue-400'
+                                  : 'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {bilingualBill.status}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-text-primary font-medium mb-2">{bilingualBill.title}</p>
+                          {bilingualBill.summary && (
+                            <div
+                              className="text-text-secondary text-sm mb-3 line-clamp-2"
+                              dangerouslySetInnerHTML={{
+                                __html: bilingualBill.summary.length > 150 ? `${bilingualBill.summary.slice(0, 150)}...` : bilingualBill.summary
+                              }}
+                            />
+                          )}
+                          <div className="flex items-center gap-4 text-sm text-text-secondary flex-wrap">
+                            {bill.sponsor && (
+                              <div className="flex items-center gap-2">
+                                {bill.sponsor.party && (
+                                  <PartyLogo
+                                    party={bill.sponsor.party}
+                                    size="sm"
+                                    linkTo={undefined}
+                                  />
+                                )}
+                                <span>
+                                  {t('card.sponsor')}: <span className="text-text-primary">{bill.sponsor.name}</span> ({bill.sponsor.party})
+                                </span>
+                              </div>
+                            )}
+                            {bill.introduced_date && (
+                              <span>
+                                {t('card.introduced')}: {format(new Date(bill.introduced_date), 'PPP', { locale: dateLocale })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </PrintableCard>
+                </Link>
               );
             })}
           </div>

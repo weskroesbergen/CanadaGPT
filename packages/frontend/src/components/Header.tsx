@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { MapleLeafIcon } from '@canadagpt/design-system';
-import { Search, Menu, X, Bookmark } from 'lucide-react';
+import { Menu, X, Bookmark } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserMenu } from './UserMenu';
@@ -16,6 +16,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBookmarksContext } from '@/contexts/BookmarksContext';
 import { useBookmarksDrawerOpen } from '@/lib/stores/bookmarksDrawerStore';
+import { NotificationBell } from './notifications/NotificationBell';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -39,36 +40,29 @@ export function Header() {
           </Link>
 
           {/* Navigation */}
-          <nav className="hidden lg:flex items-center space-x-3 lg:space-x-5 flex-shrink min-w-0">
-            <Link href="/dashboard" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
+          <nav className="hidden xl:flex items-center space-x-3 xl:space-x-5 flex-shrink min-w-0">
+            <Link href="/dashboard" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs xl:text-sm">
               {t('dashboard')}
             </Link>
-            <Link href="/mps" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
+            <Link href="/mps" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs xl:text-sm">
               {t('mps')}
             </Link>
-            <Link href="/committees" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
+            <Link href="/committees" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs xl:text-sm">
               {t('committees')}
             </Link>
-            <Link href="/bills" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
+            <Link href="/bills" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs xl:text-sm">
               {t('bills')}
             </Link>
-            <Link href="/debates" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
+            <Link href="/debates" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs xl:text-sm">
               {t('debates')}
             </Link>
-            <Link href="/about" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs lg:text-sm">
+            <Link href="/about" className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap text-xs xl:text-sm">
               {t('about')}
             </Link>
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0">
-            <button
-              className="p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
-              aria-label={tCommon('search')}
-            >
-              <Search className="h-5 w-5" />
-            </button>
-
+          <div className="flex items-center space-x-1.5 lg:space-x-2 flex-shrink-0">
             {/* Bookmarks Button - Only shown when authenticated */}
             {user && (
               <button
@@ -85,11 +79,14 @@ export function Header() {
               </button>
             )}
 
+            {/* Notifications Bell - Only shown when authenticated */}
+            {user && <NotificationBell />}
+
             <UserMenu />
             <LanguageSwitcher />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+              className="xl:hidden p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
               aria-label="Menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -105,7 +102,7 @@ export function Header() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="lg:hidden border-t border-border-subtle"
+              className="xl:hidden border-t border-border-subtle"
             >
               <nav className="py-4 space-y-1">
                 <Link

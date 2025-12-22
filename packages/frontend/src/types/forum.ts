@@ -186,7 +186,7 @@ export interface GetPostsParams {
   author_id?: string;
   limit?: number;
   offset?: number;
-  sort?: 'recent' | 'hot' | 'top';
+  sort?: 'recent' | 'hot' | 'top' | 'controversial';
   sort_by?: string; // Alternative sorting field
 }
 
@@ -246,7 +246,7 @@ export interface MarkdownEditorProps {
 // Utility Types
 // ============================================
 
-export type SortOption = 'recent' | 'hot' | 'top';
+export type SortOption = 'recent' | 'hot' | 'top' | 'controversial';
 
 export interface ThreadNode extends ForumPost {
   children: ThreadNode[];

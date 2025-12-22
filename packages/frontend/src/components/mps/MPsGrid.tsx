@@ -20,6 +20,7 @@ import { PartyFilterButtons } from '@/components/PartyFilterButtons';
 import { Card } from '@canadagpt/design-system';
 import { useAuth } from '@/contexts/AuthContext';
 import { MyMPSection } from './MyMPSection';
+import { useEntityVotes } from '@/hooks/useEntityVotes';
 
 interface MPsGridProps {
   initialMPs: MPCardData[];
@@ -197,6 +198,10 @@ export function MPsGrid({ initialMPs, initialCount }: MPsGridProps) {
 
   const showingCount = mps.length;
 
+  // Batch load vote data for all MPs in current view
+  const mpIds = mps.map(mp => mp.id);
+  const { getVoteData } = useEntityVotes('mp', mpIds);
+
   return (
     <>
       {/* Header with Toggle */}
@@ -276,7 +281,11 @@ export function MPsGrid({ initialMPs, initialCount }: MPsGridProps) {
       {mps.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {mps.map((mp) => (
-            <MPCard key={mp.id} mp={mp} />
+            <MPCard
+              key={mp.id}
+              mp={mp}
+              {...getVoteData(mp.id)}
+            />
           ))}
         </div>
       )}

@@ -228,6 +228,55 @@ def ingest_lobbying_data(neo4j_client: Neo4jClient, batch_size: int = 10000) -> 
 
     logger.info(f"  ✓ Created {contacted_count:,} CONTACTED relationships")
 
+    # 5d. Organization → Bill (LOBBIED_ON) relationships
+    # Extract bill numbers from subject_matters and link to Bill nodes
+    logger.info("  Creating Organization → Bill (LOBBIED_ON) relationships...")
+
+    bill_link_query = """
+    // Find communications with bill mentions in subject matters
+    MATCH (comm:LobbyCommunication)-[:COMMUNICATION_BY]->(org:Organization)
+    WHERE comm.subject_matters IS NOT NULL AND size(comm.subject_matters) > 0
+
+    // Extract potential bill numbers from subject matters
+    UNWIND comm.subject_matters AS subject
+    WITH org, comm, subject
+    WHERE subject =~ '(?i).*\\b[CS]-\\d+\\b.*'
+
+    // Extract bill numbers using regex
+    WITH org, comm, subject,
+         [x IN split(subject, ' ') WHERE x =~ '(?i)[CS]-\\d+'][0] AS bill_mention
+    WHERE bill_mention IS NOT NULL
+
+    // Normalize bill number (uppercase, remove spaces)
+    WITH org, comm, toUpper(replace(bill_mention, ' ', '')) AS bill_number
+    WHERE bill_number IS NOT NULL
+
+    // Match to Bill nodes
+    MATCH (bill:Bill)
+    WHERE bill.number = bill_number OR bill.code = bill_number
+
+    // Create relationship from Organization to Bill
+    MERGE (org)-[:LOBBIED_ON]->(bill)
+
+    RETURN count(DISTINCT org) + ' organizations linked to ' + count(DISTINCT bill) + ' bills' AS summary
+    """
+
+    try:
+        neo4j_client.run_query(bill_link_query)
+
+        # Count LOBBIED_ON relationships
+        count_query = """
+        MATCH ()-[r:LOBBIED_ON]->()
+        RETURN count(r) as count
+        """
+        count_result = neo4j_client.run_query(count_query)
+        lobbied_count = count_result[0]['count'] if count_result else 0
+        stats["lobbied_on_relationships"] = lobbied_count
+        logger.info(f"  ✓ Created {lobbied_count:,} LOBBIED_ON relationships")
+    except Exception as e:
+        logger.warning(f"  ⚠ Could not create LOBBIED_ON relationships: {e}")
+        stats["lobbied_on_relationships"] = 0
+
     logger.info("=" * 60)
     logger.success("✅ LOBBYING DATA INGESTION COMPLETE")
     logger.info(f"Registrations: {stats['lobby_registrations']:,}")
@@ -235,6 +284,7 @@ def ingest_lobbying_data(neo4j_client: Neo4jClient, batch_size: int = 10000) -> 
     logger.info(f"Organizations: {stats['organizations']:,}")
     logger.info(f"Lobbyists: {stats['lobbyists']:,}")
     logger.info(f"CONTACTED Relationships: {stats.get('contacted_relationships', 0):,}")
+    logger.info(f"LOBBIED_ON Relationships: {stats.get('lobbied_on_relationships', 0):,}")
     if stats.get('unmatched_dpoh_names'):
         logger.info(f"Unmatched DPOH Names: {stats['unmatched_dpoh_names']:,}")
     logger.info("=" * 60)

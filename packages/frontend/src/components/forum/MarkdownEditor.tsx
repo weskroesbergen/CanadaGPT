@@ -83,9 +83,9 @@ export function MarkdownEditor({
           maxLength={maxLength}
           className={`
             w-full px-4 py-3 rounded-lg
-            bg-background-secondary border-2
+            bg-background-primary border-2
             ${error || isOverLimit ? 'border-red-500' : 'border-border-primary'}
-            text-text-primary placeholder-text-tertiary
+            text-gray-900 dark:text-gray-100 placeholder-text-tertiary
             focus:outline-none focus:border-accent-red
             resize-y font-mono text-sm
             transition-colors
@@ -99,7 +99,7 @@ export function MarkdownEditor({
           "
         >
           {value.trim() ? (
-            <div className="prose prose-invert max-w-none prose-sm">
+            <div className="prose prose-invert max-w-none prose-sm text-text-primary">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {value}
               </ReactMarkdown>
@@ -128,7 +128,7 @@ export function MarkdownEditor({
         </div>
       </div>
 
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+      {error && <p className="text-red-400 font-medium text-sm mt-2">{error}</p>}
     </div>
   );
 }

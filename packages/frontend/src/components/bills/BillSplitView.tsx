@@ -2,11 +2,22 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { BillTextViewer } from './BillTextViewer';
+import { getActivityLevel, type ActivityLevel } from './DiscussionActivityIndicator';
 
 /**
  * View modes for the split view layout
  */
 export type SplitViewMode = 'read' | 'discuss-50' | 'discuss-33';
+
+/**
+ * Section discussion count data
+ */
+export interface SectionDiscussionCount {
+  /** Section anchor ID */
+  sectionId: string;
+  /** Number of comments/replies */
+  count: number;
+}
 
 interface BillSplitViewProps {
   /** Bill number (e.g., "C-234") */
@@ -27,6 +38,12 @@ interface BillSplitViewProps {
   discussionPanel?: React.ReactNode;
   /** Whether discussions are enabled */
   discussionsEnabled?: boolean;
+  /** Discussion counts per section for heatmap */
+  sectionDiscussionCounts?: SectionDiscussionCount[];
+  /** Whether to show the heatmap margin */
+  showHeatmap?: boolean;
+  /** Action button to render in Discussion header */
+  discussionHeaderAction?: React.ReactNode;
 }
 
 /**
@@ -97,8 +114,8 @@ const ModeButton: React.FC<ModeButtonProps> = ({ mode, currentMode, onClick, dis
         flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md
         transition-colors duration-200
         ${isActive
-          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-          : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+          ? 'bg-accent-red/20 text-accent-red'
+          : 'text-text-secondary hover:bg-bg-secondary'
         }
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
       `}
@@ -115,9 +132,9 @@ const ModeButton: React.FC<ModeButtonProps> = ({ mode, currentMode, onClick, dis
  * Empty state for discussion panel when no section is selected
  */
 const EmptyDiscussionState: React.FC<{ locale: string }> = ({ locale }) => (
-  <div className="flex flex-col items-center justify-center h-full text-center p-6 text-gray-500 dark:text-gray-400">
+  <div className="flex flex-col items-center justify-center h-full text-center p-6 text-text-tertiary">
     <svg
-      className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600"
+      className="w-16 h-16 mb-4 text-text-tertiary"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -125,10 +142,10 @@ const EmptyDiscussionState: React.FC<{ locale: string }> = ({ locale }) => (
     >
       <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
     </svg>
-    <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+    <h3 className="text-lg font-medium text-text-primary mb-2">
       {locale === 'fr' ? 'Aucune section sélectionnée' : 'No Section Selected'}
     </h3>
-    <p className="text-sm max-w-xs">
+    <p className="text-sm text-text-secondary max-w-xs">
       {locale === 'fr'
         ? 'Cliquez sur le bouton de discussion d\'une section pour voir ou démarrer une discussion.'
         : 'Click on a section\'s discussion button to view or start a discussion.'}
@@ -186,8 +203,8 @@ const ResizableDivider: React.FC<DividerProps> = ({ onDragStart, onDrag, onDragE
       ref={dividerRef}
       onMouseDown={handleMouseDown}
       className="
-        w-1 bg-gray-200 dark:bg-gray-700
-        hover:bg-blue-400 dark:hover:bg-blue-600
+        w-1 bg-border-subtle
+        hover:bg-accent-red
         cursor-col-resize
         transition-colors duration-150
         flex-shrink-0
@@ -203,12 +220,92 @@ const ResizableDivider: React.FC<DividerProps> = ({ onDragStart, onDrag, onDragE
       <div className="
         absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
         w-1 h-8
-        bg-gray-400 dark:bg-gray-500
-        group-hover:bg-blue-500 dark:group-hover:bg-blue-400
+        bg-text-tertiary
+        group-hover:bg-accent-red
         rounded-full
         opacity-50 group-hover:opacity-100
         transition-all duration-150
       " />
+    </div>
+  );
+};
+
+/**
+ * Activity level color mapping
+ */
+const ACTIVITY_COLORS: Record<ActivityLevel, string> = {
+  none: 'bg-transparent',
+  low: 'bg-text-tertiary/30',
+  medium: 'bg-blue-500',
+  hot: 'bg-orange-500',
+};
+
+/**
+ * Heatmap margin column showing discussion activity per section
+ */
+interface HeatmapMarginProps {
+  /** Discussion counts per section */
+  sectionCounts: SectionDiscussionCount[];
+  /** Currently selected section */
+  selectedSection?: string;
+  /** Callback when a section heatbar is clicked */
+  onSectionClick?: (sectionId: string) => void;
+  /** Current locale for tooltips */
+  locale: string;
+}
+
+const HeatmapMargin: React.FC<HeatmapMarginProps> = ({
+  sectionCounts,
+  selectedSection,
+  onSectionClick,
+  locale,
+}) => {
+  // Get tooltip text
+  const getTooltip = (sectionId: string, count: number) => {
+    const section = sectionId.split(':').pop() || sectionId;
+    if (count === 0) {
+      return locale === 'fr'
+        ? `Section ${section}: Aucun commentaire`
+        : `Section ${section}: No comments`;
+    }
+    return locale === 'fr'
+      ? `Section ${section}: ${count} commentaire${count > 1 ? 's' : ''}`
+      : `Section ${section}: ${count} comment${count > 1 ? 's' : ''}`;
+  };
+
+  return (
+    <div
+      className="
+        w-3 flex-shrink-0
+        bg-bg-secondary
+        border-l border-r border-border-subtle
+        overflow-y-auto
+        scrollbar-hide
+      "
+      aria-label={locale === 'fr' ? 'Indicateur d\'activité des discussions' : 'Discussion activity indicator'}
+    >
+      <div className="flex flex-col py-2 gap-1 min-h-full">
+        {sectionCounts.map(({ sectionId, count }) => {
+          const level = getActivityLevel(count);
+          const isSelected = sectionId === selectedSection;
+
+          return (
+            <button
+              key={sectionId}
+              onClick={() => onSectionClick?.(sectionId)}
+              className={`
+                w-2 h-6 mx-auto rounded-full
+                ${ACTIVITY_COLORS[level]}
+                ${isSelected ? 'ring-2 ring-accent-red ring-offset-1 ring-offset-bg-secondary' : ''}
+                ${count > 0 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
+                transition-all duration-200
+              `}
+              title={getTooltip(sectionId, count)}
+              aria-label={getTooltip(sectionId, count)}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -231,12 +328,15 @@ export const BillSplitView: React.FC<BillSplitViewProps> = ({
   billNumber,
   session,
   locale,
-  initialMode = 'read',
+  initialMode = 'discuss-50',
   initialSection,
   onSectionSelect,
   onModeChange,
   discussionPanel,
   discussionsEnabled = true,
+  sectionDiscussionCounts = [],
+  showHeatmap = true,
+  discussionHeaderAction,
 }) => {
   const [mode, setMode] = useState<SplitViewMode>(initialMode);
   const [selectedSection, setSelectedSection] = useState<string | undefined>(initialSection);
@@ -300,28 +400,30 @@ export const BillSplitView: React.FC<BillSplitViewProps> = ({
   const showDiscussion = mode !== 'read';
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar */}
+    <div className="flex flex-col">
+      {/* Toolbar - sticky below main header */}
       <div className="
+        sticky top-16
         flex items-center justify-between
         px-4 py-2
-        border-b border-gray-200 dark:border-gray-700
-        bg-white dark:bg-gray-800
+        border-b border-border-subtle
+        bg-bg-secondary
         flex-shrink-0
+        z-30
       ">
         {/* Bill info */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-sm font-medium text-text-primary">
             {locale === 'fr' ? 'Projet de loi' : 'Bill'} {billNumber}
           </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-text-tertiary">
             ({session})
           </span>
         </div>
 
         {/* Mode toggles */}
         {discussionsEnabled && (
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-bg-elevated rounded-lg p-1">
             <ModeButton
               mode="read"
               currentMode={mode}
@@ -343,15 +445,15 @@ export const BillSplitView: React.FC<BillSplitViewProps> = ({
         {/* Selected section indicator */}
         {selectedSection && showDiscussion && (
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-text-tertiary">
               {locale === 'fr' ? 'Section:' : 'Section:'}
             </span>
-            <code className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+            <code className="text-xs bg-bg-elevated px-2 py-0.5 rounded text-text-primary">
               {selectedSection.split(':').pop()}
             </code>
             <button
               onClick={() => setSelectedSection(undefined)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-text-tertiary hover:text-text-primary"
               title={locale === 'fr' ? 'Effacer la sélection' : 'Clear selection'}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -362,17 +464,56 @@ export const BillSplitView: React.FC<BillSplitViewProps> = ({
         )}
       </div>
 
+      {/* Column Headers Row - sticky (below main header + toolbar) */}
+      <div className="sticky top-[119px] z-40 flex border-b border-border-subtle bg-bg-primary">
+        {/* Note: 119px = 64px (header) + 55px (toolbar with py-2 padding, text content, and borders) */}
+        {/* Bill Text Header */}
+        <div
+          className="px-4 py-4 border-r border-border-subtle flex items-center gap-2"
+          style={{ width: billWidth }}
+        >
+          <svg className="h-5 w-5 text-accent-red" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <h3 className="text-xl font-bold text-text-primary">Bill Text</h3>
+        </div>
+
+        {/* Discussion Header */}
+        {showDiscussion && (
+          <div
+            className="px-4 py-3 flex items-center justify-between bg-white dark:bg-gray-800"
+            style={{ width: discussionWidth }}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                {locale === 'fr' ? 'Discussion' : 'Discussion'}
+              </h3>
+            </div>
+            {discussionHeaderAction && (
+              <div>{discussionHeaderAction}</div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Main content area */}
       <div
         ref={containerRef}
         className={`
-          flex flex-1 overflow-hidden
+          flex min-h-screen
           ${isDragging ? 'select-none cursor-col-resize' : ''}
         `}
       >
         {/* Bill text panel */}
         <div
-          className="overflow-auto transition-all duration-300 ease-in-out"
+          className="transition-all duration-300 ease-in-out"
           style={{ width: billWidth }}
         >
           <BillTextViewer
@@ -383,6 +524,16 @@ export const BillSplitView: React.FC<BillSplitViewProps> = ({
             highlightedSection={selectedSection}
           />
         </div>
+
+        {/* Heatmap margin - always visible when there are discussion counts */}
+        {showHeatmap && sectionDiscussionCounts.length > 0 && (
+          <HeatmapMargin
+            sectionCounts={sectionDiscussionCounts}
+            selectedSection={selectedSection}
+            onSectionClick={handleSectionClick}
+            locale={locale}
+          />
+        )}
 
         {/* Resizable divider */}
         {showDiscussion && (
@@ -396,20 +547,20 @@ export const BillSplitView: React.FC<BillSplitViewProps> = ({
         {/* Discussion panel */}
         {showDiscussion && (
           <div
-            className="overflow-auto bg-gray-50 dark:bg-gray-900 transition-all duration-300 ease-in-out"
+            className="bg-bg-primary transition-all duration-300 ease-in-out"
             style={{ width: discussionWidth }}
           >
             {discussionPanel ?? (
               selectedSection ? (
                 <div className="p-4">
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  <div className="text-sm text-text-secondary mb-4">
                     {locale === 'fr'
                       ? `Discussion pour la section ${selectedSection.split(':').pop()}`
                       : `Discussion for section ${selectedSection.split(':').pop()}`}
                   </div>
                   {/* Placeholder - will be replaced by BillDiscussionPanel */}
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-                    <p className="text-gray-400 dark:text-gray-500 text-sm italic">
+                  <div className="bg-bg-secondary rounded-lg p-4 shadow-sm">
+                    <p className="text-text-tertiary text-sm italic">
                       {locale === 'fr'
                         ? 'Le panneau de discussion sera implémenté prochainement...'
                         : 'Discussion panel will be implemented soon...'}

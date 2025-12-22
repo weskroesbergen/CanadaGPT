@@ -290,7 +290,7 @@ class VotesXMLImporter:
            OR toLower(bill.number) = toLower($bill_number)
            OR bill.code = $bill_number
            OR toLower(bill.code) = toLower($bill_number)
-        MERGE (v)-[:CONCERNS]->(bill)
+        MERGE (v)-[:SUBJECT_OF]->(bill)
         RETURN count(*) as linked
         """
 

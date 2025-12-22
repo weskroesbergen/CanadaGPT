@@ -240,6 +240,11 @@ export const typeDefs = `#graphql
     # Metadata
     updated_at: DateTime!
 
+    # Full narrative text (continuous reading format from LEGISinfo XML)
+    full_text_en: String
+    full_text_fr: String
+    full_text_updated_at: DateTime
+
     # Relationships
     sponsor: MP @relationship(type: "SPONSORED", direction: IN)
     senatorSponsor: Senator @relationship(type: "SPONSORED", direction: IN)
@@ -274,6 +279,11 @@ export const typeDefs = `#graphql
     xml_url: String
     pdf_url: String
     updated_at: DateTime!
+
+    # Full narrative text (version-specific)
+    full_text_en: String
+    full_text_fr: String
+    full_text_extracted: Boolean
 
     # Relationships
     bill: Bill @relationship(type: "HAS_VERSION", direction: IN)
@@ -1090,12 +1100,23 @@ export const typeDefs = `#graphql
     organizations_lobbying: Int!
     total_lobbying_events: Int!
     organizations: [OrganizationLobbyingSummary!]!
+    communications: [LobbyingCommunicationSummary!]!
   }
 
   type OrganizationLobbyingSummary {
     name: String!
     industry: String
     lobbying_count: Int!
+  }
+
+  type LobbyingCommunicationSummary {
+    id: ID!
+    date: String!
+    subject: [String!]!
+    lobbyist_names: [String!]!
+    government_officials: [String!]!
+    organization_name: String!
+    organization_industry: String
   }
 
   type ConflictOfInterest {
@@ -1546,6 +1567,8 @@ export const typeDefs = `#graphql
       @cypher(
         statement: """
         MATCH (bill:Bill {number: $billNumber, session: $session})
+
+        // Fetch organization summaries
         OPTIONAL MATCH (org:Organization)-[l:LOBBIED_ON]->(bill)
         WHERE org IS NOT NULL
         WITH bill, org, count(l) as lobbying_count
@@ -1553,6 +1576,20 @@ export const typeDefs = `#graphql
              count(DISTINCT org) as organizations_lobbying,
              sum(lobbying_count) as total_lobbying_events,
              collect(DISTINCT {name: org.name, industry: org.industry, lobbying_count: lobbying_count}) as organizations
+
+        // Fetch all lobbying communications for this bill
+        OPTIONAL MATCH (comm:LobbyCommunication)-[:COMMUNICATION_BY]->(org2:Organization)-[:LOBBIED_ON]->(bill)
+        WITH bill, organizations_lobbying, total_lobbying_events, organizations,
+             collect(DISTINCT {
+               id: comm.id,
+               date: toString(comm.date),
+               subject: comm.subject_matters,
+               lobbyist_names: COALESCE(comm.dpoh_names, []),
+               government_officials: COALESCE(comm.dpoh_titles, []),
+               organization_name: comm.client_org_name,
+               organization_industry: org2.industry
+             }) as communications
+
         WHERE size(organizations) > 0 OR organizations_lobbying = 0
         RETURN {
           bill_number: bill.number,
@@ -1561,7 +1598,8 @@ export const typeDefs = `#graphql
           bill_status: bill.status,
           organizations_lobbying: COALESCE(organizations_lobbying, 0),
           total_lobbying_events: COALESCE(total_lobbying_events, 0),
-          organizations: CASE WHEN organizations_lobbying > 0 THEN organizations ELSE [] END
+          organizations: CASE WHEN organizations_lobbying > 0 THEN organizations ELSE [] END,
+          communications: CASE WHEN size(communications) > 0 AND communications[0].id IS NOT NULL THEN communications ELSE [] END
         } AS activity
         """
         columnName: "activity"

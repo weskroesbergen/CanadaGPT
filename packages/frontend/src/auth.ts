@@ -82,7 +82,16 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
     error: '/auth/error',
   },
   callbacks: {
-    async jwt({ token, user, account, profile: oauthProfile }) {
+    async jwt({ token, user, account, profile: oauthProfile, trigger, session }) {
+      // Handle manual session updates (from updateSession() calls)
+      if (trigger === 'update' && session) {
+        // Merge manual updates into token
+        return {
+          ...token,
+          ...session,
+        };
+      }
+
       // Initial sign in
       if (user) {
         // Create or update profile
@@ -210,11 +219,12 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
         // Store subscription info and dates in token
         const { data: profile } = await (getSupabaseAdmin()
           .from('user_profiles') as any)
-          .select('subscription_tier, monthly_usage, created_at, usage_reset_date, is_beta_tester, uses_own_key, credit_balance, preferred_mp_id, postal_code, show_my_mp_section')
+          .select('username, subscription_tier, monthly_usage, created_at, usage_reset_date, is_beta_tester, uses_own_key, credit_balance, preferred_mp_id, postal_code, show_my_mp_section, is_admin, party_affiliation, party_affiliation_visibility, avatar_url')
           .eq('id', userId)
           .single();
 
         if (profile) {
+          token.username = profile.username;
           token.subscriptionTier = profile.subscription_tier;
           token.monthlyUsage = profile.monthly_usage;
           token.createdAt = profile.created_at;
@@ -225,6 +235,11 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
           token.preferredMpId = profile.preferred_mp_id;
           token.postalCode = profile.postal_code;
           token.showMyMpSection = profile.show_my_mp_section ?? true; // Default to true
+          token.isAdmin = profile.is_admin ?? false;
+          token.partyAffiliation = profile.party_affiliation;
+          token.partyAffiliationVisibility = profile.party_affiliation_visibility ?? 'public';
+          // Prioritize social login image, then database avatar_url
+          token.avatarUrl = user.image || profile.avatar_url || null;
         }
 
         // If this is an OAuth sign in, store the account
@@ -277,7 +292,7 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
         // Token refresh - update subscription data
         const { data: profile } = await (getSupabaseAdmin()
           .from('user_profiles') as any)
-          .select('subscription_tier, monthly_usage, usage_reset_date, is_beta_tester, uses_own_key, credit_balance, preferred_mp_id, postal_code, show_my_mp_section')
+          .select('subscription_tier, monthly_usage, usage_reset_date, is_beta_tester, uses_own_key, credit_balance, preferred_mp_id, postal_code, show_my_mp_section, is_admin, party_affiliation, party_affiliation_visibility, avatar_url')
           .eq('id', token.id as string)
           .single();
 
@@ -291,6 +306,11 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
           token.preferredMpId = profile.preferred_mp_id;
           token.postalCode = profile.postal_code;
           token.showMyMpSection = profile.show_my_mp_section ?? true; // Default to true
+          token.isAdmin = profile.is_admin ?? false;
+          token.partyAffiliation = profile.party_affiliation;
+          token.partyAffiliationVisibility = profile.party_affiliation_visibility ?? 'public';
+          // Update avatar_url from database (social login image takes priority in initial sign-in)
+          token.avatarUrl = profile.avatar_url || token.avatarUrl || null;
         }
       }
       return token;
@@ -298,6 +318,8 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.username = token.username as string | null;
+        session.user.image = token.avatarUrl as string | null;
         session.user.subscriptionTier = (token.subscriptionTier as string) || 'FREE';
         session.user.monthlyUsage = (token.monthlyUsage as number) || 0;
         session.user.createdAt = token.createdAt as string;
@@ -309,6 +331,9 @@ export const {auth, handlers, signIn, signOut } = NextAuth({
         session.user.preferredMpId = token.preferredMpId as string | null;
         session.user.postalCode = token.postalCode as string | null;
         session.user.showMyMpSection = token.showMyMpSection !== undefined ? (token.showMyMpSection as boolean) : true;
+        session.user.isAdmin = (token.isAdmin as boolean) || false;
+        session.user.partyAffiliation = token.partyAffiliation as string | null;
+        session.user.partyAffiliationVisibility = (token.partyAffiliationVisibility as string) || 'public';
       }
       return session;
     },

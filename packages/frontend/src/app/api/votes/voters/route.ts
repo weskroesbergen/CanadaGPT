@@ -13,6 +13,21 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 
+interface VoteRecord {
+  id: string;
+  user_id: string;
+  vote_type: string;
+  created_at: string;
+}
+
+interface UserProfile {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient();
@@ -88,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Query 2: Get user profiles for all user_ids
-    const userIds = [...new Set(votesData.map(vote => vote.user_id))];
+    const userIds = [...new Set((votesData as VoteRecord[]).map((vote: VoteRecord) => vote.user_id))];
 
     const { data: profiles, error: profilesError } = await supabase
       .from('user_profiles')
@@ -104,12 +119,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Create a map of user profiles for quick lookup
-    const profileMap = new Map(
-      (profiles || []).map(profile => [profile.id, profile])
+    const profileMap = new Map<string, UserProfile>(
+      ((profiles || []) as UserProfile[]).map((profile: UserProfile) => [profile.id, profile])
     );
 
     // Join votes with user profiles in application code
-    const voters = votesData.map((vote) => {
+    const voters = (votesData as VoteRecord[]).map((vote: VoteRecord) => {
       const profile = profileMap.get(vote.user_id);
       return {
         user_id: vote.user_id,

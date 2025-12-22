@@ -80,8 +80,9 @@ export async function POST(request: NextRequest) {
     const avatarUrl = urlData.publicUrl;
 
     // 8. Update user_profiles
-    const { error: updateError } = await supabase
-      .from('user_profiles')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase
+      .from('user_profiles') as any)
       .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
       .eq('id', userId);
 

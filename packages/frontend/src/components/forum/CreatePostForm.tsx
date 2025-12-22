@@ -186,12 +186,12 @@ export function CreatePostForm({
           </div>
 
           {/* Section context banner */}
-          {entityMetadata?.section_ref && (
+          {typeof entityMetadata?.section_ref === 'string' && entityMetadata.section_ref && (
             <div className="px-6 py-3 bg-blue-500/10 border-b border-blue-500/20">
               <div className="flex items-center gap-2 text-sm">
                 <FileText className="h-4 w-4 text-blue-400" />
                 <span className="text-blue-300">
-                  Commenting on: <strong>{getSectionLabel(entityMetadata.section_ref as string)}</strong>
+                  Commenting on: <strong>{getSectionLabel(entityMetadata.section_ref)}</strong>
                 </span>
               </div>
             </div>

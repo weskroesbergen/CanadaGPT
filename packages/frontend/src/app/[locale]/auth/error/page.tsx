@@ -6,7 +6,7 @@
 
 'use client';
 
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -142,6 +142,7 @@ export default function AuthErrorPage() {
             </p>
           </div>
 
+          {/* @ts-expect-error React 19 Suspense type mismatch */}
           <Suspense fallback={<div>Loading...</div>}>
             <ErrorContent />
           </Suspense>

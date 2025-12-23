@@ -2026,9 +2026,9 @@ export const typeDefs = `#graphql
         statement: """
         MATCH (d:Document {id: toInteger($documentId)})
         MATCH (d)<-[:PART_OF]-(s:Statement)
-        WITH d, s
-        ORDER BY s.id ASC
         OPTIONAL MATCH (s)-[:MADE_BY]->(mp:MP)
+        WITH d, s, mp
+        ORDER BY s.id ASC
         WITH d,
              collect({
                id: s.id,

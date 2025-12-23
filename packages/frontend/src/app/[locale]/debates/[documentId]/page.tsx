@@ -8,7 +8,8 @@ import { GET_DEBATE_WITH_STATEMENTS } from '@/lib/queries';
 import { DebateContextCard } from '@/components/debates/DebateContextCard';
 import { StatementCard } from '@/components/debates/StatementCard';
 import { SectionNavigator } from '@/components/debates/SectionNavigator';
-import { ThreadToggle } from '@/components/hansard/ThreadToggle';
+// import { ThreadToggle } from '@/components/hansard/ThreadToggle'; // Hidden for now
+import { List } from 'lucide-react';
 import { ConversationThread } from '@/components/hansard/ConversationThread';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -20,8 +21,8 @@ export default function DebateDetailPage() {
   const locale = useLocale();
   const documentId = params.documentId as string;
 
-  // State
-  const [showThreaded, setShowThreaded] = useState(true);
+  // State - threaded view disabled for now
+  const [showThreaded] = useState(false);
 
   // Query
   const { data, loading, error } = useQuery(GET_DEBATE_WITH_STATEMENTS, {
@@ -105,11 +106,11 @@ export default function DebateDetailPage() {
       result.push({ root: statement, replies: [] });
     });
 
-    // Sort by time
+    // Sort by statement ID to preserve document order
     result.sort((a, b) => {
-      const timeA = new Date(a.root.time).getTime();
-      const timeB = new Date(b.root.time).getTime();
-      return timeA - timeB;
+      const idA = parseInt(a.root.id, 10);
+      const idB = parseInt(b.root.id, 10);
+      return idA - idB;
     });
 
     return result;
@@ -164,9 +165,14 @@ export default function DebateDetailPage() {
           <SectionNavigator sections={sections} locale={locale} />
         )}
 
-        {/* Thread Toggle */}
+        {/* View Mode Indicator - threaded option hidden for now */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <ThreadToggle enabled={showThreaded} onChange={setShowThreaded} />
+          <div className="inline-flex rounded-lg bg-bg-secondary p-1">
+            <div className="px-4 py-2 flex items-center gap-2 rounded-md font-medium bg-accent-red text-white shadow-sm">
+              <List className="h-4 w-4" />
+              <span>Linear</span>
+            </div>
+          </div>
         </div>
 
         {/* Statements */}

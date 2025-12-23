@@ -1728,7 +1728,7 @@ export const typeDefs = `#graphql
         MATCH (b:Bill {number: $billNumber, session: $session})<-[r:MENTIONS]-(s:Statement)
         WHERE $debateStage IS NULL OR r.debate_stage = $debateStage
         WITH s, r
-        ORDER BY s.time ASC
+        ORDER BY s.id ASC
         LIMIT $limit
         RETURN s
         """
@@ -2027,7 +2027,7 @@ export const typeDefs = `#graphql
         MATCH (d:Document {id: toInteger($documentId)})
         MATCH (d)<-[:PART_OF]-(s:Statement)
         WITH d, s
-        ORDER BY s.time ASC
+        ORDER BY s.id ASC
         OPTIONAL MATCH (s)-[:MADE_BY]->(mp:MP)
         WITH d,
              collect({

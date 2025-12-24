@@ -18,8 +18,12 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
+// Debug: Log the GraphQL URL being used
+const graphqlUrl = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql';
+console.log('[Apollo Client] Using GraphQL URL:', graphqlUrl);
+
 const httpLink = new HttpLink({
-  uri: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql',
+  uri: graphqlUrl,
   credentials: 'include', // Changed from 'same-origin' to support cross-origin requests
 });
 

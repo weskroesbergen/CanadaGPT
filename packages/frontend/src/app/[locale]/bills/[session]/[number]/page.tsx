@@ -78,21 +78,21 @@ export default function BillDetailPage({
 
   const { data, loading, error } = useQuery(GET_BILL, {
     variables: {
-      number: resolvedParams.number,
+      number: resolvedParams.number.toLowerCase(),
       session: resolvedParams.session,
     },
   });
 
   const { data: lobbyingData, loading: lobbyingLoading } = useQuery(GET_BILL_LOBBYING, {
     variables: {
-      billNumber: resolvedParams.number,
+      billNumber: resolvedParams.number.toLowerCase(),
       session: resolvedParams.session,
     },
   });
 
   const { data: debatesData, loading: debatesLoading } = useQuery(GET_BILL_DEBATES, {
     variables: {
-      billNumber: resolvedParams.number,
+      billNumber: resolvedParams.number.toLowerCase(),
       session: resolvedParams.session,
       limit: 50,
     },
@@ -100,13 +100,13 @@ export default function BillDetailPage({
 
   const { data: committeeEvidenceData, loading: committeeEvidenceLoading } = useQuery(GET_BILL_COMMITTEE_EVIDENCE, {
     variables: {
-      billNumber: resolvedParams.number,
+      billNumber: resolvedParams.number.toLowerCase(),
       session: resolvedParams.session,
     },
   });
 
   // Fetch vote data for this bill
-  const billId = `${resolvedParams.session}-${resolvedParams.number}`;
+  const billId = `${resolvedParams.session}-${resolvedParams.number.toLowerCase()}`;
   const { getVoteData } = useEntityVotes('bill', [billId]);
   const voteData = getVoteData(billId);
 

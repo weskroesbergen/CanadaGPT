@@ -1,0 +1,39 @@
+# Dependencies
+**/node_modules
+
+# Next.js build output
+**/.next/
+**/out/
+**/build
+
+# Environment files (should NOT be in Docker build)
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+**/*.swp
+
+# Testing
+**/coverage/
+
+# Logs
+**/*.log
+
+# Python virtual environments
+**/venv/
+**/__pycache__/
+**/*.pyc
+
+# Documentation (except essential)
+**/*.md
+!packages/*/README.md
+
+# macOS
+**/.DS_Store

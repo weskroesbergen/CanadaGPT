@@ -1,6 +1,7 @@
 /**
  * Individual bill detail page
  * Fully bilingual with Quebec French support
+ * @version 2.0.1 - Fixed GraphQL endpoint configuration
  */
 
 'use client';

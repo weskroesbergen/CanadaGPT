@@ -1,7 +1,7 @@
 /**
  * Individual bill detail page
  * Fully bilingual with Quebec French support
- * @version 2.0.1 - Fixed GraphQL endpoint configuration
+ * @version 2.0.2 - Fixed .dockerignore to prevent env override
  */
 
 'use client';

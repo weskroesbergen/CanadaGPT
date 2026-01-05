@@ -13,12 +13,16 @@
 
 import React from 'react';
 import { Send, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useChatInput } from '@/lib/stores/chatStore';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MAX_LENGTH = 2000;
 
 export function ChatInput() {
   const { input, setInput, sendMessage, isLoading } = useChatInput();
+  const { user } = useAuth();
+  const router = useRouter();
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea based on content
@@ -31,7 +35,17 @@ export function ChatInput() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[ChatInput] handleSubmit called', { input, isLoading });
+    console.log('[ChatInput] handleSubmit called', { input, isLoading, user });
+
+    // Block anonymous users from sending messages
+    if (!user) {
+      console.log('[ChatInput] Blocked - user not authenticated');
+      // Show alert and redirect to signup
+      if (window.confirm('Please sign up to chat with Gordie. Click OK to create a free account.')) {
+        router.push('/auth/signup');
+      }
+      return;
+    }
 
     if (!input.trim() || isLoading) {
       console.log('[ChatInput] Submit blocked - empty input or loading');

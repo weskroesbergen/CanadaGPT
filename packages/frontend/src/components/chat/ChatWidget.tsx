@@ -79,18 +79,31 @@ export function ChatWidget() {
   }, [user, preferences, hasShownWelcome, updatePreferences]);
 
   // Auto-open in sidebar mode on desktop (one-time initialization)
+  // Works for both authenticated and anonymous users
   React.useEffect(() => {
-    if (!user || hasInitialized) return;
+    if (hasInitialized) return;
 
     // Detect desktop (screen width >= 1024px)
     const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
 
     if (isDesktop) {
+      // Check if user has seen the chat before
+      const shouldAutoOpen = () => {
+        if (user) {
+          // Authenticated: use Supabase preference
+          return !preferences?.has_seen_welcome;
+        } else {
+          // Anonymous: use localStorage
+          const hasSeenChat = localStorage.getItem('canadagpt_has_seen_chat');
+          return !hasSeenChat;
+        }
+      };
+
       // Get current store state
       const currentState = useChatStore.getState();
 
-      // Only auto-open if not already open/expanded (respect user's previous state)
-      if (!currentState.isOpen && !currentState.isExpanded) {
+      // Only auto-open if not already open/expanded AND user hasn't seen it before
+      if (!currentState.isOpen && !currentState.isExpanded && shouldAutoOpen()) {
         // Open chat in sidebar mode
         if (!currentState.isOpen) {
           toggleOpen();
@@ -98,11 +111,17 @@ export function ChatWidget() {
         if (!currentState.isExpanded) {
           toggleExpanded();
         }
+
+        // Mark as seen
+        if (!user) {
+          localStorage.setItem('canadagpt_has_seen_chat', 'true');
+        }
+        // Authenticated users are marked as seen via the welcome flow effect
       }
     }
 
     setHasInitialized(true);
-  }, [user, hasInitialized, toggleOpen, toggleExpanded]);
+  }, [user, preferences, hasInitialized, toggleOpen, toggleExpanded]);
 
   // Keyboard shortcut: Cmd/Ctrl + K
   React.useEffect(() => {
@@ -122,11 +141,8 @@ export function ChatWidget() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, toggleOpen]);
 
-  // Don't show chat widget for users who are not signed in
-  if (!user) {
-    return null;
-  }
-
+  // Chat widget now supports both authenticated and anonymous users
+  // Anonymous users will see a welcome message with signup CTA
   return (
     <>
       {/* Floating button (shows when closed) */}

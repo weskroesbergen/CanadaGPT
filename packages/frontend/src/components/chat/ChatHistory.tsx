@@ -14,10 +14,13 @@ import React from 'react';
 import { ArrowDown, Loader2 } from 'lucide-react';
 import { MapleLeafIcon } from '@canadagpt/design-system';
 import { ChatMessage } from './ChatMessage';
+import { WelcomeMessage } from './WelcomeMessage';
 import { useChatMessages } from '@/lib/stores/chatStore';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function ChatHistory() {
   const { messages, isLoading } = useChatMessages();
+  const { user } = useAuth();
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = React.useState(false);
   const [isAtBottom, setIsAtBottom] = React.useState(true);
@@ -50,9 +53,13 @@ export function ChatHistory() {
     }
   };
 
-  // Empty state - just return empty container, welcome message will appear
+  // Empty state - show welcome message
   if (messages.length === 0 && !isLoading) {
-    return <div className="flex-1 relative overflow-hidden" />;
+    return (
+      <div className="flex-1 relative overflow-hidden">
+        <WelcomeMessage user={user} />
+      </div>
+    );
   }
 
   return (

@@ -5,9 +5,12 @@
  * Integrates with Supabase RLS policies and functions.
  */
 
-import { createClient } from '@/lib/supabase/client';
-import { createServerClient } from '@/lib/supabase/server';
+import { supabase } from '@/lib/supabase';
+import { createServerClient } from '@/lib/supabase-server';
 import type { EntitlementType, OrganizationMember } from './types/supabase';
+
+// Wrapper to match expected createClient API
+const createClient = () => supabase;
 
 // ============================================================================
 // TYPES
@@ -235,7 +238,7 @@ export async function hasEntitlementServer(
   userId: string,
   entitlement: EntitlementType
 ): Promise<boolean> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const { data, error } = await supabase.rpc('user_has_entitlement', {
     p_user_id: userId,
@@ -256,7 +259,7 @@ export async function hasEntitlementServer(
 export async function getUserOrganizations(
   userId: string
 ): Promise<OrganizationMember[]> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const { data, error } = await supabase
     .from('organization_members')
@@ -297,7 +300,7 @@ export async function requireOrgMembership(
   userId: string,
   orgId: string
 ): Promise<{ allowed: boolean; error?: string }> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const { data } = await supabase.rpc('has_org_membership', {
     p_user_id: userId,
@@ -322,7 +325,7 @@ export async function requireOrgRole(
   orgId: string,
   minRole: 'viewer' | 'member' | 'manager' | 'admin'
 ): Promise<{ allowed: boolean; error?: string }> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const { data } = await supabase.rpc('has_org_role', {
     p_user_id: userId,

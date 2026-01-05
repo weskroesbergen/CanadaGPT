@@ -11,7 +11,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { MapleLeafIcon } from '@canadagpt/design-system';
-import type { UserProfile } from '@/lib/supabase';
+import type { UserProfile } from '@/contexts/AuthContext';
 
 interface WelcomeMessageProps {
   user: UserProfile | null;

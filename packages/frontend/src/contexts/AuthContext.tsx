@@ -10,7 +10,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
   email: string;
   full_name?: string | null;

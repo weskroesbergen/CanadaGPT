@@ -1461,40 +1461,24 @@ export const GET_WRITTEN_QUESTIONS = gql`
 
 export const GET_MP_WRITTEN_QUESTIONS = gql`
   query GetMPWrittenQuestions($mpId: ID!, $limit: Int, $session: String) {
-    mpWrittenQuestions(mpId: $mpId, limit: $limit, session: $session) {
+    writtenQuestionsByMP(mpId: $mpId, limit: $limit, session: $session) {
       id
-      time
-      who_en
-      who_fr
-      content_en
-      content_fr
-      h1_en
-      h2_en
-      h3_en
-      h1_fr
-      h2_fr
-      h3_fr
-      wordcount
-      answer {
-        id
-        time
-        who_en
-        who_fr
-        content_en
-        content_fr
-      }
-      madeBy {
+      question_number
+      parliament_number
+      session_number
+      session_id
+      date_asked
+      asker_name
+      status
+      due_date
+      answer_date
+      ourcommons_url
+      askedBy {
         id
         name
         party
         riding
         photo_url
-      }
-      partOf {
-        id
-        date
-        document_type
-        session_id
       }
     }
   }

@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/written-questions-ingestion:latest'
+      - '-f'
+      - 'packages/data-pipeline/Dockerfile.written-questions-ingestion'
+      - '.'
+images:
+  - 'us-central1-docker.pkg.dev/canada-gpt-ca/canadagpt/written-questions-ingestion:latest'
+timeout: 600s

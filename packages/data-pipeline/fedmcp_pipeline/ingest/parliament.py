@@ -170,13 +170,14 @@ def ingest_mps(neo4j_client: Neo4jClient, batch_size: int = 10000) -> int:
                 "updated_at": datetime.utcnow().isoformat(),
             }
 
-            # Merge in OurCommons XML data if available (honorific, term dates, province)
+            # Merge in OurCommons XML data if available (honorific, term dates, province, riding)
             if parl_mp_id and parl_mp_id in ourcommons_lookup:
                 ourcommons_mp = ourcommons_lookup[parl_mp_id]
                 mp_props["honorific"] = ourcommons_mp.honorific
                 mp_props["term_start_date"] = ourcommons_mp.term_start
                 mp_props["term_end_date"] = ourcommons_mp.term_end
                 mp_props["province"] = ourcommons_mp.province
+                mp_props["riding"] = ourcommons_mp.constituency  # Constituency name from OurCommons
 
             # Filter out None values
             mp_props = {k: v for k, v in mp_props.items() if v is not None}
@@ -222,6 +223,7 @@ def ingest_mps(neo4j_client: Neo4jClient, batch_size: int = 10000) -> int:
                     mp_props["term_start_date"] = ourcommons_mp.term_start
                     mp_props["term_end_date"] = ourcommons_mp.term_end
                     mp_props["province"] = ourcommons_mp.province
+                    mp_props["riding"] = ourcommons_mp.constituency
 
             mp_props = {k: v for k, v in mp_props.items() if v is not None}
             mps_data.append(mp_props)

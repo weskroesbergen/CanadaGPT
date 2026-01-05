@@ -587,6 +587,36 @@ export const typeDefs = `#graphql
   }
 
   # ============================================
+  # Written Questions
+  # ============================================
+
+  # Written Questions metadata from OurCommons website
+  # These are formal questions asked by MPs to ministers that require written responses
+  type WrittenQuestion @node {
+    id: ID! @unique  # Format: "wq-45-1-762"
+    question_number: String!  # "Q-762"
+    parliament_number: Int!  # 45
+    session_number: Int!  # 1
+    session_id: String!  # "45-1"
+    date_asked: Date
+    asker_name: String  # MP name who asked the question
+    asker_constituency: String
+    responding_department: String  # Minister/department who responds
+    status: String  # "Awaiting response", "Answered", "Withdrawn"
+    due_date: Date  # Response deadline
+    answer_date: Date  # When answered (if answered)
+    sessional_paper: String  # Sessional paper reference (e.g., "8555-451-762")
+    topics: [String!]  # Topic tags
+    ourcommons_url: String  # Link to OurCommons page
+    updated_at: DateTime!
+
+    # Relationships
+    askedBy: MP @relationship(type: "ASKED_BY", direction: OUT)
+    hansardQuestion: Statement @relationship(type: "HAS_HANSARD_QUESTION", direction: OUT)
+    hansardAnswer: Statement @relationship(type: "HAS_HANSARD_ANSWER", direction: OUT)
+  }
+
+  # ============================================
   # Debate Browse/Detail Types
   # ============================================
 
@@ -2372,5 +2402,106 @@ export const typeDefs = `#graphql
         """
         columnName: "stats"
       )
+
+    # ============================================
+    # Written Questions Queries
+    # ============================================
+
+    # Get written questions asked by a specific MP
+    writtenQuestionsByMP(
+      mpId: ID!
+      session: String
+      limit: Int = 50
+    ): [WrittenQuestion!]!
+      @cypher(
+        statement: """
+        MATCH (mp:MP {id: $mpId})<-[:ASKED_BY]-(wq:WrittenQuestion)
+        WHERE $session IS NULL OR wq.session_id = $session
+        RETURN wq
+        ORDER BY wq.date_asked DESC
+        LIMIT $limit
+        """
+        columnName: "wq"
+      )
+
+    # Get written questions by status
+    writtenQuestionsByStatus(
+      status: String!
+      session: String
+      limit: Int = 50
+    ): [WrittenQuestion!]!
+      @cypher(
+        statement: """
+        MATCH (wq:WrittenQuestion)
+        WHERE toLower(wq.status) CONTAINS toLower($status)
+          AND ($session IS NULL OR wq.session_id = $session)
+        RETURN wq
+        ORDER BY wq.date_asked DESC
+        LIMIT $limit
+        """
+        columnName: "wq"
+      )
+
+    # Get written questions by topic
+    writtenQuestionsByTopic(
+      topic: String!
+      session: String
+      limit: Int = 50
+    ): [WrittenQuestion!]!
+      @cypher(
+        statement: """
+        MATCH (wq:WrittenQuestion)
+        WHERE any(t IN wq.topics WHERE toLower(t) CONTAINS toLower($topic))
+          AND ($session IS NULL OR wq.session_id = $session)
+        RETURN wq
+        ORDER BY wq.date_asked DESC
+        LIMIT $limit
+        """
+        columnName: "wq"
+      )
+
+    # Get all written questions for a session with optional filters
+    allWrittenQuestions(
+      session: String = "45-1"
+      status: String
+      limit: Int = 100
+      offset: Int = 0
+    ): [WrittenQuestion!]!
+      @cypher(
+        statement: """
+        MATCH (wq:WrittenQuestion)
+        WHERE wq.session_id = $session
+          AND ($status IS NULL OR toLower(wq.status) CONTAINS toLower($status))
+        RETURN wq
+        ORDER BY wq.date_asked DESC
+        SKIP $offset
+        LIMIT $limit
+        """
+        columnName: "wq"
+      )
+
+    # Count written questions by status for a session
+    writtenQuestionStats(session: String = "45-1"): WrittenQuestionStats
+      @cypher(
+        statement: """
+        MATCH (wq:WrittenQuestion {session_id: $session})
+        WITH count(wq) as total,
+             sum(CASE WHEN toLower(wq.status) CONTAINS 'answer' THEN 1 ELSE 0 END) as answered,
+             sum(CASE WHEN toLower(wq.status) CONTAINS 'await' THEN 1 ELSE 0 END) as awaiting
+        RETURN {
+          total: total,
+          answered: answered,
+          awaiting: awaiting
+        } as stats
+        """
+        columnName: "stats"
+      )
+  }
+
+  # Written Question statistics type
+  type WrittenQuestionStats {
+    total: Int!
+    answered: Int!
+    awaiting: Int!
   }
 `;

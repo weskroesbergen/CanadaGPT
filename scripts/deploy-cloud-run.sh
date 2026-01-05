@@ -21,6 +21,7 @@ echo ""
 # Step 1: Validate environment variables
 echo "🔍 Step 1/4: Validating environment variables..."
 export NEO4J_URI="bolt://${NEO4J_INTERNAL_IP}:7687"
+export NEO4J_PASSWORD
 export CORS_ORIGINS="https://canadagpt.ca;http://localhost:3000;https://www.canadagpt.ca"
 ./scripts/validate-env.sh graph-api production || {
   echo "❌ Environment validation failed. Fix errors above and try again."

@@ -26,7 +26,6 @@ import {
   GET_MP_SPEECHES,
   GET_MP_LOBBY_COMMUNICATIONS,
   GET_MP_WRITTEN_QUESTIONS,
-  GET_MP_ANSWERED_QUESTIONS,
   GET_WRITTEN_QUESTION_SESSIONS
 } from '@/lib/queries';
 import Link from 'next/link';
@@ -90,17 +89,12 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
   const mp = data?.mps?.[0];
   const scorecard = scorecardData?.mpScorecard;
 
-  // Determine if MP is government (Liberal party) to use appropriate query
-  const isGovernmentMP = mp?.party === 'Liberal';
-
-  // Use different queries for government vs opposition MPs
-  // Government MPs: Get questions they ANSWERED (with opposition question shown)
-  // Opposition MPs: Get questions they ASKED (with government answer shown)
+  // Get written questions asked BY this MP
   const { data: writtenQuestionsData, loading: writtenQuestionsLoading } = useQuery(
-    isGovernmentMP ? GET_MP_ANSWERED_QUESTIONS : GET_MP_WRITTEN_QUESTIONS,
+    GET_MP_WRITTEN_QUESTIONS,
     {
       variables: { mpId: id, limit: 50, session: selectedSession === 'all' ? null : selectedSession },
-      skip: !loadedTabs.has('questions') || !mp, // Wait for MP data to determine which query to use
+      skip: !loadedTabs.has('questions') || !mp,
     }
   );
 
@@ -786,200 +780,110 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                     </div>
                   </div>
 
-                  {((writtenQuestionsData?.mpWrittenQuestions && writtenQuestionsData.mpWrittenQuestions.length > 0) ||
-                    (writtenQuestionsData?.mpAnsweredQuestions && writtenQuestionsData.mpAnsweredQuestions.length > 0)) ? (
+                  {writtenQuestionsData?.writtenQuestionsByMP && writtenQuestionsData.writtenQuestionsByMP.length > 0 ? (
                     <div className="space-y-4">
-                      {(writtenQuestionsData.mpWrittenQuestions || writtenQuestionsData.mpAnsweredQuestions)
-                        .filter((item: any) => {
-                          // Handle both response formats
-                          const hasAnswer = isGovernmentMP ? item.answer != null : item.answer != null;
-                          if (questionFilter === 'answered') return hasAnswer;
-                          if (questionFilter === 'unanswered') return !hasAnswer;
+                      {writtenQuestionsData.writtenQuestionsByMP
+                        .filter((wq: any) => {
+                          const isAnswered = wq.status?.toLowerCase().includes('answered');
+                          if (questionFilter === 'answered') return isAnswered;
+                          if (questionFilter === 'unanswered') return !isAnswered;
                           return true;
                         })
-                        .map((item: any) => {
-                        // Normalize data structure for both opposition and government MPs
-                        // Opposition MPs: item = Statement (the question), item.answer = government response
-                        // Government MPs: item = { question: Statement, answer: Statement, partOf: Document }
-                        const question = isGovernmentMP ? item.question : item;
-                        const answer = isGovernmentMP ? item.answer : item.answer;
-                        const partOf = isGovernmentMP ? item.partOf : item.partOf;
-
-                        // Extract question number from h3_en
-                        const questionNumber = question.h3_en?.match(/Question No\.\s*(\d+)/i)?.[1];
-                        const content = locale === 'fr' && question.content_fr ? question.content_fr : question.content_en;
-                        const h3 = locale === 'fr' && question.h3_fr ? question.h3_fr : question.h3_en;
-                        const hasAnswer = answer != null;
-                        const answerContent = locale === 'fr' && answer?.content_fr
-                          ? answer.content_fr
-                          : answer?.content_en;
-                        const isAnswerExpanded = expandedAnswers.has(question.id);
+                        .map((wq: any) => {
+                        const isAnswered = wq.status?.toLowerCase().includes('answered');
 
                         return (
                           <div
-                            key={question.id}
+                            key={wq.id}
                             className="p-4 rounded-lg bg-bg-elevated hover:bg-bg-elevated/80 transition-colors border border-border-subtle"
                           >
-                            {/* Header with MP info, badges, and metadata */}
-                            <div className="flex gap-4 mb-3">
-                              {/* MP Photo */}
-                              {question.madeBy && (
-                                <Link href={`/${locale}/mps/${question.madeBy.id}`}>
-                                  <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-bg-overlay">
-                                    <img
-                                      src={getMPPhotoUrl(question.madeBy) || '/default-avatar.png'}
-                                      alt={question.madeBy.name}
-                                      className="w-full h-full object-cover"
-                                      style={{ objectPosition: 'center -6px' }}
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).src = '/default-avatar.png';
-                                      }}
-                                    />
-                                  </div>
-                                </Link>
-                              )}
-
-                              {/* Main content area */}
-                              <div className="flex-1 min-w-0">
-                                {/* Top row: MP name, party logo, badges */}
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {/* MP Name */}
-                                    {question.madeBy && (
-                                      <Link
-                                        href={`/${locale}/mps/${question.madeBy.id}`}
-                                        className="font-semibold text-text-primary hover:text-accent-red transition-colors"
-                                      >
-                                        {question.madeBy.name}
-                                      </Link>
-                                    )}
-                                    {/* Party Logo */}
-                                    {question.madeBy?.party && (
-                                      <PartyLogo party={question.madeBy.party} size="sm" />
-                                    )}
-                                  </div>
-                                  {/* Date */}
-                                  {partOf?.date && (
-                                    <div className="flex items-center gap-1 text-sm text-text-secondary flex-shrink-0">
-                                      <Calendar className="h-4 w-4" />
-                                      {new Date(partOf.date).toLocaleDateString()}
-                                    </div>
+                            {/* Header with question number and status */}
+                            <div className="flex items-start justify-between gap-4 mb-3">
+                              <div className="flex items-center gap-3">
+                                {/* Question number badge */}
+                                <span className="px-3 py-1.5 rounded bg-accent-red/20 text-accent-red text-lg font-bold">
+                                  {wq.question_number}
+                                </span>
+                                {/* Status badge */}
+                                <span className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 ${
+                                  isAnswered
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-yellow-500/20 text-yellow-400'
+                                }`}>
+                                  {isAnswered ? (
+                                    <>
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      {wq.status}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Clock className="h-3 w-3" />
+                                      {wq.status || 'Awaiting response'}
+                                    </>
                                   )}
-                                </div>
-
-                                {/* Second row: Question title with badges */}
-                                <div className="flex items-center gap-2 flex-wrap mb-2">
-                                  {questionNumber && (
-                                    <span className="px-2 py-1 rounded bg-accent-red/20 text-accent-red text-sm font-semibold">
-                                      Q{questionNumber}
-                                    </span>
-                                  )}
-                                  {/* Answer status badge */}
-                                  <span className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 ${
-                                    hasAnswer
-                                      ? 'bg-green-500/20 text-green-400'
-                                      : 'bg-yellow-500/20 text-yellow-400'
-                                  }`}>
-                                    {hasAnswer ? (
-                                      <>
-                                        <CheckCircle2 className="h-3 w-3" />
-                                        Answered
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Clock className="h-3 w-3" />
-                                        Pending Response
-                                      </>
-                                    )}
-                                  </span>
-                                  {/* Complete question title with MP name */}
-                                  {h3 && question.madeBy && (
-                                    <h3 className="font-semibold text-text-primary">
-                                      {h3}{question.madeBy.name}
-                                    </h3>
-                                  )}
-                                </div>
+                                </span>
+                                {/* Session badge */}
+                                <span className="px-2 py-1 rounded bg-bg-overlay text-text-tertiary text-xs">
+                                  Session {wq.session_id}
+                                </span>
                               </div>
+                              {/* Date asked */}
+                              {wq.date_asked && (
+                                <div className="flex items-center gap-1 text-sm text-text-secondary flex-shrink-0">
+                                  <Calendar className="h-4 w-4" />
+                                  {new Date(wq.date_asked).toLocaleDateString()}
+                                </div>
+                              )}
                             </div>
 
-                            {/* Question content */}
-                            {content && (
-                              <div className="text-sm text-text-secondary mb-3 whitespace-pre-wrap">
-                                {content}
-                              </div>
-                            )}
-
-                            {/* Government response */}
-                            {hasAnswer && answerContent && (
-                              <div className="mt-4 pt-4 border-t border-border-subtle">
-                                <button
-                                  onClick={() => {
-                                    const newExpanded = new Set(expandedAnswers);
-                                    if (isAnswerExpanded) {
-                                      newExpanded.delete(question.id);
-                                    } else {
-                                      newExpanded.add(question.id);
-                                    }
-                                    setExpandedAnswers(newExpanded);
-                                  }}
-                                  className="flex items-center gap-2 text-sm font-semibold text-accent-red hover:text-accent-red/80 transition-colors mb-2"
+                            {/* MP info if viewing from another context */}
+                            {wq.askedBy && wq.askedBy.id !== id && (
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="text-sm text-text-secondary">Asked by:</span>
+                                <Link
+                                  href={`/${locale}/mps/${wq.askedBy.id}`}
+                                  className="font-medium text-text-primary hover:text-accent-red transition-colors"
                                 >
-                                  {isAnswerExpanded ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                  )}
-                                  Government Response
-                                </button>
-                                {isAnswerExpanded && (
-                                  <div className="mt-2">
-                                    <div className="text-sm text-text-primary whitespace-pre-wrap bg-bg-overlay/50 p-3 rounded-lg">
-                                      {answerContent}
-                                    </div>
-                                    {answer?.who_en && (
-                                      <div className="mt-2 text-xs text-text-tertiary flex items-center gap-1">
-                                        <Users className="h-3 w-3" />
-                                        {locale === 'fr' && answer.who_fr ? answer.who_fr : answer.who_en}
-                                      </div>
-                                    )}
-                                    {answer?.time && (
-                                      <div className="mt-1 text-xs text-text-tertiary flex items-center gap-1">
-                                        <Calendar className="h-3 w-3" />
-                                        {new Date(answer.time).toLocaleDateString()}
-                                      </div>
-                                    )}
-                                  </div>
+                                  {wq.askedBy.name}
+                                </Link>
+                                {wq.askedBy.party && (
+                                  <PartyLogo party={wq.askedBy.party} size="sm" />
                                 )}
                               </div>
                             )}
 
-                            {/* Footer with links and metadata */}
-                            <div className="mt-3 flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {/* View in Hansard link */}
-                                {partOf?.id && (
-                                  <Link
-                                    href={`/${locale}/debates/${partOf.id}#${question.id}`}
-                                    className="inline-flex items-center gap-1 text-sm text-accent-red hover:text-accent-red/80 font-medium"
-                                  >
-                                    View in Hansard
-                                    <ExternalLink className="h-3 w-3" />
-                                  </Link>
-                                )}
+                            {/* Answer date if answered */}
+                            {wq.answer_date && (
+                              <div className="text-sm text-text-secondary mb-3">
+                                <span className="font-medium">Answered:</span> {new Date(wq.answer_date).toLocaleDateString()}
                               </div>
-                              {/* Word count */}
-                              {question.wordcount && (
-                                <div className="text-xs text-text-tertiary">
-                                  {question.wordcount} {locale === 'fr' ? 'mots' : 'words'}
-                                </div>
-                              )}
+                            )}
+
+                            {/* Due date if pending */}
+                            {!isAnswered && wq.due_date && (
+                              <div className="text-sm text-yellow-400 mb-3">
+                                <span className="font-medium">Response due:</span> {new Date(wq.due_date).toLocaleDateString()}
+                              </div>
+                            )}
+
+                            {/* Footer with link to OurCommons */}
+                            <div className="mt-3 flex items-center justify-between">
+                              <a
+                                href={wq.ourcommons_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-accent-red hover:text-accent-red/80 font-medium"
+                              >
+                                View Full Question on OurCommons
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
                             </div>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <p className="text-text-secondary">No written questions found.</p>
+                    <p className="text-text-secondary">No written questions found for this MP.</p>
                   )}
                 </Card>
               ),

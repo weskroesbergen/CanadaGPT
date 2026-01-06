@@ -6,11 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-# Add fedmcp package to path for local development
-# In Docker, PYTHONPATH=/app handles this
+# Add fedmcp package to path
 FEDMCP_PATH = Path(__file__).parent.parent.parent.parent / "fedmcp" / "src"
-if FEDMCP_PATH.exists():
-    sys.path.insert(0, str(FEDMCP_PATH))
+sys.path.insert(0, str(FEDMCP_PATH))
 
 from fedmcp.clients.written_questions import WrittenQuestionsClient, WrittenQuestion
 from ..utils.neo4j_client import Neo4jClient

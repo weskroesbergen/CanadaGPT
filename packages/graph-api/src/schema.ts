@@ -606,6 +606,7 @@ export const typeDefs = `#graphql
     due_date: Date  # Response deadline
     answer_date: Date  # When answered (if answered)
     sessional_paper: String  # Sessional paper reference (e.g., "8555-451-762")
+    question_text: String  # Full text of the question asked
     topics: [String!]  # Topic tags
     ourcommons_url: String  # Link to OurCommons page
     updated_at: DateTime!

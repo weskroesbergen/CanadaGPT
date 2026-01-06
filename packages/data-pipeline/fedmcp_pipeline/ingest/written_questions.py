@@ -262,9 +262,37 @@ def ingest_written_questions(
         logger.info("No new questions to import")
         return stats
 
-    # 4. Fetch detailed data for new questions (optional - can be slow)
-    # For now, use list data which has most essential fields
-    detailed_questions = new_questions
+    # 4. Fetch detailed data for new questions to get question_text
+    logger.info(f"Fetching detailed data for {len(new_questions)} questions...")
+    detailed_questions = []
+    for i, q in enumerate(new_questions):
+        try:
+            # Extract question number for detail fetch
+            q_num = q.question_number.upper().replace('Q-', '').replace('Q', '')
+            detailed = client.get_question_details(parliament_session, q_num)
+            if detailed:
+                # Merge list data with detail data
+                # List data is more reliable for asker_name, date_asked, status
+                # Detail data has question_text, sessional_paper
+                if q.asker_name:
+                    detailed.asker_name = q.asker_name
+                if q.date_asked:
+                    detailed.date_asked = q.date_asked
+                if q.status:
+                    detailed.status = q.status
+                detailed_questions.append(detailed)
+            else:
+                # Fallback to list data if detail fetch fails
+                detailed_questions.append(q)
+        except Exception as e:
+            logger.warning(f"Failed to fetch details for {q.question_number}: {e}")
+            detailed_questions.append(q)
+
+        # Log progress every 50 questions
+        if (i + 1) % 50 == 0:
+            logger.info(f"  Fetched {i + 1}/{len(new_questions)} question details...")
+
+    logger.info(f"  Fetched details for {len(detailed_questions)} questions")
 
     # 5. Build MP name mapping for linking
     logger.info("Building MP name mapping...")
@@ -312,6 +340,7 @@ def ingest_written_questions(
             wq.due_date = CASE WHEN q.due_date IS NOT NULL THEN date(q.due_date) ELSE null END,
             wq.answer_date = CASE WHEN q.answer_date IS NOT NULL THEN date(q.answer_date) ELSE null END,
             wq.sessional_paper = q.sessional_paper,
+            wq.question_text = q.question_text,
             wq.topics = q.topics,
             wq.ourcommons_url = q.ourcommons_url,
             wq.updated_at = datetime()
@@ -375,6 +404,7 @@ def update_question_statuses(
     Update status of existing questions (check if answered).
 
     This is useful for periodic updates to track when questions get answered.
+    When a question becomes answered, fetches detail page for sessional_paper.
 
     Args:
         neo4j_client: Neo4j client
@@ -388,6 +418,7 @@ def update_question_statuses(
     stats = {
         'checked': 0,
         'updated': 0,
+        'newly_answered': 0,
     }
 
     client = WrittenQuestionsClient()
@@ -401,6 +432,7 @@ def update_question_statuses(
         MATCH (wq:WrittenQuestion {id: $id})
         SET wq.status = $status,
             wq.answer_date = CASE WHEN $answer_date IS NOT NULL THEN date($answer_date) ELSE wq.answer_date END,
+            wq.sessional_paper = CASE WHEN $sessional_paper IS NOT NULL THEN $sessional_paper ELSE wq.sessional_paper END,
             wq.updated_at = datetime()
         RETURN wq.status <> $old_status as changed
     """
@@ -408,20 +440,42 @@ def update_question_statuses(
     for q in all_questions:
         # Get current status
         current = neo4j_client.run_query(
-            "MATCH (wq:WrittenQuestion {id: $id}) RETURN wq.status as status",
+            "MATCH (wq:WrittenQuestion {id: $id}) RETURN wq.status as status, wq.sessional_paper as sessional_paper",
             {"id": q.id}
         )
 
         if current:
             old_status = current[0].get('status', '')
-            if old_status != q.status:
+            old_sessional_paper = current[0].get('sessional_paper')
+
+            # Check if status changed or if we need sessional_paper
+            is_now_answered = q.status and 'answered' in q.status.lower()
+            needs_sessional_paper = is_now_answered and not old_sessional_paper
+            status_changed = old_status != q.status
+
+            if status_changed or needs_sessional_paper:
+                sessional_paper = None
+
+                # If newly answered, fetch detail page for sessional_paper
+                if needs_sessional_paper:
+                    try:
+                        q_num = q.question_number.upper().replace('Q-', '').replace('Q', '')
+                        detailed = client.get_question_details(parliament_session, q_num)
+                        if detailed and detailed.sessional_paper:
+                            sessional_paper = detailed.sessional_paper
+                            stats['newly_answered'] += 1
+                            logger.info(f"  {q.question_number} answered - sessional paper: {sessional_paper}")
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch details for {q.question_number}: {e}")
+
                 neo4j_client.run_query(update_query, {
                     "id": q.id,
                     "status": q.status,
                     "answer_date": q.answer_date,
+                    "sessional_paper": sessional_paper,
                     "old_status": old_status
                 })
                 stats['updated'] += 1
 
-    logger.info(f"Updated {stats['updated']} question statuses")
+    logger.info(f"Updated {stats['updated']} question statuses ({stats['newly_answered']} newly answered)")
     return stats

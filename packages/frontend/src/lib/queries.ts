@@ -1472,6 +1472,8 @@ export const GET_MP_WRITTEN_QUESTIONS = gql`
       status
       due_date
       answer_date
+      question_text
+      sessional_paper
       ourcommons_url
       askedBy {
         id

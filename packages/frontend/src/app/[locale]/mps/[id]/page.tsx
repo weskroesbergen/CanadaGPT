@@ -134,6 +134,8 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
   const [questionFilter, setQuestionFilter] = useState<string>('all'); // 'all', 'answered', 'unanswered'
   const [expandedSpeeches, setExpandedSpeeches] = useState<Set<string>>(new Set());
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set()); // Track expanded written questions
+  const [expandedQuestionAnswers, setExpandedQuestionAnswers] = useState<Set<string>>(new Set()); // Track expanded answer sections
   const [imageError, setImageError] = useState(false);
 
   // Lobbying pagination state
@@ -792,6 +794,13 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                         })
                         .map((wq: any) => {
                         const isAnswered = wq.status?.toLowerCase().includes('answered');
+                        const isQuestionExpanded = expandedQuestions.has(wq.id);
+                        const isAnswerExpanded = expandedQuestionAnswers.has(wq.id);
+                        const questionText = wq.question_text || '';
+                        const truncatedQuestion = questionText.length > 250
+                          ? questionText.substring(0, 250) + '...'
+                          : questionText;
+                        const needsTruncation = questionText.length > 250;
 
                         return (
                           <div
@@ -800,7 +809,7 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                           >
                             {/* Header with question number and status */}
                             <div className="flex items-start justify-between gap-4 mb-3">
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 flex-wrap">
                                 {/* Question number badge */}
                                 <span className="px-3 py-1.5 rounded bg-accent-red/20 text-accent-red text-lg font-bold">
                                   {wq.question_number}
@@ -853,14 +862,96 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                               </div>
                             )}
 
-                            {/* Answer date if answered */}
-                            {wq.answer_date && (
-                              <div className="text-sm text-text-secondary mb-3">
-                                <span className="font-medium">Answered:</span> {formatLocalDate(wq.answer_date)}
+                            {/* Question text with expand/collapse */}
+                            {questionText && (
+                              <div className="mb-3">
+                                <p className="text-sm text-text-primary leading-relaxed">
+                                  {isQuestionExpanded ? questionText : truncatedQuestion}
+                                </p>
+                                {needsTruncation && (
+                                  <button
+                                    onClick={() => {
+                                      setExpandedQuestions(prev => {
+                                        const newSet = new Set(prev);
+                                        if (newSet.has(wq.id)) {
+                                          newSet.delete(wq.id);
+                                        } else {
+                                          newSet.add(wq.id);
+                                        }
+                                        return newSet;
+                                      });
+                                    }}
+                                    className="mt-2 text-sm text-accent-red hover:text-accent-red/80 font-medium flex items-center gap-1"
+                                  >
+                                    {isQuestionExpanded ? (
+                                      <>
+                                        <ChevronUp className="h-4 w-4" />
+                                        Show less
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown className="h-4 w-4" />
+                                        Show full question
+                                      </>
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             )}
 
-                            {/* Due date if pending */}
+                            {/* Answer info section (collapsible for answered questions) */}
+                            {isAnswered && (
+                              <div className="mb-3">
+                                <button
+                                  onClick={() => {
+                                    setExpandedQuestionAnswers(prev => {
+                                      const newSet = new Set(prev);
+                                      if (newSet.has(wq.id)) {
+                                        newSet.delete(wq.id);
+                                      } else {
+                                        newSet.add(wq.id);
+                                      }
+                                      return newSet;
+                                    });
+                                  }}
+                                  className="flex items-center gap-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors"
+                                >
+                                  {isAnswerExpanded ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                  View Answer Info
+                                </button>
+
+                                {isAnswerExpanded && (
+                                  <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                                    {wq.answer_date && (
+                                      <div className="text-sm text-text-secondary mb-2">
+                                        <span className="font-medium text-green-400">Answered:</span> {formatLocalDate(wq.answer_date)}
+                                      </div>
+                                    )}
+                                    {wq.sessional_paper && (
+                                      <div className="text-sm text-text-secondary mb-3">
+                                        <span className="font-medium text-green-400">Sessional Paper:</span> {wq.sessional_paper}
+                                      </div>
+                                    )}
+                                    <a
+                                      href={wq.ourcommons_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-medium text-sm transition-colors"
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                      Read Full Answer
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Due date if pending (not answered) */}
                             {!isAnswered && wq.due_date && (
                               <div className="text-sm text-yellow-400 mb-3">
                                 <span className="font-medium">Response due:</span> {formatLocalDate(wq.due_date)}
@@ -875,7 +966,7 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-sm text-accent-red hover:text-accent-red/80 font-medium"
                               >
-                                View Full Question on OurCommons
+                                View on OurCommons
                                 <ExternalLink className="h-3 w-3" />
                               </a>
                             </div>

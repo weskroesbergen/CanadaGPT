@@ -29,6 +29,7 @@ class WrittenQuestion:
     answer_date: Optional[str] = None  # ISO format
     sessional_paper: Optional[str] = None  # "8555-451-1"
     question_text_preview: Optional[str] = None  # Truncated text from list
+    question_text: Optional[str] = None  # Full question text from detail page
     topics: List[str] = field(default_factory=list)
     ourcommons_url: str = ""
 
@@ -60,6 +61,7 @@ class WrittenQuestion:
             'due_date': self.due_date,
             'answer_date': self.answer_date,
             'sessional_paper': self.sessional_paper,
+            'question_text': self.question_text,
             'topics': self.topics,
             'ourcommons_url': self.ourcommons_url,
         }
@@ -338,6 +340,7 @@ class WrittenQuestionsClient:
         asker_constituency = ""
         responding_department = ""
         sessional_paper = None
+        question_text = None
         topics = []
 
         # Look for metadata in the page
@@ -399,6 +402,11 @@ class WrittenQuestionsClient:
         if paper_match:
             sessional_paper = paper_match.group()
 
+        # Extract full question text
+        # The question text is typically in a content section after "With regard to..."
+        # or starts with specific patterns
+        question_text = self._extract_question_text(soup)
+
         # Look for topics (usually in tag links or a topics section)
         topic_links = soup.find_all('a', href=re.compile(r'topic'))
         for topic_link in topic_links:
@@ -417,9 +425,100 @@ class WrittenQuestionsClient:
             status=status,
             answer_date=answer_date,
             sessional_paper=sessional_paper,
+            question_text=question_text,
             topics=topics,
             ourcommons_url=source_url,
         )
+
+    def _extract_question_text(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract the full question text from the detail page.
+
+        The question text is typically in a content area and starts with
+        phrases like "With regard to", "Concerning", "What is/are", etc.
+        """
+        # Try to find question text in common container patterns
+        # Pattern 1: Look for file-content or content containers
+        content_containers = soup.find_all(['div', 'section'], class_=re.compile(
+            r'file-content|content|question-content|question-text|left-panel',
+            re.IGNORECASE
+        ))
+
+        for container in content_containers:
+            text = container.get_text(separator=' ', strip=True)
+            question = self._find_question_in_text(text)
+            if question:
+                return question
+
+        # Pattern 2: Look for paragraphs starting with common question phrases
+        paragraphs = soup.find_all('p')
+        for p in paragraphs:
+            text = p.get_text(strip=True)
+            if self._is_question_text(text):
+                # Get full question which may span multiple paragraphs
+                parent = p.find_parent(['div', 'section'])
+                if parent:
+                    full_text = parent.get_text(separator=' ', strip=True)
+                    question = self._find_question_in_text(full_text)
+                    if question:
+                        return question
+                return text
+
+        # Pattern 3: Search entire page text for question patterns
+        page_text = soup.get_text(separator=' ', strip=True)
+        return self._find_question_in_text(page_text)
+
+    def _is_question_text(self, text: str) -> bool:
+        """Check if text looks like the start of a written question."""
+        if not text or len(text) < 20:
+            return False
+
+        question_starters = [
+            r'^with\s+regard\s+to',
+            r'^concerning',
+            r'^what\s+(is|are|was|were|has|have)',
+            r'^how\s+(many|much|does|do|did)',
+            r'^when\s+(did|does|will|was)',
+            r'^where\s+(is|are|was|were)',
+            r'^why\s+(did|does|is|are)',
+            r'^who\s+(is|are|was|were)',
+            r'^regarding',
+            r'^in\s+relation\s+to',
+        ]
+
+        text_lower = text.lower()
+        for pattern in question_starters:
+            if re.match(pattern, text_lower):
+                return True
+        return False
+
+    def _find_question_in_text(self, text: str) -> Optional[str]:
+        """Find and extract the question from a block of text."""
+        if not text:
+            return None
+
+        # Look for question text starting with common patterns
+        # and ending with a question mark
+        patterns = [
+            # "With regard to X: (a)... (b)...?"
+            r'(With\s+regard\s+to[^?]+\?)',
+            r'(Concerning[^?]+\?)',
+            r'(What\s+(?:is|are|was|were|has|have)[^?]+\?)',
+            r'(How\s+(?:many|much|does|do|did)[^?]+\?)',
+            r'(Regarding[^?]+\?)',
+            r'(In\s+relation\s+to[^?]+\?)',
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                question = match.group(1).strip()
+                # Clean up whitespace
+                question = re.sub(r'\s+', ' ', question)
+                # Limit length to avoid pulling in too much content
+                if len(question) > 100 and len(question) < 10000:
+                    return question
+
+        return None
 
     def get_question_count(self, parliament_session: str = "45-1") -> int:
         """

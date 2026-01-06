@@ -121,6 +121,19 @@ def main():
                 logger.success(f"Created {asked_by_links} MP links")
             else:
                 logger.info("No new questions to import")
+
+            # Always update statuses to catch newly answered questions
+            # This populates answer_date and sessional_paper for questions
+            # that have been answered since last run
+            logger.info("")
+            logger.info("Updating question statuses...")
+            status_stats = update_question_statuses(
+                neo4j_client=neo4j,
+                parliament_session=args.parliament_session,
+            )
+            if status_stats.get('newly_answered', 0) > 0:
+                logger.success(f"Found {status_stats['newly_answered']} newly answered questions")
+
             logger.info("=" * 80)
 
     except Exception as e:

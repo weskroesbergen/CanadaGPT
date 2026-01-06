@@ -127,7 +127,8 @@ class WrittenQuestionsClient:
         """Fetch a single page of questions."""
         url = f"{self.base_url}/questions"
         params = {
-            'ParliamentSession': parliament_session,
+            'parlsession': parliament_session,  # OurCommons uses lowercase 'parlsession'
+            'view': 'tile',  # Tile view has better structure for scraping
             'Page': str(page),
         }
         if status:

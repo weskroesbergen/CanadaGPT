@@ -289,6 +289,7 @@ mp_expenses = expenses.search_by_name("Poilievre", fiscal_year=2026, quarter=1)
 | **Committee Evidence** | Daily 8:00 AM UTC | Import witness testimony | `run_committee_evidence_ingestion.py`, `fedmcp_pipeline/ingest/committee_evidence_xml_import.py` |
 | **Lobbying Registry** | Weekly Sundays 2:00 AM UTC | Full refresh of lobbying data (registrations, communications, organizations, lobbyists) | `run_lobbying_ingestion.py`, `fedmcp_pipeline/ingest/lobbying.py`, `Dockerfile.lobbying-ingestion` |
 | **MP Expenses** | Daily 5:00 AM UTC | Import MP office & House Officer expenses (quarterly data) | `run_expenses_ingestion.py`, `fedmcp_pipeline/ingest/finances.py`, `Dockerfile.expenses-ingestion` |
+| **Written Questions** | Daily 9:00 AM UTC | Import written questions metadata from OurCommons | `run_written_questions_ingestion.py`, `fedmcp_pipeline/ingest/written_questions.py`, `Dockerfile.written-questions-ingestion` |
 
 **Hansard Ingestion Details**:
 - **Data Source**: Direct XML URLs - `https://www.ourcommons.ca/Content/House/451/Debates/{sitting}/HAN{sitting}-E.XML`
@@ -358,6 +359,28 @@ mp_expenses = expenses.search_by_name("Poilievre", fiscal_year=2026, quarter=1)
 - **Deployment**: `./scripts/deploy-expenses-ingestion.sh` (Cloud Run job + daily Cloud Scheduler)
 - **Historical Backfill**: Run locally with `--fiscal-year-start 2020 --fiscal-year-end 2023`
 - **Documentation**: See `EXPENSES_INGESTION.md` for full details
+
+**Written Questions Ingestion**:
+- **Data Source**: OurCommons Written Questions website (HTML scraping)
+  - List page: `https://www.ourcommons.ca/written-questions/questions?ParliamentSession=45-1`
+  - Individual: `https://www.ourcommons.ca/written-questions/45-1/q-{number}`
+  - ⚠️ No API available - uses BeautifulSoup web scraping
+- **Data Captured**: Question number, date asked, asking MP, status, due date, answer date, topics, sessional paper reference
+- **Node Type**: `WrittenQuestion` (separate from Hansard `Statement` nodes)
+- **Relationships**:
+  - `(WrittenQuestion)-[:ASKED_BY]->(MP)` - Links questions to asking MP
+  - `(WrittenQuestion)-[:HAS_HANSARD_QUESTION]->(Statement)` - Optional link to Hansard
+  - `(WrittenQuestion)-[:HAS_HANSARD_ANSWER]->(Statement)` - Optional link to answer in Hansard
+- **MP Name Matching**: Fuzzy matching with nickname mapping, accent removal
+- **Incremental Import**: Only imports new questions by default (checks existing question numbers)
+- **Resource Requirements**: 2Gi memory, 1 CPU, 30 minute timeout
+- **Rate Limiting**: 0.5s between requests (2 req/sec) to be respectful to OurCommons
+- **Typical Volume**: ~762 questions per session (45-1)
+- **Deployment**: `./scripts/deploy-written-questions-ingestion.sh` (Cloud Run job + daily Cloud Scheduler at 9am UTC)
+- **CLI Options**:
+  - `--parliament-session 44-1` - Import specific session
+  - `--full-refresh` - Re-import all questions
+  - `--limit 50` - Limit for testing
 
 **Common Operations**:
 ```bash

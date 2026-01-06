@@ -23,4 +23,4 @@ USER appuser
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-CMD ["python", "run_written_questions_ingestion.py"]
+ENTRYPOINT ["python", "run_written_questions_ingestion.py"]

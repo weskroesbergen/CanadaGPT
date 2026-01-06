@@ -31,6 +31,7 @@ import {
 import Link from 'next/link';
 import { formatCAD } from '@canadagpt/design-system';
 import { getMPPhotoUrl } from '@/lib/utils/mpPhotoUrl';
+import { formatLocalDate } from '@/lib/utils';
 import { Mail, Phone, Twitter, MapPin, Award, FileText, TrendingUp, ExternalLink, Building2, Crown, BarChart3, Newspaper, CheckCircle2, XCircle, MinusCircle, Vote, MessageSquare, Calendar, Hash, Users, Info, HelpCircle, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { PartyLogo } from '@/components/PartyLogo';
 import { usePageThreading } from '@/contexts/UserPreferencesContext';
@@ -831,7 +832,7 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                               {wq.date_asked && (
                                 <div className="flex items-center gap-1 text-sm text-text-secondary flex-shrink-0">
                                   <Calendar className="h-4 w-4" />
-                                  {new Date(wq.date_asked).toLocaleDateString()}
+                                  {formatLocalDate(wq.date_asked)}
                                 </div>
                               )}
                             </div>
@@ -855,14 +856,14 @@ export default function MPDetailPage({ params }: { params: Promise<{ id: string 
                             {/* Answer date if answered */}
                             {wq.answer_date && (
                               <div className="text-sm text-text-secondary mb-3">
-                                <span className="font-medium">Answered:</span> {new Date(wq.answer_date).toLocaleDateString()}
+                                <span className="font-medium">Answered:</span> {formatLocalDate(wq.answer_date)}
                               </div>
                             )}
 
                             {/* Due date if pending */}
                             {!isAnswered && wq.due_date && (
                               <div className="text-sm text-yellow-400 mb-3">
-                                <span className="font-medium">Response due:</span> {new Date(wq.due_date).toLocaleDateString()}
+                                <span className="font-medium">Response due:</span> {formatLocalDate(wq.due_date)}
                               </div>
                             )}
 

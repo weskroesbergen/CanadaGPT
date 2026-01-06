@@ -220,15 +220,32 @@ def ingest_written_questions(
     # 2. Fetch questions from OurCommons
     logger.info("Fetching written questions from OurCommons...")
     try:
-        all_questions = client.list_questions(
+        raw_questions = client.list_questions(
             parliament_session=parliament_session,
             limit=limit
         )
-        stats['questions_scraped'] = len(all_questions)
-        logger.info(f"Scraped {len(all_questions)} questions from OurCommons")
+        stats['questions_scraped'] = len(raw_questions)
+        logger.info(f"Scraped {len(raw_questions)} raw questions from OurCommons")
     except Exception as e:
         logger.error(f"Failed to fetch questions: {e}")
         return stats
+
+    # 2b. Deduplicate questions by question_number
+    # The scraper returns multiple links per question; prefer ones with asker_name
+    question_map: Dict[str, Any] = {}
+    for q in raw_questions:
+        q_num = q.question_number
+        if q_num not in question_map:
+            question_map[q_num] = q
+        elif q.asker_name and not question_map[q_num].asker_name:
+            # Prefer question with asker_name populated
+            question_map[q_num] = q
+        elif q.status and not question_map[q_num].status:
+            # Prefer question with status populated
+            question_map[q_num] = q
+
+    all_questions = list(question_map.values())
+    logger.info(f"Deduplicated to {len(all_questions)} unique questions")
 
     # 3. Filter to new questions
     if not full_refresh:
